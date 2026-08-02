@@ -1,0 +1,312 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pcos
+---
+# ─── PostgreSQL ──────────────────────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: pcos
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: pcos
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: pcos-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pcos-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: pcos
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "pcos"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: pcos
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# ─── Redis ───────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: pcos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          args: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb"]
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: pcos
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+---
+# ─── Backend ─────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: pcos
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/dayashimoga/pcos/backend:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PCOS_SERVER__HOST
+              value: "0.0.0.0"
+            - name: PCOS_SERVER__PORT
+              value: "8080"
+            - name: PCOS_DATABASE__URL
+              valueFrom:
+                secretKeyRef:
+                  name: pcos-secrets
+                  key: DATABASE_URL
+            - name: PCOS_AUTH__JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: pcos-secrets
+                  key: JWT_SECRET
+            - name: PCOS_REDIS__URL
+              value: "redis://redis:6379"
+            - name: PCOS_STORAGE__BASE_PATH
+              value: "/data/pcos/storage"
+            - name: RUST_LOG
+              value: "pcos=info,tower_http=info,sqlx=warn"
+          volumeMounts:
+            - name: storage
+              mountPath: /data/pcos/storage
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: storage-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: pcos
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+# ─── Frontend ────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: pcos
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/dayashimoga/pcos/frontend:latest
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: pcos
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+---
+# ─── Storage PVC ─────────────────────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage-pvc
+  namespace: pcos
+spec:
+  accessModes: [ReadWriteMany]
+  resources:
+    requests:
+      storage: 100Gi
+---
+# ─── Ingress ─────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pcos-ingress
+  namespace: pcos
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10g"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - pcos.example.com
+      secretName: pcos-tls
+  rules:
+    - host: pcos.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080
+          - path: /webdav
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080
+          - path: /s3
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+---
+# ─── Secrets (base64 encoded — replace values!) ──────
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pcos-secrets
+  namespace: pcos
+type: Opaque
+data:
+  POSTGRES_USER: cGNvcw==
+  POSTGRES_PASSWORD: Y2hhbmdlLW1l
+  DATABASE_URL: cG9zdGdyZXNxbDovL3Bjb3M6Y2hhbmdlLW1lQHBvc3RncmVzOjU0MzIvcGNvcw==
+  JWT_SECRET: Y2hhbmdlLW1lLXRvLWEtc2VjdXJlLXJhbmRvbS1zdHJpbmc=

@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-08-02
+
+### Added
+- **LAN/P2P Discovery**: UDP broadcast peer discovery in agent with auto-timeout. Announces `_pcos` service, tracks peers by IP/hostname. 2 unit tests.
+- **OCR Text Extraction**: Plaintext (direct read), PDF (BT/ET text stream parsing with Tesseract fallback), images (Tesseract OCR), EXIF metadata (exiftool). `POST /api/v1/search/extract/:id` extracts + indexes to Tantivy.
+- **Web Push Notifications**: Subscribe/unsubscribe browsers, send push notifications via Web Push protocol (RFC 8030), auto-cleanup expired subscriptions (410 Gone). 4 new endpoints.
+- **DB Migration**: `push_subscriptions` (unique endpoint, user FK) and `text_extractions` (GIN full-text index) tables.
+- **Kubernetes Manifests**: Namespace, PostgreSQL StatefulSet with PVC, Redis, Backend (2 replicas, health checks, resource limits), Frontend (2 replicas), 100Gi Storage PVC, Ingress with TLS + cert-manager, Secrets.
+
+### Changed
+- Caddy updated with `/grafana/*` proxy route.
+- Search crate now includes extraction module.
+- Notification crate now includes web_push module.
+
+---
+
 ## [0.5.0] - 2026-08-02
 
 ### Added

@@ -91,3 +91,38 @@ pub async fn create_system_notification(pool: &sqlx::PgPool, user_id: Uuid, titl
         .map_err(|e| AppError::Internal(e.to_string()))?;
     Ok(())
 }
+
+// ─── Web Push Handlers ──────────────────────────────────
+
+pub async fn push_subscribe(
+    State(s): State<AppState>, auth: AuthUser,
+    Json(req): Json<crate::web_push::SubscribeRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let sub = crate::web_push::subscribe(s.db.pool(), auth.claims.sub, req, None).await?;
+    Ok((StatusCode::CREATED, Json(sub)))
+}
+
+pub async fn push_unsubscribe(
+    State(s): State<AppState>, auth: AuthUser,
+    Json(req): Json<serde_json::Value>,
+) -> Result<impl IntoResponse, AppError> {
+    let endpoint = req["endpoint"].as_str()
+        .ok_or_else(|| AppError::Validation("Missing endpoint".to_string()))?;
+    crate::web_push::unsubscribe(s.db.pool(), auth.claims.sub, endpoint).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn push_list(
+    State(s): State<AppState>, auth: AuthUser,
+) -> Result<impl IntoResponse, AppError> {
+    let subs = crate::web_push::list_subscriptions(s.db.pool(), auth.claims.sub).await?;
+    Ok(Json(serde_json::json!({ "subscriptions": subs, "total": subs.len() })))
+}
+
+pub async fn push_send(
+    State(s): State<AppState>, auth: AuthUser,
+    Json(payload): Json<crate::web_push::PushPayload>,
+) -> Result<impl IntoResponse, AppError> {
+    let sent = crate::web_push::send_push(s.db.pool(), auth.claims.sub, &payload).await?;
+    Ok(Json(serde_json::json!({ "sent": sent })))
+}

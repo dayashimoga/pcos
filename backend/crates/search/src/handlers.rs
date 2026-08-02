@@ -133,3 +133,50 @@ pub async fn reindex(
         "engine": if indexed > 0 { "tantivy" } else { "none" },
     })))
 }
+
+/// POST /api/v1/search/extract/:id — extract text from a file for indexing
+pub async fn extract_text(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    axum::extract::Path(file_id): axum::extract::Path<uuid::Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    let pool = state.db.pool();
+
+    let entry: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+        "SELECT name, mime_type, storage_path FROM file_entries WHERE id = $1 AND user_id = $2 AND is_trashed = false"
+    ).bind(file_id).bind(auth.claims.sub)
+    .fetch_optional(pool).await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let (name, mime, storage_path) = entry
+        .ok_or_else(|| AppError::NotFound("File not found".to_string()))?;
+
+    let mime_type = mime.unwrap_or_else(|| "application/octet-stream".to_string());
+    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".to_string());
+
+    let file_path = if let Some(sp) = storage_path {
+        format!("{}/{}", base_path, sp)
+    } else {
+        return Err(AppError::NotFound("File has no storage path".to_string()));
+    };
+
+    let path = std::path::Path::new(&file_path);
+    let mut result = crate::extraction::extract_text(path, &mime_type).await?;
+    result.file_id = file_id;
+
+    // If Tantivy is available, index the extracted text
+    if let Some(ref idx_any) = state.search_index {
+        if let Some(idx) = idx_any.downcast_ref::<crate::index::SearchIndex>() {
+            let _ = idx.index_document(file_id, auth.claims.sub, &name, &result.text, &mime_type, "file").await;
+        }
+    }
+
+    Ok(Json(serde_json::json!({
+        "file_id": file_id,
+        "method": result.method,
+        "confidence": result.confidence,
+        "page_count": result.page_count,
+        "text_length": result.text.len(),
+        "text_preview": &result.text[..result.text.len().min(500)],
+    })))
+}

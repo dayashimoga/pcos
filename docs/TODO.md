@@ -75,17 +75,24 @@
 - [x] Isolated Docker network (`pcos-net`) for all services
 - [x] Ollama moved to optional profile (`--profile ai`)
 
+### v0.6.0 — OCR, Web Push, LAN Discovery, Kubernetes
+- [x] LAN/P2P discovery module in agent: UDP broadcast, peer tracking with timeout, 2 unit tests
+- [x] OCR text extraction service: plaintext, PDF (BT/ET parser + Tesseract fallback), images (Tesseract OCR)
+- [x] EXIF/metadata extraction (exiftool with graceful fallback)
+- [x] Text extraction endpoint: `POST /api/v1/search/extract/:id` — extracts + indexes to Tantivy
+- [x] Web Push notification service: subscribe, unsubscribe, list, send via Web Push protocol (RFC 8030)
+- [x] Auto-cleanup expired push subscriptions (410 Gone)
+- [x] Push notification endpoints: subscribe, unsubscribe, list, send
+- [x] DB migration: `push_subscriptions` table + `text_extractions` table with GIN full-text index
+- [x] Kubernetes manifests: namespace, PostgreSQL StatefulSet, Redis, Backend (2 replicas), Frontend (2 replicas), Storage PVC, Ingress with TLS, Secrets
+- [x] Caddy updated with Grafana proxy route
+
 ---
 
 ## Remaining (Priority Order)
 
 ### High Priority
 - [ ] Populate SQLx offline query cache (`.sqlx/`) for Docker builds (requires running PostgreSQL)
-
-### Medium Priority
-- [ ] Add LAN/P2P discovery for local sync (mDNS)
-- [ ] Add OCR text extraction for images/PDFs
-- [ ] Add web push notifications (Service Worker + Push API)
 
 ### Low Priority / Future
 - [ ] Native Flutter apps (Android, iOS, Windows, Linux, macOS)
@@ -98,8 +105,8 @@
 - [ ] Video/audio streaming engine
 - [ ] Localization (i18n)
 - [ ] Accessibility (a11y) audit
-- [ ] Kubernetes manifests / Helm charts
+- [ ] Helm charts
 
 ### Technical Debt
-- [ ] Increase test coverage to 90%+ (currently 42 tests)
+- [ ] Increase test coverage to 90%+ (currently 44 tests)
 - [ ] Add load/stress testing with k6 or similar
