@@ -123,24 +123,70 @@ pub async fn get_file_meta(
     Ok(Json(result))
 }
 
-/// GET /api/v1/files/:id/download
+/// GET /api/v1/files/:id/download — supports HTTP Range requests for resume
 pub async fn download_file(
     State(state): State<AppState>, auth: AuthUser, Path(file_id): Path<Uuid>,
+    headers: axum::http::HeaderMap,
 ) -> Result<impl IntoResponse, AppError> {
     let storage = storage_engine(&state);
     let (entry, data) = service::download_file(state.db.pool(), &storage, auth.claims.sub, file_id).await?;
 
     let content_type = entry.mime_type.unwrap_or_else(|| "application/octet-stream".to_string());
+    let total_size = data.len();
 
+    // Parse Range header if present
+    if let Some(range_header) = headers.get(header::RANGE) {
+        if let Ok(range_str) = range_header.to_str() {
+            if let Some(range) = parse_range(range_str, total_size) {
+                let (start, end) = range;
+                let slice = data[start..=end].to_vec();
+                let content_length = end - start + 1;
+
+                return Ok((
+                    StatusCode::PARTIAL_CONTENT,
+                    [
+                        (header::CONTENT_TYPE, content_type),
+                        (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", entry.name)),
+                        (header::CONTENT_LENGTH, content_length.to_string()),
+                        (header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, end, total_size)),
+                        (header::ACCEPT_RANGES, "bytes".to_string()),
+                    ],
+                    slice,
+                ).into_response());
+            }
+        }
+    }
+
+    // No Range header — return full file
     Ok((
         StatusCode::OK,
         [
             (header::CONTENT_TYPE, content_type),
             (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", entry.name)),
-            (header::CONTENT_LENGTH, data.len().to_string()),
+            (header::CONTENT_LENGTH, total_size.to_string()),
+            (header::ACCEPT_RANGES, "bytes".to_string()),
+            // ETag for caching
+            (header::ETAG, format!("\"{}\"", entry.sha256_hash.unwrap_or_default())),
         ],
         data,
-    ))
+    ).into_response())
+}
+
+/// Parse HTTP Range header "bytes=START-END"
+fn parse_range(range: &str, total: usize) -> Option<(usize, usize)> {
+    let range = range.strip_prefix("bytes=")?;
+    let parts: Vec<&str> = range.split('-').collect();
+    if parts.len() != 2 { return None; }
+
+    let start = parts[0].parse::<usize>().ok()?;
+    let end = if parts[1].is_empty() {
+        total - 1
+    } else {
+        parts[1].parse::<usize>().ok()?
+    };
+
+    if start > end || end >= total { return None; }
+    Some((start, end))
 }
 
 /// GET /api/v1/files/:id/preview

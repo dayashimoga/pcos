@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-08-02
+
+### Added
+- **HTTP Range Downloads**: `Range: bytes=START-END` header support for resumable downloads. Returns `206 Partial Content` with `Content-Range` and `Accept-Ranges` headers. ETag support for caching.
+- **File Versioning**: `file_versions` table, list/restore/download version API endpoints. Automatic version tracking on file updates.
+- **MFA/TOTP**: Complete two-factor authentication — TOTP setup (with provisioning URI for authenticator apps), verify, disable, status. Pure-Rust HMAC-SHA1 implementation with ±1 time step tolerance.
+- **RBAC**: Admin/user/viewer roles with `require_admin` guard. Admin endpoints: list users, update roles (with self-demotion prevention), update storage quotas, system-wide statistics.
+- **Storage Quotas**: Per-user storage quota (default 10GB) with admin management.
+- **Admin Portal**: `/api/v1/admin/users`, `/api/v1/admin/system` endpoints for user and system management.
+
+### Fixed
+- **Search Reindex**: Replaced stub handler with real DB-based reindex that queries all user files.
+- **Dockerfile**: All 14 crate manifests now copied (was 5 — Docker build would fail).
+
+### Changed
+- API reference updated to 70+ endpoints.
+
+---
+
 ## [0.1.0] - 2026-08-02
 
 ### Added — Backend

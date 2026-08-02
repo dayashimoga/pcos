@@ -2,6 +2,7 @@ pub mod handlers;
 pub mod models;
 pub mod service;
 pub mod storage;
+pub mod versioning;
 
 use axum::{
     extract::DefaultBodyLimit,
@@ -31,6 +32,10 @@ pub fn router() -> Router<AppState> {
         .route("/api/v1/trash/empty", post(handlers::empty_trash))
         // Storage stats
         .route("/api/v1/storage/stats", get(handlers::storage_stats))
+        // File versioning
+        .route("/api/v1/files/:id/versions", get(versioning::list_versions))
+        .route("/api/v1/files/:file_id/versions/:version_id/restore", post(versioning::restore_version))
+        .route("/api/v1/files/:file_id/versions/:version_id/download", get(versioning::download_version))
         // Allow large uploads (10 GB default)
         .layer(DefaultBodyLimit::max(10 * 1024 * 1024 * 1024))
 }
