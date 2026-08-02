@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-08-02
+
+### Added
+- **Tantivy Full-Text Search**: SearchIndex wired into AppState. Search handler tries Tantivy first, falls back to DB ILIKE. Reindex endpoint actually indexes all user files into Tantivy.
+- **Real Backup with File Copy**: Backup creates directory, copies all user files, writes `manifest.json` with file metadata, runs `pg_dump` for database state. Restore reads manifest and copies files back. Delete cleans up disk.
+- **Email Notifications (SMTP)**: Full async SMTP sender with AUTH PLAIN, MIME multipart messages. Convenience methods for welcome, backup complete, share notification, and MFA enabled emails.
+- **Grafana Dashboard Template**: 12-panel dashboard covering HTTP rate/latency, user/file/storage stats, upload/download bandwidth, error rate, DB connection pool, WebSocket connections, background jobs, AI requests.
+- **User Guide**: Comprehensive documentation with curl examples for all features — auth, files, search, sharing, MFA, AI, backups, admin, device agent, web UI.
+- **Architecture Decision Records**: 8 ADRs documenting key technical decisions (modular monolith, Axum+SQLx, Flutter+BLoC, Argon2id, JWT rotation, filesystem storage, TOTP, Tantivy).
+
+### Changed
+- `AppState` now includes optional `search_index` field (`Option<Arc<dyn Any + Send + Sync>>`).
+- Backup `delete` now cleans up files from disk.
+- Backup `restore` reads manifest and copies files back to active storage.
+
+---
+
 ## [0.2.0] - 2026-08-02
 
 ### Added

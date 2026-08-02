@@ -1,3 +1,4 @@
+pub mod email;
 pub mod handlers;
 
 use axum::{routing::{get, post, put}, Router};
