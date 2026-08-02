@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-08-02
+
+### Added
+- **WebDAV Compatibility**: PROPFIND (XML directory listing with DAV 1,2 headers), MKCOL (create folder), DELETE (trash), MOVE (rename via Destination header), OPTIONS (capability advertisement). Compatible with macOS Finder, Windows Explorer, Nautilus.
+- **Delta Sync (Agent)**: Content-defined chunking with rolling hash for variable-size chunks (64KB–1MB). SHA-256 per-chunk hashing, diff algorithm that identifies only changed chunks for upload. 3 unit tests.
+- **Caddy WebDAV Proxy**: `/webdav/*` routes proxied to backend.
+
+### Changed
+- API reference updated to 75+ endpoints.
+
+---
+
 ## [0.3.0] - 2026-08-02
 
 ### Added

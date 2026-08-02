@@ -1,5 +1,6 @@
 mod config;
 mod db;
+mod delta;
 mod sync;
 mod watcher;
 

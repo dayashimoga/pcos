@@ -191,3 +191,19 @@ All authenticated endpoints require: `Authorization: Bearer <access_token>`
 | GET | /api/v1/admin/system | Admin | System-wide statistics |
 
 **Total: 70+ endpoints**
+
+---
+
+## WebDAV (Compatibility Layer)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| PROPFIND | /webdav | Yes | List root directory (XML) |
+| PROPFIND | /webdav/*path | Yes | List directory contents |
+| MKCOL | /webdav/:name | Yes | Create folder |
+| DELETE | /webdav/*path | Yes | Delete file/folder (trash) |
+| MOVE | /webdav/*path | Yes | Rename/move (Destination header) |
+| OPTIONS | /webdav | No | Advertise DAV capabilities |
+
+> Supports DAV 1, 2 compliance. Compatible with macOS Finder, Windows Explorer, Nautilus, and WebDAV clients.
+
+**Total: 75+ endpoints**

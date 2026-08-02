@@ -3,6 +3,7 @@ pub mod models;
 pub mod service;
 pub mod storage;
 pub mod versioning;
+pub mod webdav;
 
 use axum::{
     extract::DefaultBodyLimit,
@@ -38,4 +39,9 @@ pub fn router() -> Router<AppState> {
         .route("/api/v1/files/:file_id/versions/:version_id/download", get(versioning::download_version))
         // Allow large uploads (10 GB default)
         .layer(DefaultBodyLimit::max(10 * 1024 * 1024 * 1024))
+        // WebDAV compatibility routes
+        .route("/webdav", get(webdav::propfind))
+        .route("/webdav/*path", get(webdav::propfind)
+            .delete(webdav::webdav_delete))
+        .route("/webdav/:name", post(webdav::mkcol))
 }

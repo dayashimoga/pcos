@@ -48,6 +48,16 @@
 - [x] User guide (`docs/USER_GUIDE.md`): comprehensive with curl examples for all features
 - [x] Architecture Decision Records (`docs/ADR.md`): 8 ADRs
 
+### v0.4.0 — Compatibility & Sync
+- [x] WebDAV compatibility layer: PROPFIND (XML directory listing), MKCOL, DELETE, MOVE, OPTIONS
+- [x] WebDAV DAV 1,2 compliance headers (macOS Finder, Windows Explorer, Nautilus compatible)
+- [x] WebDAV routes wired in Caddy reverse proxy
+- [x] Delta sync module in agent: content-defined chunking with rolling hash
+- [x] SHA-256 per-chunk hashing for dedup and change detection
+- [x] Chunk diff algorithm: only changed chunks marked for upload
+- [x] 3 delta sync unit tests (deterministic, diff detection, no-change)
+- [x] API reference updated to 75+ endpoints
+
 ---
 
 ## Remaining (Priority Order)
@@ -56,8 +66,6 @@
 - [ ] Populate SQLx offline query cache (`.sqlx/`) for Docker builds (requires running PostgreSQL)
 
 ### Medium Priority
-- [ ] Add WebDAV compatibility layer
-- [ ] Implement delta sync in agent (only upload changed bytes)
 - [ ] Add LAN/P2P discovery for local sync
 - [ ] Add OCR text extraction for images/PDFs
 - [ ] Add web push notifications (Service Worker + Push API)
@@ -76,5 +84,5 @@
 - [ ] Accessibility (a11y) audit
 
 ### Technical Debt
-- [ ] Increase test coverage to 90%+ (currently 36 tests)
+- [ ] Increase test coverage to 90%+ (currently 39 tests)
 - [ ] Add load/stress testing with k6 or similar
