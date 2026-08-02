@@ -9,6 +9,7 @@ users (1) ──→ (N) refresh_tokens
   │ ──→ (N) file_entries ──→ (N) file_tags
   │                       ──→ (N) share_links
   │                       ──→ (N) sync_states
+  │                       ──→ (N) file_versions
   │ ──→ (N) sync_folders
   │ ──→ (N) notifications
   │ ──→ (N) jobs
@@ -26,6 +27,11 @@ users (1) ──→ (N) refresh_tokens
 | display_name | VARCHAR(100) | NOT NULL |
 | password_hash | TEXT | Argon2id PHC format |
 | avatar_url | TEXT | Nullable |
+| role | VARCHAR(20) | Default 'user' (admin/user/viewer) |
+| totp_secret | TEXT | Nullable, Base32 TOTP secret |
+| totp_enabled | BOOLEAN | Default false |
+| totp_verified_at | TIMESTAMPTZ | Nullable |
+| storage_quota_bytes | BIGINT | Default 10 GB |
 | is_active | BOOLEAN | Default true |
 | created_at | TIMESTAMPTZ | |
 | updated_at | TIMESTAMPTZ | |
@@ -83,6 +89,20 @@ users (1) ──→ (N) refresh_tokens
 | updated_at | TIMESTAMPTZ | |
 
 **Indexes**: (user_id, parent_id) where not trashed, user_id where trashed, sha256_hash
+
+### file_versions
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID PK | |
+| file_entry_id | UUID FK→file_entries | CASCADE |
+| version_number | INTEGER | UNIQUE per file |
+| size_bytes | BIGINT | |
+| sha256_hash | VARCHAR(64) | Nullable |
+| storage_path | TEXT | Previous version's storage |
+| created_by | UUID FK→users | Who created this version |
+| created_at | TIMESTAMPTZ | |
+
+**Indexes**: file_entry_id, UNIQUE(file_entry_id, version_number)
 
 ### share_links
 | Column | Type | Notes |

@@ -30,6 +30,7 @@ const _navItems = [
   _NavItem('Search', Icons.search_outlined, Icons.search_rounded, '/search'),
   _NavItem('Devices', Icons.devices_outlined, Icons.devices_rounded, '/devices'),
   _NavItem('Trash', Icons.delete_outline_rounded, Icons.delete_rounded, '/trash'),
+  _NavItem('Admin', Icons.admin_panel_settings_outlined, Icons.admin_panel_settings_rounded, '/admin'),
   _NavItem('Settings', Icons.settings_outlined, Icons.settings_rounded, '/settings'),
 ];
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/pages/login_page.dart';
 import '../../features/auth/pages/register_page.dart';
+import '../../features/admin/pages/admin_page.dart';
 import '../../features/dashboard/pages/dashboard_page.dart';
 import '../../features/dashboard/widgets/shell_layout.dart';
 import '../../features/devices/pages/devices_page.dart';
@@ -50,6 +51,7 @@ class AppRouter {
           GoRoute(path: '/search', builder: (_, __) => const SearchPage()),
           GoRoute(path: '/devices', builder: (_, __) => const DevicesPage()),
           GoRoute(path: '/trash', builder: (_, __) => const TrashPage()),
+          GoRoute(path: '/admin', builder: (_, __) => const AdminPage()),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
         ],
       ),
