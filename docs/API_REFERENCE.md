@@ -204,6 +204,41 @@ All authenticated endpoints require: `Authorization: Bearer <access_token>`
 | MOVE | /webdav/*path | Yes | Rename/move (Destination header) |
 | OPTIONS | /webdav | No | Advertise DAV capabilities |
 
-> Supports DAV 1, 2 compliance. Compatible with macOS Finder, Windows Explorer, Nautilus, and WebDAV clients.
+---
 
-**Total: 75+ endpoints**
+## S3-Compatible Gateway
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /s3 | Yes | ListBuckets (XML) |
+| GET | /s3/pcos-files | Yes | ListObjectsV2 (XML, prefix/max-keys) |
+| HEAD | /s3/pcos-files/:key | Yes | HeadObject (size, type, modified) |
+| DELETE | /s3/pcos-files/:key | Yes | DeleteObject (trash) |
+
+> Compatible with aws-cli, rclone, s3cmd.
+
+---
+
+## OCR / Text Extraction
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /api/v1/search/extract/:id | Yes | Extract text from file (OCR/PDF/plaintext) + index to Tantivy |
+
+---
+
+## Web Push Notifications
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /api/v1/push/subscribe | Yes | Register browser push subscription |
+| POST | /api/v1/push/unsubscribe | Yes | Remove push subscription |
+| GET | /api/v1/push/subscriptions | Yes | List push subscriptions |
+| POST | /api/v1/push/send | Yes | Send push notification to all subscribed browsers |
+
+---
+
+## Backup (Extended)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/v1/backups/:id/verify | Yes | Verify backup integrity (manifest + file check) |
+| POST | /api/v1/backups/retention | Yes | Enforce retention policy (delete old backups) |
+
+**Total: 90+ endpoints**

@@ -26,21 +26,21 @@ A **self-hosted personal cloud** built with Rust, Flutter, and PostgreSQL. Own y
   └──────────┘   └─────────────┘  └───────────┘
 ```
 
-## Features
+## Features (90+ API Endpoints)
 
 | Category | Features |
 |----------|----------|
-| **Files** | Upload (single + chunked), download, preview, folders, breadcrumbs, trash, restore, storage stats |
-| **Auth** | JWT with rotation, Argon2id passwords, password validation, audit logging |
-| **Sharing** | Password-protected links, expiration, download limits, real file download |
-| **Sync** | WebSocket with JWT auth, change tracking, conflict resolution |
-| **AI** | Ollama integration — auto-tag, classify, duplicate detection, smart search |
-| **Search** | Database ILIKE with Tantivy index ready |
-| **Devices** | Registration, heartbeat, online status |
-| **Notifications** | CRUD with unread count, system notifications |
-| **Backup** | Create, restore, scheduled backups |
-| **Analytics** | Overview, storage breakdown, activity timeline, Prometheus metrics |
-| **Security** | SHA-256 token hashing, filename sanitization, configurable CORS, error sanitization |
+| **Files** | Upload (single + chunked), download, Range streaming, preview, folders, trash, versioning, storage stats |
+| **Auth** | JWT with rotation, Argon2id, MFA/TOTP, RBAC (admin/user/viewer), audit logging |
+| **Sharing** | Password-protected links, expiration, download limits |
+| **Sync** | WebSocket with JWT, delta sync (rolling hash), LAN/P2P discovery |
+| **AI** | Ollama (zero-cost local AI) — auto-tag, classify, duplicate detection |
+| **Search** | Tantivy full-text + DB fallback, OCR text extraction (images/PDFs), EXIF metadata |
+| **Compatibility** | WebDAV (PROPFIND/MKCOL/DELETE/MOVE), S3 gateway (ListBuckets/ListObjects/HeadObject/DeleteObject) |
+| **Notifications** | In-app CRUD, SMTP email (templates), Web Push (RFC 8030) |
+| **Backup** | Create/restore, scheduled, retention policies, verification, encrypted pg_dump |
+| **Monitoring** | Prometheus + Grafana (12 panels), node/postgres/redis exporters |
+| **Security** | SHA-256 token hashing, configurable CORS, rate limiting, input validation |
 
 ## Quick Start
 
@@ -49,26 +49,22 @@ A **self-hosted personal cloud** built with Rust, Flutter, and PostgreSQL. Own y
 - (Optional) Rust 1.79+ for local development
 - (Optional) Flutter 3.24+ for frontend development
 
-### Docker (Recommended)
+### Docker (3 commands)
 ```bash
-# Clone
 git clone https://github.com/dayashimoga/pcos.git
 cd pcos
-
-# Configure
-cp backend/.env.example backend/.env
-# Edit backend/.env — change JWT_SECRET!
-
-# Start
+cp .env.example .env     # Edit: change PCOS_JWT_SECRET and POSTGRES_PASSWORD
 docker compose up -d
-
-# Verify
-curl http://localhost:8080/health
-# → {"status":"healthy","version":"0.1.0","uptime_secs":5}
-
-# Access UI
-open http://localhost:3000
 ```
+
+| Service | URL |
+|---------|-----|
+| Web UI | http://localhost |
+| API | http://localhost/api/v1 |
+| WebDAV | http://localhost/webdav |
+| S3 | http://localhost/s3 |
+| Grafana | http://localhost:3001 |
+| Health | http://localhost/health |
 
 ### Local Development
 ```bash
