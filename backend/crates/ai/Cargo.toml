@@ -1,0 +1,17 @@
+[package]
+name = "pcos-ai"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pcos-common = { path = "../common" }
+axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+reqwest = { version = "0.12", features = ["json"] }

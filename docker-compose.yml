@@ -1,0 +1,124 @@
+# ─── PCOS Production Docker Compose ──────────────────────
+# Start: docker compose up -d
+# Logs:  docker compose logs -f backend
+# Stop:  docker compose down
+
+services:
+  # ─── PostgreSQL ──────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pcos
+      POSTGRES_PASSWORD: pcos_secret
+      POSTGRES_DB: pcos
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pcos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ───────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── NATS ────────────────────────────────────────────
+  nats:
+    image: nats:2-alpine
+    restart: unless-stopped
+    command: --jetstream --store_dir /data
+    volumes:
+      - nats_data:/data
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  # ─── Ollama (Local AI — zero cost) ──────────────────
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          memory: 2G
+
+  # ─── Backend ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    environment:
+      PCOS_SERVER__HOST: "0.0.0.0"
+      PCOS_SERVER__PORT: "8080"
+      PCOS_DATABASE__URL: "postgresql://pcos:pcos_secret@postgres:5432/pcos"
+      PCOS_AUTH__JWT_SECRET: "${PCOS_JWT_SECRET:-CHANGE-ME-TO-A-SECURE-RANDOM-STRING-AT-LEAST-64-CHARACTERS-LONG!!}"
+      PCOS_REDIS__URL: "redis://redis:6379"
+      PCOS_STORAGE__BASE_PATH: "/data/pcos/storage"
+      PCOS_STORAGE__MAX_UPLOAD_SIZE_MB: "10240"
+      PCOS_AI__URL: "http://ollama:11434"
+      PCOS_AI__MODEL: "llama3.1"
+      RUST_LOG: "pcos=info,tower_http=info,sqlx=warn"
+    volumes:
+      - file_storage:/data/pcos/storage
+    ports:
+      - "8080:8080"
+
+  # ─── Frontend ────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+
+  # ─── Caddy (Reverse Proxy) ──────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+
+volumes:
+  postgres_data:
+  redis_data:
+  nats_data:
+  ollama_data:
+  file_storage:
+  caddy_data:
+  caddy_config:

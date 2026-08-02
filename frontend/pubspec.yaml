@@ -1,0 +1,46 @@
+name: pcos_frontend
+description: Personal Cloud Operating System - Web Client
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.5
+
+  # Dependency Injection
+  get_it: ^7.7.0
+
+  # HTTP Client
+  dio: ^5.5.0
+
+  # Routing
+  go_router: ^14.2.0
+
+  # Storage
+  shared_preferences: ^2.3.0
+
+  # UI
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.10
+  shimmer: ^3.0.0
+
+  # Utilities
+  intl: ^0.19.0
+  logger: ^2.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  bloc_test: ^9.1.7
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true

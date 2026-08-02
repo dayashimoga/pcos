@@ -1,0 +1,38 @@
+[package]
+name = "pcos-gateway"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "pcos-server"
+path = "src/main.rs"
+
+[dependencies]
+pcos-common = { path = "../common" }
+pcos-auth = { path = "../auth" }
+pcos-user = { path = "../user" }
+pcos-device = { path = "../device" }
+pcos-file-metadata = { path = "../file_metadata" }
+pcos-search = { path = "../search" }
+pcos-ai = { path = "../ai" }
+pcos-sharing = { path = "../sharing" }
+pcos-sync-engine = { path = "../sync_engine" }
+pcos-notification = { path = "../notification" }
+pcos-worker = { path = "../worker" }
+pcos-backup = { path = "../backup" }
+pcos-analytics = { path = "../analytics" }
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+tokio.workspace = true
+serde.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+dotenvy.workspace = true
+uuid.workspace = true
+anyhow.workspace = true
+sqlx.workspace = true
+
+[dev-dependencies]
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { workspace = true, features = ["test-util"] }

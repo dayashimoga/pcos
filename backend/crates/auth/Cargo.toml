@@ -1,0 +1,22 @@
+[package]
+name = "pcos-auth"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pcos-common = { path = "../common" }
+axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+validator.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+sha2 = "0.10"
+hex = "0.4"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

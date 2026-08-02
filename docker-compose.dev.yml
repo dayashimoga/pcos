@@ -1,0 +1,41 @@
+# Development overrides - hot reload, debug ports, verbose logging
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    environment:
+      RUST_LOG: "pcos=debug,tower_http=debug,sqlx=info"
+      RUST_BACKTRACE: "1"
+    volumes:
+      - ./backend:/app
+      - cargo_cache:/usr/local/cargo/registry
+      - target_cache:/app/target
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:8080"
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  nats:
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+volumes:
+  cargo_cache:
+  target_cache:
