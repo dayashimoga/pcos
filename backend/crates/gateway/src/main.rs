@@ -54,8 +54,26 @@ async fn main() -> anyhow::Result<()> {
     // Run migrations
     db.run_migrations().await?;
 
+    // Initialize Tantivy search index
+    let search_index_path = format!("{}/search_index", config.storage.base_path);
+    let search_index = match pcos_search::index::SearchIndex::open(&search_index_path) {
+        Ok(idx) => {
+            tracing::info!(path = %search_index_path, "Tantivy search index initialized");
+            Some(std::sync::Arc::new(idx) as std::sync::Arc<dyn std::any::Any + Send + Sync>)
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to initialize search index, falling back to DB search");
+            None
+        }
+    };
+
     // Build application state
     let state = AppState::new(db.clone(), config.clone());
+    let state = if let Some(idx) = search_index {
+        state.with_search_index(idx)
+    } else {
+        state
+    };
 
     // Build CORS layer — configurable origins
     let cors = build_cors_layer();

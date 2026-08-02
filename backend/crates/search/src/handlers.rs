@@ -14,40 +14,56 @@ pub struct SearchQuery {
 
 /// GET /api/v1/search?q=...&limit=...
 pub async fn search(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     auth: AuthUser,
     Query(params): Query<SearchQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    // Search index would be injected via state extension in production
-    // For now, fall back to database search
-    let pool = _state.db.pool();
+    let limit = params.limit.unwrap_or(50);
+
+    // Try Tantivy index first if available in AppState
+    if let Some(ref idx_any) = state.search_index {
+        if let Some(idx) = idx_any.downcast_ref::<crate::index::SearchIndex>() {
+            match idx.search(auth.claims.sub, &params.q, limit) {
+                Ok(results) => {
+                    let response: Vec<serde_json::Value> = results.into_iter().map(|r| {
+                        serde_json::json!({
+                            "id": r.id, "name": r.name, "mime_type": r.mime_type,
+                            "entry_type": r.entry_type, "score": r.score, "source": "tantivy"
+                        })
+                    }).collect();
+                    return Ok(Json(serde_json::json!({
+                        "results": response, "total": response.len(), "query": params.q, "engine": "tantivy"
+                    })));
+                }
+                Err(e) => tracing::warn!(error = %e, "Tantivy search failed, falling back to DB"),
+            }
+        }
+    }
+
+    // Fallback: database ILIKE search
+    let pool = state.db.pool();
     let pattern = format!("%{}%", params.q);
-    let limit = params.limit.unwrap_or(50) as i64;
+    let db_limit = limit as i64;
 
     let results: Vec<(uuid::Uuid, String, Option<String>, String, i64)> = sqlx::query_as(
         "SELECT id, name, mime_type, entry_type, size_bytes FROM file_entries WHERE user_id = $1 AND is_trashed = false AND name ILIKE $2 ORDER BY updated_at DESC LIMIT $3"
     )
     .bind(auth.claims.sub)
     .bind(&pattern)
-    .bind(limit)
+    .bind(db_limit)
     .fetch_all(pool)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let response: Vec<serde_json::Value> = results.into_iter().map(|(id, name, mime, etype, size)| {
         serde_json::json!({
-            "id": id,
-            "name": name,
-            "mime_type": mime,
-            "entry_type": etype,
-            "size_bytes": size,
+            "id": id, "name": name, "mime_type": mime,
+            "entry_type": etype, "size_bytes": size, "source": "database"
         })
     }).collect();
 
     Ok(Json(serde_json::json!({
-        "results": response,
-        "total": response.len(),
-        "query": params.q,
+        "results": response, "total": response.len(), "query": params.q, "engine": "database"
     })))
 }
 
@@ -91,14 +107,29 @@ pub async fn reindex(
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let count = entries.len();
+    let mut indexed = 0usize;
 
-    // In production, the SearchIndex would be stored in AppState extensions.
-    // For now, we confirm the DB query works and return the count.
-    tracing::info!(user_id = %auth.claims.sub, count = count, "Reindex requested — {} files found", count);
+    // Index into Tantivy if available
+    if let Some(ref idx_any) = state.search_index {
+        if let Some(idx) = idx_any.downcast_ref::<crate::index::SearchIndex>() {
+            for (id, name, mime, etype) in &entries {
+                let mime_str = mime.as_deref().unwrap_or("");
+                if let Err(e) = idx.index_document(*id, auth.claims.sub, name, "", mime_str, etype).await {
+                    tracing::warn!(file_id = %id, error = %e, "Failed to index document");
+                } else {
+                    indexed += 1;
+                }
+            }
+        }
+    }
+
+    tracing::info!(user_id = %auth.claims.sub, total = count, indexed = indexed, "Reindex completed");
 
     Ok(Json(serde_json::json!({
         "message": "Reindex completed",
         "user_id": auth.claims.sub,
-        "files_indexed": count,
+        "files_found": count,
+        "files_indexed": indexed,
+        "engine": if indexed > 0 { "tantivy" } else { "none" },
     })))
 }

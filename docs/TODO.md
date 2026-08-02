@@ -3,28 +3,29 @@
 ## Completed ✅
 
 ### High Priority (Done)
-- [x] ~~Add streaming file download with Range header support~~ — v0.2.0: `206 Partial Content`, `Content-Range`, `Accept-Ranges`, ETag
-- [x] ~~Add per-user storage quota enforcement~~ — v0.2.0: `storage_quota_bytes` column, admin quota management API
-- [x] ~~Add file preview endpoints~~ — v0.1.0: `GET /files/:id/preview` with inline content-disposition + content-type
+- [x] ~~Add streaming file download with Range header support~~ — v0.2.0
+- [x] ~~Add per-user storage quota enforcement~~ — v0.2.0
+- [x] ~~Add file preview endpoints~~ — v0.1.0
+- [x] ~~Integrate Tantivy search index into AppState~~ — v0.3.0: SearchIndex in AppState, search/reindex handlers use Tantivy with DB fallback
+- [x] ~~Implement actual backup file copy~~ — v0.3.0: copies all user files + manifest.json + pg_dump, restore copies back
+- [x] ~~Implement Grafana dashboard templates~~ — v0.3.0: 12-panel dashboard (HTTP, storage, errors, DB pool, WS, jobs, AI)
 
 ### Medium Priority (Done)
-- [x] ~~Add TOTP-based 2FA~~ — v0.2.0: setup, verify, disable, status endpoints. Pure-Rust HMAC-SHA1
-- [x] ~~Add file versioning~~ — v0.2.0: `file_versions` table, list/restore/download version APIs
-- [x] ~~Multi-tenancy with RBAC~~ — v0.2.0: admin/user/viewer roles, `require_admin` guard, admin portal
+- [x] ~~Add TOTP-based 2FA~~ — v0.2.0
+- [x] ~~Add file versioning~~ — v0.2.0
+- [x] ~~Multi-tenancy with RBAC~~ — v0.2.0
 
 ### Technical Debt (Done)
-- [x] ~~Add integration tests~~ — 12 tests: auth flow, file CRUD, devices, notifications, search, storage
-- [x] ~~Create operations runbook~~ — `docs/OPERATIONS.md`: startup, troubleshooting, backup, security, scaling
-- [x] ~~Increase test coverage~~ — 36 tests total (15 unit + 9 BLoC + 12 integration)
+- [x] ~~Add integration tests~~ — 12 tests
+- [x] ~~Create operations runbook~~ — `docs/OPERATIONS.md`
+- [x] ~~Increase test coverage~~ — 36 tests total
 
 ---
 
 ## Remaining (Priority Order)
 
 ### High Priority
-- [ ] Integrate Tantivy search index into AppState for full-text search (index exists but not wired to AppState)
-- [ ] Implement actual backup file copy (currently metadata-only `pg_dump` placeholder)
-- [ ] Populate SQLx offline query cache (`.sqlx/`) for Docker builds
+- [ ] Populate SQLx offline query cache (`.sqlx/`) for Docker builds (requires running DB)
 
 ### Medium Priority
 - [ ] Add WebDAV compatibility layer
@@ -33,7 +34,6 @@
 - [ ] Add OCR text extraction for images/PDFs
 - [ ] Add email notifications (SMTP integration)
 - [ ] Add web push notifications
-- [ ] Implement Grafana dashboard templates
 
 ### Low Priority / Future
 - [ ] Native Flutter apps (Android, iOS, Windows, Linux, macOS)
