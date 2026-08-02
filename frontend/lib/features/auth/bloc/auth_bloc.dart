@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/router/app_router.dart';
 import '../repository/auth_repository.dart';
 
 // ─── Events ─────────────────────────────────────────────
@@ -94,6 +95,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final user = await authRepository.getCurrentUser();
       if (user != null) {
+        AppRouter.setAuthToken('valid');
         emit(AuthAuthenticated(
           userId: user['id'],
           email: user['email'],
@@ -111,6 +113,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     try {
       final result = await authRepository.login(email: event.email, password: event.password);
+      AppRouter.setAuthToken(result['tokens']['access_token']);
       emit(AuthAuthenticated(
         userId: result['user']['id'],
         email: result['user']['email'],
@@ -129,6 +132,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         displayName: event.displayName,
         password: event.password,
       );
+      AppRouter.setAuthToken(result['tokens']['access_token']);
       emit(AuthAuthenticated(
         userId: result['user']['id'],
         email: result['user']['email'],
@@ -141,6 +145,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onLogoutRequested(AuthLogoutRequested event, Emitter<AuthState> emit) async {
     await authRepository.logout();
+    AppRouter.setAuthToken(null);
     emit(const AuthUnauthenticated());
   }
 

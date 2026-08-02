@@ -27,6 +27,7 @@ class _NavItem {
 const _navItems = [
   _NavItem('Dashboard', Icons.dashboard_outlined, Icons.dashboard_rounded, '/dashboard'),
   _NavItem('Files', Icons.folder_outlined, Icons.folder_rounded, '/files'),
+  _NavItem('Search', Icons.search_outlined, Icons.search_rounded, '/search'),
   _NavItem('Devices', Icons.devices_outlined, Icons.devices_rounded, '/devices'),
   _NavItem('Trash', Icons.delete_outline_rounded, Icons.delete_rounded, '/trash'),
   _NavItem('Settings', Icons.settings_outlined, Icons.settings_rounded, '/settings'),
