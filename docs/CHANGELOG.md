@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-08-02
+
+### Added
+- **Full Docker Containerization**: 13-service production stack — PostgreSQL, Redis, NATS, Ollama (optional), backend, frontend, Caddy, Prometheus, Grafana, node-exporter, postgres-exporter, redis-exporter, backup scheduler. Isolated `pcos-net` network, persistent volumes, health checks, restart policies.
+- **One-Command Deployment**: `git clone && cp .env.example .env && docker compose up -d`. Root `.env.example` with all configurable variables.
+- **S3-Compatible Gateway**: ListBuckets, ListObjectsV2, HeadObject, DeleteObject with XML responses. Compatible with aws-cli, rclone, s3cmd.
+- **Prometheus Monitoring**: Scrapes backend metrics, Caddy, PostgreSQL, Redis, node-exporter. 30-day retention.
+- **Grafana Provisioning**: Auto-loads dashboards and Prometheus datasource on startup.
+- **Backup Retention Policy**: `POST /api/v1/backups/retention` — auto-delete old backups beyond configurable keep count.
+- **Backup Verification**: `GET /api/v1/backups/:id/verify` — manifest integrity, file existence audit, health status.
+- **Backup Scheduler Container**: Daily pg_dump with automatic 30-backup retention.
+- **Agent Dockerfile**: Multi-stage build, non-root user, syncs to `/data/pcos/sync`.
+- **CI Expansion**: Agent build/test, SBOM/license scan (cargo-deny), Docker Compose validation.
+- **Release Expansion**: Agent builds for 3 platforms, aarch64 backend cross-compilation, multi-platform Docker images (amd64+arm64), SHA256 checksums.
+
+### Changed
+- Ollama moved to optional Docker Compose profile (`docker compose --profile ai up -d`).
+- Dev compose updated with Prometheus/Grafana port exposure.
+- Caddy updated with S3 and Grafana proxy routes.
+- API reference updated to 80+ endpoints.
+
+---
+
 ## [0.4.0] - 2026-08-02
 
 ### Added

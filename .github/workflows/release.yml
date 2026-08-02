@@ -26,6 +26,9 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
             artifact: pcos-server
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: pcos-server
 
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +38,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend
+      - name: Install cross-compilation tools (aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "[target.aarch64-unknown-linux-gnu]" >> ~/.cargo/config.toml
+          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config.toml
       - name: Build release binary
         run: cargo build --manifest-path backend/Cargo.toml --release --target ${{ matrix.target }} --bin pcos-server
         env:
@@ -43,6 +53,37 @@ jobs:
         with:
           name: pcos-server-${{ matrix.target }}
           path: backend/target/${{ matrix.target }}/release/${{ matrix.artifact }}
+
+  # ─── Build Agent Binaries ────────────────────────────────
+  build-agent:
+    name: Build Agent (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: pcos-agent
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact: pcos-agent.exe
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact: pcos-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: agent
+      - name: Build release binary
+        run: cargo build --manifest-path agent/Cargo.toml --release --target ${{ matrix.target }} --bin pcos-agent
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pcos-agent-${{ matrix.target }}
+          path: agent/target/${{ matrix.target }}/release/${{ matrix.artifact }}
 
   # ─── Build Flutter Web ───────────────────────────────────
   build-web:
@@ -67,10 +108,11 @@ jobs:
   build-docker:
     name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: [build-backend, build-web]
+    needs: [build-backend, build-web, build-agent]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -81,19 +123,51 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}/backend:latest
       - name: Build and push frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}/frontend:latest
+      - name: Build and push agent
+        uses: docker/build-push-action@v5
+        with:
+          context: ./agent
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}/agent:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}/agent:latest
+
+  # ─── Generate SHA256 Checksums ───────────────────────────
+  checksums:
+    name: Generate Checksums
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-agent, build-web]
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Generate SHA256 checksums
+        run: |
+          find . -type f \( -name "pcos-server*" -o -name "pcos-agent*" \) | while read f; do
+            sha256sum "$f" >> SHA256SUMS.txt
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: SHA256SUMS.txt
 
   # ─── Create Release ─────────────────────────────────────
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [build-backend, build-web, build-docker]
+    needs: [build-backend, build-agent, build-web, build-docker, checksums]
     permissions:
       contents: write
     steps:
@@ -105,4 +179,5 @@ jobs:
           generate_release_notes: true
           files: |
             pcos-server-*/pcos-server*
-            pcos-web/**
+            pcos-agent-*/pcos-agent*
+            checksums/SHA256SUMS.txt

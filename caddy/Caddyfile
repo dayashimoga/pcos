@@ -19,6 +19,14 @@
         reverse_proxy backend:8080
     }
 
+    handle /s3/* {
+        reverse_proxy backend:8080
+    }
+
+    handle /grafana/* {
+        reverse_proxy grafana:3000
+    }
+
     handle {
         reverse_proxy frontend:80
     }

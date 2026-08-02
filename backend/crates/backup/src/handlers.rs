@@ -37,3 +37,16 @@ pub async fn delete_schedule(State(s): State<AppState>, auth: AuthUser, Path(id)
     service::delete_schedule(s.db.pool(), auth.claims.sub, id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
+
+pub async fn verify_backup(State(s): State<AppState>, auth: AuthUser, Path(id): Path<Uuid>) -> Result<impl IntoResponse, AppError> {
+    let result = service::verify_backup(s.db.pool(), auth.claims.sub, id).await?;
+    Ok(Json(result))
+}
+
+#[derive(serde::Deserialize)]
+pub struct RetentionRequest { pub keep_count: i64 }
+
+pub async fn enforce_retention(State(s): State<AppState>, auth: AuthUser, Json(req): Json<RetentionRequest>) -> Result<impl IntoResponse, AppError> {
+    let deleted = service::enforce_retention(s.db.pool(), auth.claims.sub, req.keep_count).await?;
+    Ok(Json(serde_json::json!({ "deleted": deleted, "keep_count": req.keep_count })))
+}

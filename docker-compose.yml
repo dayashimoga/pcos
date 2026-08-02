@@ -1,7 +1,8 @@
 # ─── PCOS Production Docker Compose ──────────────────────
-# Start: docker compose up -d
-# Logs:  docker compose logs -f backend
-# Stop:  docker compose down
+# Deployment: git clone <repo> && cp .env.example .env && docker compose up -d
+# Logs:       docker compose logs -f backend
+# Stop:       docker compose down
+# Backup:     docker compose exec postgres pg_dump -U pcos pcos > backup.sql
 
 services:
   # ─── PostgreSQL ──────────────────────────────────────
@@ -9,59 +10,59 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: pcos
-      POSTGRES_PASSWORD: pcos_secret
-      POSTGRES_DB: pcos
+      POSTGRES_USER: ${POSTGRES_USER:-pcos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pcos_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-pcos}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pcos"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pcos}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - pcos-net
 
-  # ─── Redis ───────────────────────────────────────────
+  # ─── Redis (Cache + Sessions) ───────────────────────
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - pcos-net
 
-  # ─── NATS ────────────────────────────────────────────
+  # ─── NATS (Event Bus) ──────────────────────────────
   nats:
     image: nats:2-alpine
     restart: unless-stopped
     command: --jetstream --store_dir /data
     volumes:
       - nats_data:/data
-    ports:
-      - "4222:4222"
-      - "8222:8222"
+    networks:
+      - pcos-net
 
-  # ─── Ollama (Local AI — zero cost) ──────────────────
+  # ─── Ollama (Local AI — optional, zero cost) ───────
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
+    profiles: ["ai"]
     volumes:
       - ollama_data:/root/.ollama
-    ports:
-      - "11434:11434"
     deploy:
       resources:
         reservations:
           memory: 2G
+    networks:
+      - pcos-net
 
-  # ─── Backend ─────────────────────────────────────────
+  # ─── Backend API ───────────────────────────────────
   backend:
     build:
       context: ./backend
@@ -77,29 +78,35 @@ services:
     environment:
       PCOS_SERVER__HOST: "0.0.0.0"
       PCOS_SERVER__PORT: "8080"
-      PCOS_DATABASE__URL: "postgresql://pcos:pcos_secret@postgres:5432/pcos"
-      PCOS_AUTH__JWT_SECRET: "${PCOS_JWT_SECRET:-CHANGE-ME-TO-A-SECURE-RANDOM-STRING-AT-LEAST-64-CHARACTERS-LONG!!}"
+      PCOS_DATABASE__URL: "postgresql://${POSTGRES_USER:-pcos}:${POSTGRES_PASSWORD:-pcos_secret}@postgres:5432/${POSTGRES_DB:-pcos}"
+      PCOS_AUTH__JWT_SECRET: "${PCOS_JWT_SECRET:-CHANGE-ME-64-CHARS}"
       PCOS_REDIS__URL: "redis://redis:6379"
       PCOS_STORAGE__BASE_PATH: "/data/pcos/storage"
       PCOS_STORAGE__MAX_UPLOAD_SIZE_MB: "10240"
       PCOS_AI__URL: "http://ollama:11434"
-      PCOS_AI__MODEL: "llama3.1"
-      RUST_LOG: "pcos=info,tower_http=info,sqlx=warn"
+      PCOS_AI__MODEL: "${PCOS_AI_MODEL:-llama3.1}"
+      PCOS_SMTP_HOST: "${PCOS_SMTP_HOST:-}"
+      PCOS_SMTP_PORT: "${PCOS_SMTP_PORT:-587}"
+      PCOS_SMTP_USER: "${PCOS_SMTP_USER:-}"
+      PCOS_SMTP_PASS: "${PCOS_SMTP_PASS:-}"
+      PCOS_SMTP_FROM: "${PCOS_SMTP_FROM:-noreply@pcos.local}"
+      PCOS_CORS_ORIGINS: "${PCOS_CORS_ORIGINS:-*}"
+      RUST_LOG: "${RUST_LOG:-pcos=info,tower_http=info,sqlx=warn}"
     volumes:
       - file_storage:/data/pcos/storage
-    ports:
-      - "8080:8080"
+    networks:
+      - pcos-net
 
-  # ─── Frontend ────────────────────────────────────────
+  # ─── Frontend (Flutter Web) ────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "3000:80"
+    networks:
+      - pcos-net
 
-  # ─── Caddy (Reverse Proxy) ──────────────────────────
+  # ─── Caddy (Reverse Proxy + Auto-HTTPS) ────────────
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -107,12 +114,122 @@ services:
       - backend
       - frontend
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     ports:
       - "80:80"
       - "443:443"
+    networks:
+      - pcos-net
+
+  # ─── Prometheus (Metrics) ──────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - pcos-net
+
+  # ─── Grafana (Dashboards) ─────────────────────────
+  grafana:
+    image: grafana/grafana:11.0.0
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    networks:
+      - pcos-net
+
+  # ─── Node Exporter (Host Metrics) ─────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.8.0
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - pcos-net
+
+  # ─── PostgreSQL Exporter ──────────────────────────
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-pcos}:${POSTGRES_PASSWORD:-pcos_secret}@postgres:5432/${POSTGRES_DB:-pcos}?sslmode=disable"
+    networks:
+      - pcos-net
+
+  # ─── Redis Exporter ───────────────────────────────
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.61.0
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    networks:
+      - pcos-net
+
+  # ─── Backup Scheduler ─────────────────────────────
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-pcos}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-pcos_secret}
+      PGDATABASE: ${POSTGRES_DB:-pcos}
+    volumes:
+      - backup_data:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "PCOS Backup Scheduler — daily at 02:00 UTC"
+        while true; do
+          TIMESTAMP=$$(date +%Y%m%d_%H%M%S)
+          pg_dump --no-owner --no-privileges -Fc > /backups/pcos_$$TIMESTAMP.dump
+          echo "[$$TIMESTAMP] Backup created: pcos_$$TIMESTAMP.dump"
+          # Keep last 30 backups
+          ls -1t /backups/pcos_*.dump 2>/dev/null | tail -n +31 | xargs -r rm
+          sleep 86400
+        done
+    networks:
+      - pcos-net
+
+networks:
+  pcos-net:
+    driver: bridge
 
 volumes:
   postgres_data:
@@ -122,3 +239,6 @@ volumes:
   file_storage:
   caddy_data:
   caddy_config:
+  prometheus_data:
+  grafana_data:
+  backup_data:

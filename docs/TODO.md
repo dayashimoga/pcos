@@ -58,6 +58,23 @@
 - [x] 3 delta sync unit tests (deterministic, diff detection, no-change)
 - [x] API reference updated to 75+ endpoints
 
+### v0.5.0 — Containerization, S3, Monitoring, CI/CD
+- [x] Production docker-compose: 13 services (PostgreSQL, Redis, NATS, Ollama, backend, frontend, Caddy, Prometheus, Grafana, node-exporter, postgres-exporter, redis-exporter, backup scheduler)
+- [x] Root `.env.example` with all configurable variables for one-command deployment
+- [x] Prometheus config: scrapes backend, Caddy, PostgreSQL, Redis, node metrics
+- [x] Grafana provisioning: auto-loads dashboards + Prometheus datasource
+- [x] Dev docker-compose override: hot reload, debug logging, exposed ports
+- [x] Agent Dockerfile: multi-stage build, non-root user
+- [x] S3-compatible API gateway: ListBuckets, ListObjectsV2, HeadObject, DeleteObject (XML responses)
+- [x] S3 routes wired in Caddy + file_metadata router
+- [x] Backup retention policy: auto-delete old backups beyond keep count
+- [x] Backup verification: manifest integrity check, file existence audit
+- [x] Backup scheduler container: daily pg_dump with 30-backup retention
+- [x] CI pipeline expanded: agent build/test, SBOM/license scan (cargo-deny), compose validation
+- [x] Release pipeline expanded: agent builds (3 platforms), aarch64 backend, multi-platform Docker (amd64+arm64), SHA256 checksums
+- [x] Isolated Docker network (`pcos-net`) for all services
+- [x] Ollama moved to optional profile (`--profile ai`)
+
 ---
 
 ## Remaining (Priority Order)
@@ -66,7 +83,7 @@
 - [ ] Populate SQLx offline query cache (`.sqlx/`) for Docker builds (requires running PostgreSQL)
 
 ### Medium Priority
-- [ ] Add LAN/P2P discovery for local sync
+- [ ] Add LAN/P2P discovery for local sync (mDNS)
 - [ ] Add OCR text extraction for images/PDFs
 - [ ] Add web push notifications (Service Worker + Push API)
 
@@ -75,14 +92,14 @@
 - [ ] End-to-end encryption (E2EE) with key management
 - [ ] SSO/OIDC/SAML integration
 - [ ] LDAP/Active Directory support
-- [ ] S3-compatible gateway
 - [ ] SMB/NFS bridge
 - [ ] Plugin system with public SDK
 - [ ] Face clustering in photos
 - [ ] Video/audio streaming engine
 - [ ] Localization (i18n)
 - [ ] Accessibility (a11y) audit
+- [ ] Kubernetes manifests / Helm charts
 
 ### Technical Debt
-- [ ] Increase test coverage to 90%+ (currently 39 tests)
+- [ ] Increase test coverage to 90%+ (currently 42 tests)
 - [ ] Add load/stress testing with k6 or similar

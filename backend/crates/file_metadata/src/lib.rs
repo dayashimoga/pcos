@@ -1,5 +1,6 @@
 pub mod handlers;
 pub mod models;
+pub mod s3_compat;
 pub mod service;
 pub mod storage;
 pub mod versioning;
@@ -44,4 +45,8 @@ pub fn router() -> Router<AppState> {
         .route("/webdav/*path", get(webdav::propfind)
             .delete(webdav::webdav_delete))
         .route("/webdav/:name", post(webdav::mkcol))
+        // S3-compatible routes
+        .route("/s3", get(s3_compat::list_buckets))
+        .route("/s3/pcos-files", get(s3_compat::list_objects))
+        .route("/s3/pcos-files/:key", get(s3_compat::head_object).delete(s3_compat::delete_object))
 }

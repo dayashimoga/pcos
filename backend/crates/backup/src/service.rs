@@ -180,3 +180,71 @@ pub async fn delete_schedule(pool: &PgPool, user_id: Uuid, id: Uuid) -> AppResul
     if r.rows_affected() == 0 { return Err(AppError::NotFound("Schedule not found".to_string())); }
     Ok(())
 }
+
+/// Enforce retention policy — keep only the N most recent backups, delete older ones.
+pub async fn enforce_retention(pool: &PgPool, user_id: Uuid, keep_count: i64) -> AppResult<i64> {
+    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".to_string());
+
+    let old_backups: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, storage_path FROM backups WHERE user_id = $1 ORDER BY created_at DESC OFFSET $2"
+    ).bind(user_id).bind(keep_count).fetch_all(pool).await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let mut deleted = 0i64;
+    for (bid, spath) in &old_backups {
+        let backup_dir = format!("{}/{}", base_path, spath);
+        tokio::fs::remove_dir_all(&backup_dir).await.ok();
+        sqlx::query("DELETE FROM backups WHERE id = $1").bind(bid).execute(pool).await.ok();
+        deleted += 1;
+    }
+
+    if deleted > 0 {
+        tracing::info!(user_id = %user_id, deleted = deleted, kept = keep_count, "Retention policy enforced");
+    }
+    Ok(deleted)
+}
+
+/// Verify a backup by checking manifest integrity and file existence.
+pub async fn verify_backup(pool: &PgPool, user_id: Uuid, id: Uuid) -> AppResult<serde_json::Value> {
+    let backup = get_backup(pool, user_id, id).await?;
+    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".to_string());
+    let backup_dir = format!("{}/{}", base_path, backup.storage_path);
+
+    let manifest_path = format!("{}/manifest.json", backup_dir);
+    let manifest_exists = tokio::fs::metadata(&manifest_path).await.is_ok();
+    let db_dump_exists = tokio::fs::metadata(format!("{}/database.sql", backup_dir)).await.is_ok();
+
+    let mut files_present = 0i64;
+    let mut files_missing = 0i64;
+
+    if manifest_exists {
+        if let Ok(data) = tokio::fs::read_to_string(&manifest_path).await {
+            if let Ok(manifest) = serde_json::from_str::<serde_json::Value>(&data) {
+                if let Some(files) = manifest["files"].as_array() {
+                    for file in files {
+                        if let Some(fid) = file["id"].as_str() {
+                            let fpath = format!("{}/{}", backup_dir, fid);
+                            if tokio::fs::metadata(&fpath).await.is_ok() {
+                                files_present += 1;
+                            } else {
+                                files_missing += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let healthy = manifest_exists && files_missing == 0;
+
+    Ok(serde_json::json!({
+        "backup_id": id,
+        "healthy": healthy,
+        "manifest_exists": manifest_exists,
+        "database_dump_exists": db_dump_exists,
+        "files_present": files_present,
+        "files_missing": files_missing,
+        "status": if healthy { "verified" } else { "degraded" },
+    }))
+}
