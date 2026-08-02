@@ -1,9 +1,9 @@
 # PCOS Implementation Status
 
 ## Overview
-**Version**: 0.1.0
+**Version**: 0.2.0
 **Architecture**: Modular monolith (Rust backend) + Flutter Web frontend + Rust device agent
-**Status**: Core features implemented, production hardening complete
+**Status**: Core + enterprise features implemented, production hardening complete
 
 ---
 
@@ -25,11 +25,19 @@
 - [x] POST /api/v1/auth/logout — with revocation
 - [x] SHA-256 refresh token hashing (fixed from DefaultHasher)
 - [x] Audit log on register, login, failed login
+- [x] POST /api/v1/auth/mfa/setup — generate TOTP secret + provisioning URI
+- [x] POST /api/v1/auth/mfa/verify — verify code and enable MFA
+- [x] POST /api/v1/auth/mfa/disable — disable MFA with code verification
+- [x] GET /api/v1/auth/mfa/status — check MFA status
 
 ### ✅ pcos-user
 - [x] GET /api/v1/users/me
 - [x] PUT /api/v1/users/me
 - [x] PUT /api/v1/users/me/password
+- [x] GET /api/v1/admin/users — list all users (admin only)
+- [x] PUT /api/v1/admin/users/role — update user roles (admin/user/viewer)
+- [x] PUT /api/v1/admin/users/quota — manage storage quotas
+- [x] GET /api/v1/admin/system — system-wide statistics
 
 ### ✅ pcos-device
 - [x] POST /api/v1/devices
@@ -42,10 +50,12 @@
 - [x] StorageEngine — filesystem with hex-prefix sharding, SHA-256
 - [x] Single file upload (multipart)
 - [x] Chunked upload (init → chunks → complete)
-- [x] File download with storage path resolution
+- [x] File download with Range header support (206 Partial Content, Accept-Ranges, ETag)
+- [x] File preview with inline content-disposition
 - [x] Folder CRUD with recursive CTE breadcrumbs
 - [x] Trash/restore/permanent delete
 - [x] Storage stats per user
+- [x] File versioning — list/restore/download specific versions
 - [x] Tests: store, chunked upload, delete (3 tests)
 
 ### ✅ pcos-search
