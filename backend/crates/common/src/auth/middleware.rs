@@ -1,44 +1,53 @@
 use crate::auth::jwt::{validate_token, Claims};
 use crate::AppState;
-use axum::{extract::FromRequestParts, http::request::Parts};
-use std::future::Future;
+use axum::{
+    async_trait,
+    extract::{FromRef, FromRequestParts},
+    http::request::Parts,
+};
 
 /// Axum extractor that validates the JWT Bearer token from the Authorization header
 /// and provides the authenticated user's claims to handlers.
+///
+/// Usage:
+/// ```rust,ignore
+/// async fn my_handler(auth: AuthUser) -> impl IntoResponse {
+///     println!("User ID: {}", auth.claims.sub);
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub struct AuthUser {
     pub claims: Claims,
 }
 
-impl FromRequestParts<AppState> for AuthUser {
+#[async_trait]
+impl<S> FromRequestParts<S> for AuthUser
+where
+    AppState: FromRef<S>,
+    S: Send + Sync,
+{
     type Rejection = crate::AppError;
 
-    fn from_request_parts(
-        parts: &mut Parts,
-        state: &AppState,
-    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let app_state = AppState::from_ref(state);
+
         let auth_header = parts
             .headers
             .get("Authorization")
             .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string());
-        let jwt_secret = state.config.auth.jwt_secret.clone();
-
-        async move {
-            let header = auth_header.ok_or_else(|| {
+            .ok_or_else(|| {
                 crate::AppError::Unauthorized("Missing Authorization header".to_string())
             })?;
 
-            let token = header.strip_prefix("Bearer ").ok_or_else(|| {
-                crate::AppError::Unauthorized("Invalid Authorization header format".to_string())
-            })?;
+        let token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
+            crate::AppError::Unauthorized("Invalid Authorization header format".to_string())
+        })?;
 
-            let token_data = validate_token(token, &jwt_secret)?;
+        let token_data = validate_token(token, &app_state.config.auth.jwt_secret)?;
 
-            Ok(AuthUser {
-                claims: token_data.claims,
-            })
-        }
+        Ok(AuthUser {
+            claims: token_data.claims,
+        })
     }
 }
 
