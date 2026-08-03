@@ -132,6 +132,7 @@ impl Default for PluginRegistry {
 mod tests {
     use super::*;
 
+    #[allow(dead_code)]
     struct TestPlugin {
         manifest: PluginManifest,
     }
