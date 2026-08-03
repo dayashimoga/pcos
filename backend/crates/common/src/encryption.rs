@@ -64,7 +64,7 @@ pub fn derive_key(passphrase: &str, salt: Option<&[u8]>) -> AppResult<(String, S
     }
     key.copy_from_slice(&intermediate);
 
-    let key_hex = hex::encode(&key);
+    let key_hex = hex::encode(key);
     let salt_hex = hex::encode(&salt_bytes);
 
     Ok((key_hex, salt_hex))

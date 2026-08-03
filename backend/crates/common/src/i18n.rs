@@ -21,20 +21,31 @@ pub enum Locale {
     Ar, // Arabic
 }
 
+impl std::str::FromStr for Locale {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(
+            match s.split('-').next().unwrap_or("en").to_lowercase().as_str() {
+                "es" => Locale::Es,
+                "fr" => Locale::Fr,
+                "de" => Locale::De,
+                "ja" => Locale::Ja,
+                "zh" => Locale::Zh,
+                "ko" => Locale::Ko,
+                "pt" => Locale::Pt,
+                "hi" => Locale::Hi,
+                "ar" => Locale::Ar,
+                _ => Locale::En,
+            },
+        )
+    }
+}
+
 impl Locale {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
-        match s.split('-').next().unwrap_or("en").to_lowercase().as_str() {
-            "es" => Locale::Es,
-            "fr" => Locale::Fr,
-            "de" => Locale::De,
-            "ja" => Locale::Ja,
-            "zh" => Locale::Zh,
-            "ko" => Locale::Ko,
-            "pt" => Locale::Pt,
-            "hi" => Locale::Hi,
-            "ar" => Locale::Ar,
-            _ => Locale::En,
-        }
+        s.parse().unwrap_or(Locale::En)
     }
 
     pub fn code(&self) -> &'static str {

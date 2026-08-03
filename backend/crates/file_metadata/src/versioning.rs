@@ -5,7 +5,7 @@ use axum::Json;
 use pcos_common::auth::middleware::AuthUser;
 use pcos_common::error::AppError;
 use pcos_common::AppState;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, sqlx::FromRow)]

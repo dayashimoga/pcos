@@ -12,7 +12,6 @@ use axum::{
 use pcos_common::auth::AuthUser;
 use pcos_common::{AppError, AppState};
 use serde::Deserialize;
-use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct ListQuery {
