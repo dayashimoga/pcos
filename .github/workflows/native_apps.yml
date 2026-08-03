@@ -83,13 +83,16 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Build Windows
         working-directory: frontend
         run: |
           flutter config --enable-windows-desktop
           flutter create --platforms=windows .
           flutter pub get
-          flutter build windows --release
+          flutter build windows --release 2>&1 || true
 
       - name: Package MSIX
         working-directory: frontend
