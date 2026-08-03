@@ -1,4 +1,5 @@
 pub mod handlers;
+pub mod ldap;
 pub mod mfa;
 pub mod models;
 pub mod oidc;

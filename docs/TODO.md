@@ -94,21 +94,28 @@
 - [x] Localization (i18n): 10 locales (en/es/fr/de/ja/zh/ko/pt/hi/ar), 16 translation keys, Accept-Language header parsing, fallback chain, 5 unit tests
 - [x] Helm chart: Chart.yaml, values.yaml (configurable replicas/images/storage/resources/ingress/secrets), deployment template with secrets/backend/frontend/PVC/ingress
 
+### v0.8.0 — LDAP, SMB, Service Worker, Production Hardening
+- [x] LDAP/Active Directory module: LdapConfig (AD + OpenLDAP presets), authenticate + sync_groups stubs, production implementation notes for `ldap3` crate
+- [x] SMB/CIFS bridge module: SmbShareConfig, SmbSession tracking, share registration, protocol stub with SMB2 implementation notes
+- [x] Service Worker (frontend): static asset caching for offline support, Web Push notification handler with click-to-open, cache versioning
+- [x] All protocol bridges wired into crate routers (smb_bridge in file_metadata, ldap in auth)
+
 ---
 
-## Remaining (Priority Order)
+## Remaining (Future Roadmap)
 
-### High Priority
-- [ ] Populate SQLx offline query cache (`.sqlx/`) for Docker builds (requires running PostgreSQL)
+### Requires External Infrastructure
+- [ ] Populate SQLx offline query cache (`.sqlx/`) — requires running PostgreSQL instance
+- [ ] Native Flutter apps (Android APK/AAB, iOS IPA, Windows MSIX, Linux AppImage, macOS DMG) — requires platform SDKs + app store accounts
+- [ ] Face clustering in photos — requires ML model (e.g., dlib/ONNX face embeddings)
+- [ ] Video/audio adaptive streaming — requires transcoding pipeline (FFmpeg)
+- [ ] Full SMB2 protocol — requires `smb2` crate or Samba integration
+- [ ] Full LDAP bind — requires `ldap3` crate + LDAP server
 
-### Low Priority / Future
-- [ ] Native Flutter apps (Android, iOS, Windows, Linux, macOS)
-- [ ] LDAP/Active Directory support
-- [ ] SMB/NFS bridge
-- [ ] Face clustering in photos
-- [ ] Video/audio streaming engine
-- [ ] Accessibility (a11y) audit
+### Nice-to-Have
+- [ ] Accessibility (a11y) audit + WCAG 2.1 AA compliance
+- [ ] Load/stress testing with k6 or similar
 
-### Technical Debt
-- [ ] Increase test coverage to 90%+ (currently 57 tests)
-- [ ] Add load/stress testing with k6 or similar
+### Test Coverage
+- Current: 57 tests across 8 versions
+- Target: 90%+ (ongoing effort)

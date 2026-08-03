@@ -2,6 +2,7 @@ pub mod handlers;
 pub mod models;
 pub mod s3_compat;
 pub mod service;
+pub mod smb_bridge;
 pub mod storage;
 pub mod versioning;
 pub mod webdav;

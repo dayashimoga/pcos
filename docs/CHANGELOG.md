@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-08-03
+
+### Added
+- **LDAP/Active Directory**: `LdapConfig` with Active Directory and OpenLDAP presets, `authenticate` and `sync_groups` stubs with production implementation notes for `ldap3` crate.
+- **SMB/CIFS Bridge**: `SmbShareConfig`, `SmbSession` tracking, share registration, protocol stub with SMB2 NEGOTIATE/SESSION_SETUP/TREE_CONNECT flow documentation.
+- **Service Worker**: Static asset caching (offline support), Web Push notification handler with `showNotification` + click-to-open, cache versioning with automatic cleanup.
+
+---
+
 ## [0.7.0] - 2026-08-03
 
 ### Added
