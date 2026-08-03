@@ -120,21 +120,43 @@ jobs:
       - name: Start backend & Run API smoke tests
         run: |
           mkdir -p /tmp/pcos-test-storage
+
+          # Wait for PostgreSQL readiness
+          echo "Checking PostgreSQL readiness..."
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U pcos_test > /dev/null 2>&1 || nc -z localhost 5432 > /dev/null 2>&1; then
+              echo "✓ PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL ($i/30)..."
+            sleep 1
+          done
+
+          # Start backend server in background
           nohup ./target/release/pcos-server > /tmp/server.log 2>&1 &
 
           # Wait for server readiness
+          HEALTHY=false
           for i in {1..30}; do
             if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
               echo "✓ Backend server is up and healthy"
+              HEALTHY=true
               break
             fi
             echo "Waiting for backend server to start ($i/30)..."
             sleep 1
           done
 
-          # Health check
+          if [ "$HEALTHY" = "false" ]; then
+            echo "❌ Backend server failed to start within 30 seconds"
+            echo "=== /tmp/server.log ==="
+            cat /tmp/server.log || true
+            exit 1
+          fi
+
+          # Health check response
           echo "Health check response:"
-          curl -sf http://localhost:8080/health | jq . || (echo "Server log:" && cat /tmp/server.log && exit 1)
+          curl -s http://localhost:8080/health | jq .
 
           # Register
           REGISTER=$(curl -s -X POST http://localhost:8080/api/v1/auth/register \
