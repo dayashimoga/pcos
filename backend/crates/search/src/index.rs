@@ -111,10 +111,9 @@ impl SearchIndex {
         let full_query = format!("user_id:{} AND ({})", user_id, query_str);
         let query = query_parser.parse_query(&full_query).unwrap_or_else(|_| {
             // Fallback to just name search
-            let simple = query_parser
+            query_parser
                 .parse_query(query_str)
-                .unwrap_or_else(|_| Box::new(tantivy::query::AllQuery));
-            simple
+                .unwrap_or_else(|_| Box::new(tantivy::query::AllQuery))
         });
 
         let top_docs = searcher.search(&query, &TopDocs::with_limit(limit))?;
