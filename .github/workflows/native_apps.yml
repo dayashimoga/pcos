@@ -2,12 +2,15 @@ name: Build Native Apps
 
 on:
   push:
+    branches: [main, develop]
     tags: ["v*"]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       platforms:
         description: "Platforms to build (comma-separated: android,ios,windows,linux,macos,web)"
-        default: "android,linux,web"
+        default: "android,ios,windows,linux,macos,web"
         type: string
 
 env:
@@ -18,7 +21,7 @@ jobs:
   android:
     name: Android APK/AAB
     runs-on: ubuntu-latest
-    if: contains(github.event.inputs.platforms || 'android', 'android')
+    if: contains(github.event.inputs.platforms || 'android,ios,windows,linux,macos,web', 'android')
     steps:
       - uses: actions/checkout@v4
 
@@ -40,7 +43,7 @@ jobs:
   ios:
     name: iOS IPA
     runs-on: macos-latest
-    if: contains(github.event.inputs.platforms || 'ios', 'ios')
+    if: contains(github.event.inputs.platforms || 'android,ios,windows,linux,macos,web', 'ios')
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -72,7 +75,7 @@ jobs:
   windows:
     name: Windows MSIX
     runs-on: windows-latest
-    if: contains(github.event.inputs.platforms || 'windows', 'windows')
+    if: contains(github.event.inputs.platforms || 'android,ios,windows,linux,macos,web', 'windows')
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -103,7 +106,7 @@ jobs:
   linux:
     name: Linux Desktop
     runs-on: ubuntu-latest
-    if: contains(github.event.inputs.platforms || 'linux', 'linux')
+    if: contains(github.event.inputs.platforms || 'android,ios,windows,linux,macos,web', 'linux')
     steps:
       - uses: actions/checkout@v4
 
@@ -125,7 +128,7 @@ jobs:
   macos:
     name: macOS DMG
     runs-on: macos-latest
-    if: contains(github.event.inputs.platforms || 'macos', 'macos')
+    if: contains(github.event.inputs.platforms || 'android,ios,windows,linux,macos,web', 'macos')
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -161,7 +164,7 @@ jobs:
   web:
     name: Web Build
     runs-on: ubuntu-latest
-    if: contains(github.event.inputs.platforms || 'web', 'web')
+    if: contains(github.event.inputs.platforms || 'android,ios,windows,linux,macos,web', 'web')
     steps:
       - uses: actions/checkout@v4
 
