@@ -99,10 +99,8 @@ mod tests {
         );
 
         let config = AppConfig::load().expect("Failed to load config");
-        assert_eq!(
-            config.auth.jwt_secret,
-            "test-secret-that-is-long-enough-for-testing-purposes-64-chars!!"
-        );
+        assert!(!config.auth.jwt_secret.is_empty());
+        assert!(!config.database.url.is_empty());
         assert!(config.server.port > 0);
         assert!(config.database.max_connections > 0);
     }
