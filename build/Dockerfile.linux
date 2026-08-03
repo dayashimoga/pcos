@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY pubspec.yaml pubspec.lock ./
+COPY pubspec.yaml pubspec.loc[k] ./
 RUN flutter config --enable-linux-desktop && flutter pub get
 
 COPY . .
