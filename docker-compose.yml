@@ -227,6 +227,20 @@ services:
     networks:
       - pcos-net
 
+  # ─── Transcoder (FFmpeg) ──────────────────────────────
+  transcoder:
+    build:
+      context: .
+      dockerfile: build/Dockerfile.transcoder
+    restart: "no"
+    volumes:
+      - file_storage:/data/pcos/storage
+      - transcode_data:/data/pcos/transcode
+    networks:
+      - pcos-net
+    profiles:
+      - transcode  # Only starts when explicitly requested: docker compose --profile transcode run transcoder
+
 networks:
   pcos-net:
     driver: bridge
@@ -242,3 +256,4 @@ volumes:
   prometheus_data:
   grafana_data:
   backup_data:
+  transcode_data:

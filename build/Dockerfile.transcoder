@@ -1,0 +1,13 @@
+# FFmpeg Transcoding Worker
+# Usage: docker build -f build/Dockerfile.transcoder -t pcos-transcoder .
+# Run:   docker run --rm -v /data/pcos/storage:/data pcos-transcoder transcode /data/input.mp4 /data/output/
+FROM alpine:3.20
+
+RUN apk add --no-cache ffmpeg ffprobe bash jq
+
+COPY backend/crates/streaming/scripts/transcode.sh /usr/local/bin/transcode
+COPY backend/crates/streaming/scripts/probe.sh /usr/local/bin/probe
+RUN chmod +x /usr/local/bin/transcode /usr/local/bin/probe
+
+WORKDIR /data
+ENTRYPOINT ["/bin/bash"]

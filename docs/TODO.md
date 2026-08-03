@@ -122,6 +122,16 @@
 - [x] `frontend/windows/CMakeLists.txt`: Windows desktop CMake config
 - [x] `frontend/linux/CMakeLists.txt`: Linux desktop CMake config (GTK3)
 - [x] `frontend/macos/CMakeLists.txt`: macOS desktop CMake config
+### v1.1.0 — Video/Audio Adaptive Streaming (Docker FFmpeg)
+- [x] `build/Dockerfile.transcoder`: Alpine + FFmpeg/ffprobe Docker image for transcoding
+- [x] `backend/crates/streaming/scripts/transcode.sh`: HLS adaptive bitrate (360p/720p/1080p master playlist), audio-only (HLS + MP3), thumbnail + sprite generation
+- [x] `backend/crates/streaming/scripts/probe.sh`: media metadata extraction via ffprobe (JSON output)
+- [x] `backend/crates/streaming/src/service.rs`: queue/execute transcoding via Docker, probe media, list jobs, get HLS URL
+- [x] `backend/crates/streaming/src/handlers.rs`: 5 API endpoints (POST transcode, GET jobs, GET job/:id, GET stream/:id, POST probe/:file_id)
+- [x] `backend/crates/streaming/src/lib.rs`: crate router with 5 routes
+- [x] `backend/crates/streaming/Cargo.toml`: workspace dependencies
+- [x] `backend/migrations/20240101000010_transcode_jobs.sql`: transcode_jobs table with indexes
+- [x] Docker Compose: transcoder service with `transcode` profile, transcode_data volume
 
 ---
 
@@ -130,7 +140,6 @@
 ### Requires External Infrastructure
 - [ ] Populate SQLx offline query cache (`.sqlx/`) — requires running PostgreSQL instance
 - [ ] Face clustering in photos — requires ML model (e.g., dlib/ONNX face embeddings)
-- [ ] Video/audio adaptive streaming — requires transcoding pipeline (FFmpeg)
 - [ ] Full SMB2 protocol — requires `smb2` crate or Samba integration
 - [ ] Full LDAP bind — requires `ldap3` crate + LDAP server
 
@@ -139,5 +148,5 @@
 - [ ] Load/stress testing with k6 or similar
 
 ### Test Coverage
-- Current: 57 unit tests + 30+ API tests across 10 versions
+- Current: 57 unit tests + 30+ API tests across 11 versions
 - Target: 90%+ (enforced by qa/scripts/certify.sh)

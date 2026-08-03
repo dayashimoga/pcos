@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-08-03
+
+### Added
+- **Video/Audio Adaptive Streaming**: Docker-based FFmpeg transcoding — no local FFmpeg install.
+  - `Dockerfile.transcoder`: Alpine + FFmpeg/ffprobe image.
+  - `transcode.sh`: HLS adaptive bitrate (360p/720p/1080p with master playlist), audio-only extraction (HLS + MP3 fallback), thumbnail + sprite sheet generation.
+  - `probe.sh`: Media metadata extraction (duration, resolution, codec, bitrate) as JSON.
+  - Streaming service: queue transcoding jobs, execute via Docker, probe media, serve HLS URLs.
+  - 5 new API endpoints: `POST /transcode`, `GET /jobs`, `GET /jobs/:id`, `GET /stream/:id`, `POST /probe/:file_id`.
+  - DB migration: `transcode_jobs` table with indexes on user, file, and status.
+  - Docker Compose: transcoder service with `transcode` profile.
+
+---
+
 ## [1.0.0] - 2026-08-03
 
 ### Added
