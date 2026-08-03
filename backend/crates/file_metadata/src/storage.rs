@@ -23,12 +23,18 @@ impl StorageEngine {
     fn file_path(&self, user_id: Uuid, file_id: Uuid) -> PathBuf {
         let id_str = file_id.to_string();
         let prefix = &id_str[..2];
-        self.base_path.join(user_id.to_string()).join(prefix).join(&id_str)
+        self.base_path
+            .join(user_id.to_string())
+            .join(prefix)
+            .join(&id_str)
     }
 
     /// Path for chunked upload temp directory.
     fn chunk_dir(&self, user_id: Uuid, upload_id: Uuid) -> PathBuf {
-        self.base_path.join(user_id.to_string()).join("_chunks").join(upload_id.to_string())
+        self.base_path
+            .join(user_id.to_string())
+            .join("_chunks")
+            .join(upload_id.to_string())
     }
 
     /// Store file data and return the storage path and SHA-256 hash.
@@ -50,7 +56,8 @@ impl StorageEngine {
 
         fs::write(&path, data).await?;
 
-        let relative_path = path.strip_prefix(&self.base_path)
+        let relative_path = path
+            .strip_prefix(&self.base_path)
             .unwrap_or(&path)
             .to_string_lossy()
             .to_string();
@@ -113,7 +120,8 @@ impl StorageEngine {
         fs::remove_dir_all(&chunk_dir).await.ok();
 
         let hash = hex::encode(hasher.finalize());
-        let relative_path = file_path.strip_prefix(&self.base_path)
+        let relative_path = file_path
+            .strip_prefix(&self.base_path)
             .unwrap_or(&file_path)
             .to_string_lossy()
             .to_string();
@@ -207,10 +215,19 @@ mod tests {
         let upload_id = Uuid::new_v4();
         let file_id = Uuid::new_v4();
 
-        engine.store_chunk(user_id, upload_id, 0, b"chunk0").await.unwrap();
-        engine.store_chunk(user_id, upload_id, 1, b"chunk1").await.unwrap();
+        engine
+            .store_chunk(user_id, upload_id, 0, b"chunk0")
+            .await
+            .unwrap();
+        engine
+            .store_chunk(user_id, upload_id, 1, b"chunk1")
+            .await
+            .unwrap();
 
-        let (path, hash, size) = engine.assemble_chunks(user_id, upload_id, file_id, 2).await.unwrap();
+        let (path, hash, size) = engine
+            .assemble_chunks(user_id, upload_id, file_id, 2)
+            .await
+            .unwrap();
         assert_eq!(size, 12);
 
         let data = engine.read_file(&path).await.unwrap();
@@ -223,7 +240,10 @@ mod tests {
         let user_id = Uuid::new_v4();
         let file_id = Uuid::new_v4();
 
-        let (path, _) = engine.store_file(user_id, file_id, b"delete me").await.unwrap();
+        let (path, _) = engine
+            .store_file(user_id, file_id, b"delete me")
+            .await
+            .unwrap();
         engine.delete_file(&path).await.unwrap();
 
         assert!(engine.read_file(&path).await.is_err());

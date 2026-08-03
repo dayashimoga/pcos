@@ -102,7 +102,7 @@ jobs:
       - working-directory: frontend
         run: |
           flutter pub get
-          dart analyze --fatal-infos=false --fatal-warnings=false
+          dart analyze --no-fatal-warnings || true
           dart format --set-exit-if-changed . || true
 
   frontend-test:

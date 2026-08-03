@@ -1,19 +1,10 @@
 use crate::auth::jwt::{validate_token, Claims};
 use crate::AppState;
-use axum::{
-    extract::FromRequestParts,
-    http::request::Parts,
-};
+use axum::{extract::FromRequestParts, http::request::Parts};
+use std::future::Future;
 
 /// Axum extractor that validates the JWT Bearer token from the Authorization header
 /// and provides the authenticated user's claims to handlers.
-///
-/// Usage:
-/// ```rust,ignore
-/// async fn my_handler(auth: AuthUser) -> impl IntoResponse {
-///     println!("User ID: {}", auth.claims.sub);
-/// }
-/// ```
 #[derive(Debug, Clone)]
 pub struct AuthUser {
     pub claims: Claims,
@@ -22,27 +13,32 @@ pub struct AuthUser {
 impl FromRequestParts<AppState> for AuthUser {
     type Rejection = crate::AppError;
 
-    async fn from_request_parts(
+    fn from_request_parts(
         parts: &mut Parts,
         state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
         let auth_header = parts
             .headers
             .get("Authorization")
             .and_then(|v| v.to_str().ok())
-            .ok_or_else(|| {
+            .map(|s| s.to_string());
+        let jwt_secret = state.config.auth.jwt_secret.clone();
+
+        async move {
+            let header = auth_header.ok_or_else(|| {
                 crate::AppError::Unauthorized("Missing Authorization header".to_string())
             })?;
 
-        let token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
-            crate::AppError::Unauthorized("Invalid Authorization header format".to_string())
-        })?;
+            let token = header.strip_prefix("Bearer ").ok_or_else(|| {
+                crate::AppError::Unauthorized("Invalid Authorization header format".to_string())
+            })?;
 
-        let token_data = validate_token(token, &state.config.auth.jwt_secret)?;
+            let token_data = validate_token(token, &jwt_secret)?;
 
-        Ok(AuthUser {
-            claims: token_data.claims,
-        })
+            Ok(AuthUser {
+                claims: token_data.claims,
+            })
+        }
     }
 }
 
@@ -50,7 +46,6 @@ impl FromRequestParts<AppState> for AuthUser {
 mod tests {
     #[test]
     fn test_auth_user_struct() {
-        // AuthUser is a simple wrapper; validated through integration tests
-        assert_eq!(std::mem::size_of::<super::Claims>() > 0, true);
+        assert!(std::mem::size_of::<super::Claims>() > 0);
     }
 }

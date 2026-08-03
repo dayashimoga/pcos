@@ -1,4 +1,6 @@
-use crate::models::{LoginRequest, LogoutRequest, MessageResponse, RefreshTokenRequest, RegisterRequest};
+use crate::models::{
+    LoginRequest, LogoutRequest, MessageResponse, RefreshTokenRequest, RegisterRequest,
+};
 use crate::service;
 use axum::extract::State;
 use axum::http::StatusCode;

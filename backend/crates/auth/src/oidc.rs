@@ -57,16 +57,26 @@ impl OidcConfig {
 
 /// Fetch OIDC discovery document from issuer.
 pub async fn discover(issuer_url: &str) -> AppResult<OidcDiscovery> {
-    let url = format!("{}/.well-known/openid-configuration", issuer_url.trim_end_matches('/'));
+    let url = format!(
+        "{}/.well-known/openid-configuration",
+        issuer_url.trim_end_matches('/')
+    );
     let client = reqwest::Client::new();
-    let resp = client.get(&url).send().await
+    let resp = client
+        .get(&url)
+        .send()
+        .await
         .map_err(|e| AppError::Internal(format!("OIDC discovery failed: {e}")))?;
 
     if !resp.status().is_success() {
-        return Err(AppError::Internal(format!("OIDC discovery returned {}", resp.status())));
+        return Err(AppError::Internal(format!(
+            "OIDC discovery returned {}",
+            resp.status()
+        )));
     }
 
-    resp.json::<OidcDiscovery>().await
+    resp.json::<OidcDiscovery>()
+        .await
         .map_err(|e| AppError::Internal(format!("OIDC discovery parse error: {e}")))
 }
 
@@ -84,9 +94,14 @@ pub fn authorization_url(config: &OidcConfig, discovery: &OidcDiscovery, state: 
 }
 
 /// Exchange authorization code for tokens.
-pub async fn exchange_code(config: &OidcConfig, discovery: &OidcDiscovery, code: &str) -> AppResult<TokenResponse> {
+pub async fn exchange_code(
+    config: &OidcConfig,
+    discovery: &OidcDiscovery,
+    code: &str,
+) -> AppResult<TokenResponse> {
     let client = reqwest::Client::new();
-    let resp = client.post(&discovery.token_endpoint)
+    let resp = client
+        .post(&discovery.token_endpoint)
         .form(&[
             ("grant_type", "authorization_code"),
             ("client_id", &config.client_id),
@@ -94,7 +109,8 @@ pub async fn exchange_code(config: &OidcConfig, discovery: &OidcDiscovery, code:
             ("redirect_uri", &config.redirect_uri),
             ("code", code),
         ])
-        .send().await
+        .send()
+        .await
         .map_err(|e| AppError::Internal(format!("Token exchange failed: {e}")))?;
 
     if !resp.status().is_success() {
@@ -102,18 +118,22 @@ pub async fn exchange_code(config: &OidcConfig, discovery: &OidcDiscovery, code:
         return Err(AppError::Internal(format!("Token exchange error: {body}")));
     }
 
-    resp.json::<TokenResponse>().await
+    resp.json::<TokenResponse>()
+        .await
         .map_err(|e| AppError::Internal(format!("Token parse error: {e}")))
 }
 
 /// Fetch user info from OIDC provider.
 pub async fn fetch_user_info(discovery: &OidcDiscovery, access_token: &str) -> AppResult<UserInfo> {
     let client = reqwest::Client::new();
-    let resp = client.get(&discovery.userinfo_endpoint)
+    let resp = client
+        .get(&discovery.userinfo_endpoint)
         .bearer_auth(access_token)
-        .send().await
+        .send()
+        .await
         .map_err(|e| AppError::Internal(format!("UserInfo fetch failed: {e}")))?;
 
-    resp.json::<UserInfo>().await
+    resp.json::<UserInfo>()
+        .await
         .map_err(|e| AppError::Internal(format!("UserInfo parse error: {e}")))
 }

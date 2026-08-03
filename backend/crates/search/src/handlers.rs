@@ -25,12 +25,15 @@ pub async fn search(
         if let Some(idx) = idx_any.downcast_ref::<crate::index::SearchIndex>() {
             match idx.search(auth.claims.sub, &params.q, limit) {
                 Ok(results) => {
-                    let response: Vec<serde_json::Value> = results.into_iter().map(|r| {
-                        serde_json::json!({
-                            "id": r.id, "name": r.name, "mime_type": r.mime_type,
-                            "entry_type": r.entry_type, "score": r.score, "source": "tantivy"
+                    let response: Vec<serde_json::Value> = results
+                        .into_iter()
+                        .map(|r| {
+                            serde_json::json!({
+                                "id": r.id, "name": r.name, "mime_type": r.mime_type,
+                                "entry_type": r.entry_type, "score": r.score, "source": "tantivy"
+                            })
                         })
-                    }).collect();
+                        .collect();
                     return Ok(Json(serde_json::json!({
                         "results": response, "total": response.len(), "query": params.q, "engine": "tantivy"
                     })));
@@ -55,12 +58,15 @@ pub async fn search(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    let response: Vec<serde_json::Value> = results.into_iter().map(|(id, name, mime, etype, size)| {
-        serde_json::json!({
-            "id": id, "name": name, "mime_type": mime,
-            "entry_type": etype, "size_bytes": size, "source": "database"
+    let response: Vec<serde_json::Value> = results
+        .into_iter()
+        .map(|(id, name, mime, etype, size)| {
+            serde_json::json!({
+                "id": id, "name": name, "mime_type": mime,
+                "entry_type": etype, "size_bytes": size, "source": "database"
+            })
         })
-    }).collect();
+        .collect();
 
     Ok(Json(serde_json::json!({
         "results": response, "total": response.len(), "query": params.q, "engine": "database"
@@ -114,7 +120,10 @@ pub async fn reindex(
         if let Some(idx) = idx_any.downcast_ref::<crate::index::SearchIndex>() {
             for (id, name, mime, etype) in &entries {
                 let mime_str = mime.as_deref().unwrap_or("");
-                if let Err(e) = idx.index_document(*id, auth.claims.sub, name, "", mime_str, etype).await {
+                if let Err(e) = idx
+                    .index_document(*id, auth.claims.sub, name, "", mime_str, etype)
+                    .await
+                {
                     tracing::warn!(file_id = %id, error = %e, "Failed to index document");
                 } else {
                     indexed += 1;
@@ -148,11 +157,12 @@ pub async fn extract_text(
     .fetch_optional(pool).await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    let (name, mime, storage_path) = entry
-        .ok_or_else(|| AppError::NotFound("File not found".to_string()))?;
+    let (name, mime, storage_path) =
+        entry.ok_or_else(|| AppError::NotFound("File not found".to_string()))?;
 
     let mime_type = mime.unwrap_or_else(|| "application/octet-stream".to_string());
-    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".to_string());
+    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
+        .unwrap_or_else(|_| "/data/pcos/storage".to_string());
 
     let file_path = if let Some(sp) = storage_path {
         format!("{}/{}", base_path, sp)
@@ -167,7 +177,16 @@ pub async fn extract_text(
     // If Tantivy is available, index the extracted text
     if let Some(ref idx_any) = state.search_index {
         if let Some(idx) = idx_any.downcast_ref::<crate::index::SearchIndex>() {
-            let _ = idx.index_document(file_id, auth.claims.sub, &name, &result.text, &mime_type, "file").await;
+            let _ = idx
+                .index_document(
+                    file_id,
+                    auth.claims.sub,
+                    &name,
+                    &result.text,
+                    &mime_type,
+                    "file",
+                )
+                .await;
         }
     }
 

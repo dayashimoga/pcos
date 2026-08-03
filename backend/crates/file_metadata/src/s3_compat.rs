@@ -9,8 +9,8 @@ use axum::{
     http::{header, StatusCode},
     response::{IntoResponse, Response},
 };
-use pcos_common::{AppState, AppError};
 use pcos_common::auth::AuthUser;
+use pcos_common::{AppError, AppState};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -24,9 +24,7 @@ pub struct ListQuery {
 }
 
 /// GET /s3/ — ListBuckets (returns user's root as single bucket)
-pub async fn list_buckets(
-    auth: AuthUser,
-) -> impl IntoResponse {
+pub async fn list_buckets(auth: AuthUser) -> impl IntoResponse {
     let xml = format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <ListAllMyBucketsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
@@ -72,7 +70,10 @@ pub async fn list_objects(
 
     for (name, etype, size, modified) in &entries {
         if etype == "folder" {
-            xml.push_str(&format!("\n  <CommonPrefixes><Prefix>{}/</Prefix></CommonPrefixes>", name));
+            xml.push_str(&format!(
+                "\n  <CommonPrefixes><Prefix>{}/</Prefix></CommonPrefixes>",
+                name
+            ));
         } else {
             xml.push_str(&format!(
                 "\n  <Contents><Key>{}</Key><Size>{}</Size><LastModified>{}</LastModified><StorageClass>STANDARD</StorageClass></Contents>",
@@ -105,7 +106,10 @@ pub async fn head_object(
         Some((size, mime, modified)) => Ok(Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_LENGTH, size.to_string())
-            .header(header::CONTENT_TYPE, mime.unwrap_or_else(|| "application/octet-stream".to_string()))
+            .header(
+                header::CONTENT_TYPE,
+                mime.unwrap_or_else(|| "application/octet-stream".to_string()),
+            )
             .header(header::LAST_MODIFIED, modified)
             .body(Body::empty())
             .unwrap()),

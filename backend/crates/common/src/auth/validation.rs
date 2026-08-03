@@ -4,19 +4,29 @@ use crate::error::{AppError, AppResult};
 /// Rules: min 8 chars, max 128, at least 1 uppercase, 1 lowercase, 1 digit.
 pub fn validate_password(password: &str) -> AppResult<()> {
     if password.len() < 8 {
-        return Err(AppError::Validation("Password must be at least 8 characters".to_string()));
+        return Err(AppError::Validation(
+            "Password must be at least 8 characters".to_string(),
+        ));
     }
     if password.len() > 128 {
-        return Err(AppError::Validation("Password must be at most 128 characters".to_string()));
+        return Err(AppError::Validation(
+            "Password must be at most 128 characters".to_string(),
+        ));
     }
     if !password.chars().any(|c| c.is_uppercase()) {
-        return Err(AppError::Validation("Password must contain at least one uppercase letter".to_string()));
+        return Err(AppError::Validation(
+            "Password must contain at least one uppercase letter".to_string(),
+        ));
     }
     if !password.chars().any(|c| c.is_lowercase()) {
-        return Err(AppError::Validation("Password must contain at least one lowercase letter".to_string()));
+        return Err(AppError::Validation(
+            "Password must contain at least one lowercase letter".to_string(),
+        ));
     }
     if !password.chars().any(|c| c.is_ascii_digit()) {
-        return Err(AppError::Validation("Password must contain at least one digit".to_string()));
+        return Err(AppError::Validation(
+            "Password must contain at least one digit".to_string(),
+        ));
     }
     Ok(())
 }
@@ -30,14 +40,20 @@ pub fn sanitize_filename(name: &str) -> AppResult<String> {
         return Err(AppError::Validation("Name cannot be empty".to_string()));
     }
     if trimmed.len() > 255 {
-        return Err(AppError::Validation("Name cannot exceed 255 characters".to_string()));
+        return Err(AppError::Validation(
+            "Name cannot exceed 255 characters".to_string(),
+        ));
     }
     if trimmed.contains('\0') {
-        return Err(AppError::Validation("Name cannot contain null bytes".to_string()));
+        return Err(AppError::Validation(
+            "Name cannot contain null bytes".to_string(),
+        ));
     }
     // Block path traversal
     if trimmed.contains("..") || trimmed.contains('/') || trimmed.contains('\\') {
-        return Err(AppError::Validation("Name cannot contain path separators or '..'".to_string()));
+        return Err(AppError::Validation(
+            "Name cannot contain path separators or '..'".to_string(),
+        ));
     }
     // Block names that are just dots
     if trimmed == "." || trimmed == ".." {
@@ -45,7 +61,9 @@ pub fn sanitize_filename(name: &str) -> AppResult<String> {
     }
     // Block control characters
     if trimmed.chars().any(|c| c.is_control()) {
-        return Err(AppError::Validation("Name cannot contain control characters".to_string()));
+        return Err(AppError::Validation(
+            "Name cannot contain control characters".to_string(),
+        ));
     }
 
     Ok(trimmed.to_string())

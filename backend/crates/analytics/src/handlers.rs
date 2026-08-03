@@ -5,15 +5,31 @@ use pcos_common::auth::middleware::AuthUser;
 use pcos_common::error::AppError;
 use pcos_common::AppState;
 
-pub async fn overview(State(s): State<AppState>, auth: AuthUser) -> Result<impl IntoResponse, AppError> {
+pub async fn overview(
+    State(s): State<AppState>,
+    auth: AuthUser,
+) -> Result<impl IntoResponse, AppError> {
     let pool = s.db.pool();
     let uid = auth.claims.sub;
     let (files,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM file_entries WHERE user_id=$1 AND entry_type='file' AND is_trashed=false").bind(uid).fetch_one(pool).await.unwrap_or((0,));
     let (folders,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM file_entries WHERE user_id=$1 AND entry_type='folder' AND is_trashed=false").bind(uid).fetch_one(pool).await.unwrap_or((0,));
     let (size,): (Option<i64>,) = sqlx::query_as("SELECT SUM(size_bytes) FROM file_entries WHERE user_id=$1 AND entry_type='file' AND is_trashed=false").bind(uid).fetch_one(pool).await.unwrap_or((None,));
-    let (devices,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM devices WHERE user_id=$1").bind(uid).fetch_one(pool).await.unwrap_or((0,));
-    let (shares,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM share_links WHERE user_id=$1 AND is_active=true").bind(uid).fetch_one(pool).await.unwrap_or((0,));
-    let (backups,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM backups WHERE user_id=$1").bind(uid).fetch_one(pool).await.unwrap_or((0,));
+    let (devices,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM devices WHERE user_id=$1")
+        .bind(uid)
+        .fetch_one(pool)
+        .await
+        .unwrap_or((0,));
+    let (shares,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM share_links WHERE user_id=$1 AND is_active=true")
+            .bind(uid)
+            .fetch_one(pool)
+            .await
+            .unwrap_or((0,));
+    let (backups,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM backups WHERE user_id=$1")
+        .bind(uid)
+        .fetch_one(pool)
+        .await
+        .unwrap_or((0,));
 
     Ok(Json(serde_json::json!({
         "total_files": files, "total_folders": folders, "total_size_bytes": size.unwrap_or(0),
@@ -22,7 +38,10 @@ pub async fn overview(State(s): State<AppState>, auth: AuthUser) -> Result<impl 
     })))
 }
 
-pub async fn storage_analytics(State(s): State<AppState>, auth: AuthUser) -> Result<impl IntoResponse, AppError> {
+pub async fn storage_analytics(
+    State(s): State<AppState>,
+    auth: AuthUser,
+) -> Result<impl IntoResponse, AppError> {
     let pool = s.db.pool();
     let uid = auth.claims.sub;
     // Top 10 largest files
@@ -43,22 +62,33 @@ pub async fn storage_analytics(State(s): State<AppState>, auth: AuthUser) -> Res
         serde_json::json!({ "type": t, "count": count, "size_bytes": size, "formatted_size": format_bytes(size) })
     }).collect();
 
-    Ok(Json(serde_json::json!({ "largest_files": files, "storage_by_type": types })))
+    Ok(Json(
+        serde_json::json!({ "largest_files": files, "storage_by_type": types }),
+    ))
 }
 
-pub async fn activity_timeline(State(s): State<AppState>, auth: AuthUser) -> Result<impl IntoResponse, AppError> {
+pub async fn activity_timeline(
+    State(s): State<AppState>,
+    auth: AuthUser,
+) -> Result<impl IntoResponse, AppError> {
     let pool = s.db.pool();
     let activity: Vec<(String, i64)> = sqlx::query_as(
         "SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as day, COUNT(*) FROM audit_log WHERE user_id=$1 AND created_at > NOW() - INTERVAL '30 days' GROUP BY 1 ORDER BY 1"
     ).bind(auth.claims.sub).fetch_all(pool).await.unwrap_or_default();
 
-    let timeline: Vec<serde_json::Value> = activity.into_iter().map(|(day, count)| {
-        serde_json::json!({ "date": day, "actions": count })
-    }).collect();
-    Ok(Json(serde_json::json!({ "timeline": timeline, "period": "30_days" })))
+    let timeline: Vec<serde_json::Value> = activity
+        .into_iter()
+        .map(|(day, count)| serde_json::json!({ "date": day, "actions": count }))
+        .collect();
+    Ok(Json(
+        serde_json::json!({ "timeline": timeline, "period": "30_days" }),
+    ))
 }
 
-pub async fn file_type_breakdown(State(s): State<AppState>, auth: AuthUser) -> Result<impl IntoResponse, AppError> {
+pub async fn file_type_breakdown(
+    State(s): State<AppState>,
+    auth: AuthUser,
+) -> Result<impl IntoResponse, AppError> {
     let pool = s.db.pool();
     let breakdown: Vec<(Option<String>, i64)> = sqlx::query_as(
         "SELECT mime_type, COUNT(*) FROM file_entries WHERE user_id=$1 AND entry_type='file' AND is_trashed=false GROUP BY mime_type ORDER BY 2 DESC LIMIT 20"
@@ -72,10 +102,23 @@ pub async fn file_type_breakdown(State(s): State<AppState>, auth: AuthUser) -> R
 
 pub async fn prometheus_metrics(State(s): State<AppState>) -> Result<impl IntoResponse, AppError> {
     let pool = s.db.pool();
-    let (users,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users").fetch_one(pool).await.unwrap_or((0,));
-    let (files,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM file_entries WHERE entry_type='file'").fetch_one(pool).await.unwrap_or((0,));
-    let (devices,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM devices").fetch_one(pool).await.unwrap_or((0,));
-    let (online,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM devices WHERE is_online=true").fetch_one(pool).await.unwrap_or((0,));
+    let (users,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
+        .fetch_one(pool)
+        .await
+        .unwrap_or((0,));
+    let (files,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM file_entries WHERE entry_type='file'")
+            .fetch_one(pool)
+            .await
+            .unwrap_or((0,));
+    let (devices,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM devices")
+        .fetch_one(pool)
+        .await
+        .unwrap_or((0,));
+    let (online,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM devices WHERE is_online=true")
+        .fetch_one(pool)
+        .await
+        .unwrap_or((0,));
 
     let metrics = format!(
         "# HELP pcos_users_total Total registered users\n# TYPE pcos_users_total gauge\npcos_users_total {}\n\
@@ -84,14 +127,22 @@ pub async fn prometheus_metrics(State(s): State<AppState>) -> Result<impl IntoRe
          # HELP pcos_devices_online Currently online devices\n# TYPE pcos_devices_online gauge\npcos_devices_online {}\n",
         users, files, devices, online
     );
-    Ok(([(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")], metrics))
+    Ok((
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4",
+        )],
+        metrics,
+    ))
 }
 
 fn format_bytes(bytes: i64) -> String {
     const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
     let mut size = bytes as f64;
     for unit in UNITS {
-        if size < 1024.0 { return format!("{:.1} {}", size, unit); }
+        if size < 1024.0 {
+            return format!("{:.1} {}", size, unit);
+        }
         size /= 1024.0;
     }
     format!("{:.1} PB", size)

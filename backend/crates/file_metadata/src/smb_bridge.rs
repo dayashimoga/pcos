@@ -76,5 +76,7 @@ impl SmbBridge {
 }
 
 impl Default for SmbBridge {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }

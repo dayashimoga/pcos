@@ -5,7 +5,10 @@ pub mod models;
 pub mod oidc;
 pub mod service;
 
-use axum::{routing::{get, post}, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use pcos_common::AppState;
 
 /// Build the auth router with all authentication endpoints.

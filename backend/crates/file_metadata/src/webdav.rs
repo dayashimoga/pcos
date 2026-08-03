@@ -4,13 +4,15 @@ use axum::{
     http::{header, HeaderMap, Method, StatusCode},
     response::{IntoResponse, Response},
 };
-use pcos_common::{AppState, AppError};
 use pcos_common::auth::AuthUser;
+use pcos_common::{AppError, AppState};
 use uuid::Uuid;
 
 /// WebDAV PROPFIND response builder — generates XML for directory listings.
 fn propfind_xml(entries: &[(Uuid, String, String, i64, String)]) -> String {
-    let mut xml = String::from("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<D:multistatus xmlns:D=\"DAV:\">\n");
+    let mut xml = String::from(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<D:multistatus xmlns:D=\"DAV:\">\n",
+    );
     for (id, name, entry_type, size, updated) in entries {
         let is_dir = entry_type == "folder";
         xml.push_str(&format!(
@@ -31,10 +33,15 @@ pub async fn propfind(
     path: Option<Path<String>>,
 ) -> Result<Response, AppError> {
     let pool = state.db.pool();
-    let depth = headers.get("Depth").and_then(|v| v.to_str().ok()).unwrap_or("1");
+    let depth = headers
+        .get("Depth")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("1");
 
     // Resolve parent folder — root if no path
-    let entries: Vec<(Uuid, String, String, i64, String)> = if path.is_none() || path.as_ref().map(|p| p.0.as_str()) == Some("") {
+    let entries: Vec<(Uuid, String, String, i64, String)> = if path.is_none()
+        || path.as_ref().map(|p| p.0.as_str()) == Some("")
+    {
         sqlx::query_as(
             "SELECT id, name, entry_type, size_bytes, to_char(updated_at, 'Dy, DD Mon YYYY HH24:MI:SS GMT') FROM file_entries WHERE user_id = $1 AND parent_id IS NULL AND is_trashed = false ORDER BY entry_type DESC, name"
         ).bind(auth.claims.sub).fetch_all(pool).await
@@ -53,7 +60,10 @@ pub async fn propfind(
             ).bind(auth.claims.sub).bind(folder_id).fetch_all(pool).await
             .map_err(|e| AppError::Internal(e.to_string()))?
         } else {
-            return Ok(Response::builder().status(StatusCode::NOT_FOUND).body(Body::empty()).unwrap());
+            return Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::empty())
+                .unwrap());
         }
     };
 
@@ -109,7 +119,8 @@ pub async fn webdav_move(
     headers: HeaderMap,
     Path(name): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let destination = headers.get("Destination")
+    let destination = headers
+        .get("Destination")
         .and_then(|v| v.to_str().ok())
         .and_then(|s| s.rsplit('/').next())
         .ok_or_else(|| AppError::Validation("Missing Destination header".to_string()))?;
@@ -133,7 +144,10 @@ pub async fn options() -> impl IntoResponse {
     Response::builder()
         .status(StatusCode::OK)
         .header("DAV", "1, 2")
-        .header("Allow", "OPTIONS, GET, HEAD, PUT, DELETE, PROPFIND, MKCOL, MOVE, COPY")
+        .header(
+            "Allow",
+            "OPTIONS, GET, HEAD, PUT, DELETE, PROPFIND, MKCOL, MOVE, COPY",
+        )
         .header("MS-Author-Via", "DAV")
         .body(Body::empty())
         .unwrap()

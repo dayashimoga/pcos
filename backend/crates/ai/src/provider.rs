@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use pcos_common::error::{AppError, AppResult};
+use serde::{Deserialize, Serialize};
 
 /// Configurable AI provider supporting local Ollama and compatible APIs.
 #[derive(Debug, Clone)]
@@ -32,7 +32,8 @@ impl AiProvider {
 
     /// Create from environment variables (PCOS_AI__URL, PCOS_AI__MODEL).
     pub fn from_env() -> Option<Self> {
-        let url = std::env::var("PCOS_AI__URL").unwrap_or_else(|_| "http://ollama:11434".to_string());
+        let url =
+            std::env::var("PCOS_AI__URL").unwrap_or_else(|_| "http://ollama:11434".to_string());
         let model = std::env::var("PCOS_AI__MODEL").unwrap_or_else(|_| "llama3.1".to_string());
         Some(Self::new(&url, &model))
     }
@@ -45,7 +46,8 @@ impl AiProvider {
             stream: false,
         };
 
-        let response = self.client
+        let response = self
+            .client
             .post(format!("{}/api/generate", self.base_url))
             .json(&req)
             .send()
@@ -53,10 +55,15 @@ impl AiProvider {
             .map_err(|e| AppError::Internal(format!("AI request failed: {e}")))?;
 
         if !response.status().is_success() {
-            return Err(AppError::Internal(format!("AI returned status {}", response.status())));
+            return Err(AppError::Internal(format!(
+                "AI returned status {}",
+                response.status()
+            )));
         }
 
-        let body: OllamaResponse = response.json().await
+        let body: OllamaResponse = response
+            .json()
+            .await
             .map_err(|e| AppError::Internal(format!("AI response parse failed: {e}")))?;
 
         Ok(body.response)

@@ -140,18 +140,31 @@ fn build_cors_layer() -> CorsLayer {
         // Development mode — allow all
         CorsLayer::new()
             .allow_origin(tower_http::cors::Any)
-            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH])
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::PATCH,
+            ])
             .allow_headers(tower_http::cors::Any)
             .max_age(Duration::from_secs(3600))
     } else {
         // Production mode — restrict origins
-        let allowed: Vec<_> = origins.split(',')
+        let allowed: Vec<_> = origins
+            .split(',')
             .filter_map(|s| s.trim().parse().ok())
             .collect();
 
         CorsLayer::new()
             .allow_origin(allowed)
-            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH])
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::PATCH,
+            ])
             .allow_headers(tower_http::cors::Any)
             .allow_credentials(true)
             .max_age(Duration::from_secs(3600))
@@ -167,12 +180,18 @@ fn spawn_background_tasks(state: AppState) {
             let mut interval = tokio::time::interval(Duration::from_secs(3600));
             loop {
                 interval.tick().await;
-                match sqlx::query("DELETE FROM refresh_tokens WHERE expires_at < NOW() OR revoked = true")
-                    .execute(&pool).await
+                match sqlx::query(
+                    "DELETE FROM refresh_tokens WHERE expires_at < NOW() OR revoked = true",
+                )
+                .execute(&pool)
+                .await
                 {
                     Ok(r) => {
                         if r.rows_affected() > 0 {
-                            tracing::info!(count = r.rows_affected(), "Cleaned expired refresh tokens");
+                            tracing::info!(
+                                count = r.rows_affected(),
+                                "Cleaned expired refresh tokens"
+                            );
                         }
                     }
                     Err(e) => tracing::error!(error = %e, "Failed to clean expired tokens"),

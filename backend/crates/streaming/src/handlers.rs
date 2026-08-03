@@ -30,15 +30,16 @@ pub async fn transcode(
     };
 
     // Look up file path from DB
-    let file: (String,) = sqlx::query_as(
-        "SELECT storage_path FROM file_entries WHERE id = $1 AND user_id = $2"
-    )
-    .bind(req.file_id).bind(auth.claims.sub)
-    .fetch_one(&*state.db)
-    .await
-    .map_err(|_| AppError::NotFound("File not found".into()))?;
+    let file: (String,) =
+        sqlx::query_as("SELECT storage_path FROM file_entries WHERE id = $1 AND user_id = $2")
+            .bind(req.file_id)
+            .bind(auth.claims.sub)
+            .fetch_one(&*state.db)
+            .await
+            .map_err(|_| AppError::NotFound("File not found".into()))?;
 
-    let job = service::queue_transcode(&state.db, req.file_id, auth.claims.sub, &file.0, profile).await?;
+    let job =
+        service::queue_transcode(&state.db, req.file_id, auth.claims.sub, &file.0, profile).await?;
 
     // Spawn background transcoding
     let pool = state.db.clone();
@@ -49,12 +50,15 @@ pub async fn transcode(
         }
     });
 
-    Ok((axum::http::StatusCode::ACCEPTED, Json(serde_json::json!({
-        "job_id": job.id,
-        "status": "pending",
-        "profile": job.profile,
-        "message": "Transcoding job queued"
-    }))))
+    Ok((
+        axum::http::StatusCode::ACCEPTED,
+        Json(serde_json::json!({
+            "job_id": job.id,
+            "status": "pending",
+            "profile": job.profile,
+            "message": "Transcoding job queued"
+        })),
+    ))
 }
 
 /// GET /api/v1/streaming/jobs — List transcoding jobs.
@@ -63,7 +67,9 @@ pub async fn list_jobs(
     auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let jobs = service::list_jobs(&state.db, auth.claims.sub).await?;
-    Ok(Json(serde_json::json!({ "jobs": jobs, "total": jobs.len() })))
+    Ok(Json(
+        serde_json::json!({ "jobs": jobs, "total": jobs.len() }),
+    ))
 }
 
 /// GET /api/v1/streaming/jobs/:id — Get job status.
@@ -72,13 +78,13 @@ pub async fn get_job(
     auth: AuthUser,
     Path(job_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
-    let job: service::TranscodeJob = sqlx::query_as(
-        "SELECT * FROM transcode_jobs WHERE id = $1 AND user_id = $2"
-    )
-    .bind(job_id).bind(auth.claims.sub)
-    .fetch_one(&*state.db)
-    .await
-    .map_err(|_| AppError::NotFound("Job not found".into()))?;
+    let job: service::TranscodeJob =
+        sqlx::query_as("SELECT * FROM transcode_jobs WHERE id = $1 AND user_id = $2")
+            .bind(job_id)
+            .bind(auth.claims.sub)
+            .fetch_one(&*state.db)
+            .await
+            .map_err(|_| AppError::NotFound("Job not found".into()))?;
 
     Ok(Json(serde_json::json!(job)))
 }
@@ -103,13 +109,13 @@ pub async fn probe(
     auth: AuthUser,
     Path(file_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
-    let file: (String,) = sqlx::query_as(
-        "SELECT storage_path FROM file_entries WHERE id = $1 AND user_id = $2"
-    )
-    .bind(file_id).bind(auth.claims.sub)
-    .fetch_one(&*state.db)
-    .await
-    .map_err(|_| AppError::NotFound("File not found".into()))?;
+    let file: (String,) =
+        sqlx::query_as("SELECT storage_path FROM file_entries WHERE id = $1 AND user_id = $2")
+            .bind(file_id)
+            .bind(auth.claims.sub)
+            .fetch_one(&*state.db)
+            .await
+            .map_err(|_| AppError::NotFound("File not found".into()))?;
 
     let info = service::probe_media(&file.0).await?;
     Ok(Json(serde_json::json!(info)))

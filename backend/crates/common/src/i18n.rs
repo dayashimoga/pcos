@@ -39,9 +39,15 @@ impl Locale {
 
     pub fn code(&self) -> &'static str {
         match self {
-            Locale::En => "en", Locale::Es => "es", Locale::Fr => "fr",
-            Locale::De => "de", Locale::Ja => "ja", Locale::Zh => "zh",
-            Locale::Ko => "ko", Locale::Pt => "pt", Locale::Hi => "hi",
+            Locale::En => "en",
+            Locale::Es => "es",
+            Locale::Fr => "fr",
+            Locale::De => "de",
+            Locale::Ja => "ja",
+            Locale::Zh => "zh",
+            Locale::Ko => "ko",
+            Locale::Pt => "pt",
+            Locale::Hi => "hi",
             Locale::Ar => "ar",
         }
     }
@@ -61,16 +67,37 @@ impl I18n {
         // English (default)
         let mut en = HashMap::new();
         en.insert("auth.login_success".into(), "Login successful".into());
-        en.insert("auth.invalid_credentials".into(), "Invalid email or password".into());
-        en.insert("auth.token_expired".into(), "Session expired, please login again".into());
-        en.insert("auth.mfa_required".into(), "Multi-factor authentication required".into());
-        en.insert("file.upload_success".into(), "File uploaded successfully".into());
+        en.insert(
+            "auth.invalid_credentials".into(),
+            "Invalid email or password".into(),
+        );
+        en.insert(
+            "auth.token_expired".into(),
+            "Session expired, please login again".into(),
+        );
+        en.insert(
+            "auth.mfa_required".into(),
+            "Multi-factor authentication required".into(),
+        );
+        en.insert(
+            "file.upload_success".into(),
+            "File uploaded successfully".into(),
+        );
         en.insert("file.not_found".into(), "File not found".into());
-        en.insert("file.quota_exceeded".into(), "Storage quota exceeded".into());
+        en.insert(
+            "file.quota_exceeded".into(),
+            "Storage quota exceeded".into(),
+        );
         en.insert("share.created".into(), "Share link created".into());
         en.insert("share.expired".into(), "This share link has expired".into());
-        en.insert("backup.created".into(), "Backup created successfully".into());
-        en.insert("backup.restored".into(), "Backup restored successfully".into());
+        en.insert(
+            "backup.created".into(),
+            "Backup created successfully".into(),
+        );
+        en.insert(
+            "backup.restored".into(),
+            "Backup restored successfully".into(),
+        );
         en.insert("notification.none".into(), "No new notifications".into());
         en.insert("error.internal".into(), "An internal error occurred".into());
         en.insert("error.forbidden".into(), "You don't have permission".into());
@@ -80,11 +107,23 @@ impl I18n {
 
         // Spanish
         let mut es = HashMap::new();
-        es.insert("auth.login_success".into(), "Inicio de sesión exitoso".into());
-        es.insert("auth.invalid_credentials".into(), "Email o contraseña incorrectos".into());
-        es.insert("file.upload_success".into(), "Archivo subido correctamente".into());
+        es.insert(
+            "auth.login_success".into(),
+            "Inicio de sesión exitoso".into(),
+        );
+        es.insert(
+            "auth.invalid_credentials".into(),
+            "Email o contraseña incorrectos".into(),
+        );
+        es.insert(
+            "file.upload_success".into(),
+            "Archivo subido correctamente".into(),
+        );
         es.insert("file.not_found".into(), "Archivo no encontrado".into());
-        es.insert("file.quota_exceeded".into(), "Cuota de almacenamiento excedida".into());
+        es.insert(
+            "file.quota_exceeded".into(),
+            "Cuota de almacenamiento excedida".into(),
+        );
         es.insert("error.internal".into(), "Ocurrió un error interno".into());
         es.insert("error.forbidden".into(), "No tienes permiso".into());
         translations.insert(Locale::Es, es);
@@ -92,8 +131,14 @@ impl I18n {
         // Hindi
         let mut hi = HashMap::new();
         hi.insert("auth.login_success".into(), "लॉगिन सफल".into());
-        hi.insert("auth.invalid_credentials".into(), "अमान्य ईमेल या पासवर्ड".into());
-        hi.insert("file.upload_success".into(), "फ़ाइल सफलतापूर्वक अपलोड हुई".into());
+        hi.insert(
+            "auth.invalid_credentials".into(),
+            "अमान्य ईमेल या पासवर्ड".into(),
+        );
+        hi.insert(
+            "file.upload_success".into(),
+            "फ़ाइल सफलतापूर्वक अपलोड हुई".into(),
+        );
         hi.insert("error.internal".into(), "एक आंतरिक त्रुटि हुई".into());
         translations.insert(Locale::Hi, hi);
 
@@ -131,7 +176,9 @@ impl I18n {
 }
 
 impl Default for I18n {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
@@ -147,14 +194,20 @@ mod tests {
     #[test]
     fn test_spanish_translation() {
         let i18n = I18n::new();
-        assert_eq!(i18n.t(Locale::Es, "auth.login_success"), "Inicio de sesión exitoso");
+        assert_eq!(
+            i18n.t(Locale::Es, "auth.login_success"),
+            "Inicio de sesión exitoso"
+        );
     }
 
     #[test]
     fn test_fallback_to_english() {
         let i18n = I18n::new();
         // Spanish doesn't have this key, should fallback to English
-        assert_eq!(i18n.t(Locale::Es, "backup.created"), "Backup created successfully");
+        assert_eq!(
+            i18n.t(Locale::Es, "backup.created"),
+            "Backup created successfully"
+        );
     }
 
     #[test]

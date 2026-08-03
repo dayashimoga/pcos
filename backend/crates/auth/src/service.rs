@@ -10,23 +10,28 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 /// Register a new user account.
-pub async fn register(pool: &PgPool, state: &AppState, req: RegisterRequest) -> AppResult<AuthResponse> {
+pub async fn register(
+    pool: &PgPool,
+    state: &AppState,
+    req: RegisterRequest,
+) -> AppResult<AuthResponse> {
     // Validate inputs
     pcos_common::auth::validation::validate_email(&req.email)?;
     pcos_common::auth::validation::validate_password(&req.password)?;
 
     if req.display_name.trim().is_empty() || req.display_name.len() > 100 {
-        return Err(AppError::Validation("Display name must be 1-100 characters".to_string()));
+        return Err(AppError::Validation(
+            "Display name must be 1-100 characters".to_string(),
+        ));
     }
 
     // Check if email already exists
-    let existing = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)"
-    )
-    .bind(&req.email)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Database query failed: {e}")))?;
+    let existing =
+        sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)")
+            .bind(&req.email)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("Database query failed: {e}")))?;
 
     if existing {
         return Err(AppError::Conflict("Email already registered".to_string()));
@@ -58,7 +63,13 @@ pub async fn register(pool: &PgPool, state: &AppState, req: RegisterRequest) -> 
     store_refresh_token(pool, user.id, &tokens.refresh_token).await?;
 
     // Audit log
-    log_audit(pool, user.id, "user.registered", &format!("User {} registered", user.email)).await;
+    log_audit(
+        pool,
+        user.id,
+        "user.registered",
+        &format!("User {} registered", user.email),
+    )
+    .await;
 
     tracing::info!(user_id = %user.id, email = %user.email, "User registered");
 
@@ -71,19 +82,28 @@ pub async fn register(pool: &PgPool, state: &AppState, req: RegisterRequest) -> 
 /// Authenticate a user and return tokens.
 pub async fn login(pool: &PgPool, state: &AppState, req: LoginRequest) -> AppResult<AuthResponse> {
     // Find user by email
-    let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1 AND is_active = true")
-        .bind(&req.email)
-        .fetch_optional(pool)
-        .await?
-        .ok_or_else(|| AppError::Unauthorized("Invalid email or password".to_string()))?;
+    let user =
+        sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1 AND is_active = true")
+            .bind(&req.email)
+            .fetch_optional(pool)
+            .await?
+            .ok_or_else(|| AppError::Unauthorized("Invalid email or password".to_string()))?;
 
     // Verify password
     let valid = verify_password(&req.password, &user.password_hash)
         .map_err(|e| AppError::Internal(format!("Password verification failed: {e}")))?;
 
     if !valid {
-        log_audit(pool, user.id, "auth.login_failed", "Invalid password attempt").await;
-        return Err(AppError::Unauthorized("Invalid email or password".to_string()));
+        log_audit(
+            pool,
+            user.id,
+            "auth.login_failed",
+            "Invalid password attempt",
+        )
+        .await;
+        return Err(AppError::Unauthorized(
+            "Invalid email or password".to_string(),
+        ));
     }
 
     // Generate tokens
@@ -104,9 +124,14 @@ pub async fn login(pool: &PgPool, state: &AppState, req: LoginRequest) -> AppRes
 }
 
 /// Refresh an access token using a valid refresh token.
-pub async fn refresh(pool: &PgPool, state: &AppState, req: RefreshTokenRequest) -> AppResult<pcos_common::auth::jwt::TokenPair> {
+pub async fn refresh(
+    pool: &PgPool,
+    state: &AppState,
+    req: RefreshTokenRequest,
+) -> AppResult<pcos_common::auth::jwt::TokenPair> {
     // Validate the refresh token JWT
-    let token_data = pcos_common::auth::jwt::validate_token(&req.refresh_token, &state.config.auth.jwt_secret)?;
+    let token_data =
+        pcos_common::auth::jwt::validate_token(&req.refresh_token, &state.config.auth.jwt_secret)?;
     let claims = token_data.claims;
 
     // Check if refresh token is in the database and not revoked

@@ -5,8 +5,8 @@ use axum::Json;
 use pcos_common::auth::middleware::AuthUser;
 use pcos_common::error::AppError;
 use pcos_common::AppState;
-use serde::{Deserialize, Serialize};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 /// Generate a random Base32 TOTP secret (160-bit / 20 bytes)
 fn generate_totp_secret() -> String {
@@ -58,7 +58,9 @@ fn base32_decode(s: &str) -> Option<Vec<u8>> {
     let mut buffer: u64 = 0;
     let mut bits = 0;
     for c in s.chars() {
-        let val = ALPHABET.iter().position(|&b| b == c.to_ascii_uppercase() as u8)? as u64;
+        let val = ALPHABET
+            .iter()
+            .position(|&b| b == c.to_ascii_uppercase() as u8)? as u64;
         buffer = (buffer << 5) | val;
         bits += 5;
         if bits >= 8 {
@@ -100,7 +102,8 @@ fn current_time_step() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
-        .as_secs() / 30
+        .as_secs()
+        / 30
 }
 
 /// Verify TOTP code — checks current step ±1 for clock skew tolerance
@@ -109,7 +112,9 @@ fn verify_totp(secret: &str, code: &str) -> bool {
     for offset in [0i64, -1, 1] {
         let s = (step as i64 + offset) as u64;
         if let Some(expected) = compute_totp(secret, s) {
-            if expected == code { return true; }
+            if expected == code {
+                return true;
+            }
         }
     }
     false
@@ -122,13 +127,16 @@ pub struct VerifyTotpRequest {
 
 /// POST /api/v1/auth/mfa/setup — generate TOTP secret and provisioning URI
 pub async fn setup_totp(
-    State(state): State<AppState>, auth: AuthUser,
+    State(state): State<AppState>,
+    auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let pool = state.db.pool();
 
     // Check if already enabled
     let enabled: (bool,) = sqlx::query_as("SELECT totp_enabled FROM users WHERE id = $1")
-        .bind(auth.claims.sub).fetch_one(pool).await
+        .bind(auth.claims.sub)
+        .fetch_one(pool)
+        .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if enabled.0 {
@@ -139,12 +147,17 @@ pub async fn setup_totp(
 
     // Store secret (not yet enabled — needs verification)
     sqlx::query("UPDATE users SET totp_secret = $1 WHERE id = $2")
-        .bind(&secret).bind(auth.claims.sub).execute(pool).await
+        .bind(&secret)
+        .bind(auth.claims.sub)
+        .execute(pool)
+        .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
     // Get user email for provisioning URI
     let (email,): (String,) = sqlx::query_as("SELECT email FROM users WHERE id = $1")
-        .bind(auth.claims.sub).fetch_one(pool).await
+        .bind(auth.claims.sub)
+        .fetch_one(pool)
+        .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let uri = format!(
@@ -152,24 +165,34 @@ pub async fn setup_totp(
         email, secret
     );
 
-    Ok((StatusCode::OK, Json(serde_json::json!({
-        "secret": secret,
-        "provisioning_uri": uri,
-        "message": "Scan the QR code with your authenticator app, then verify with POST /api/v1/auth/mfa/verify",
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "secret": secret,
+            "provisioning_uri": uri,
+            "message": "Scan the QR code with your authenticator app, then verify with POST /api/v1/auth/mfa/verify",
+        })),
+    ))
 }
 
 /// POST /api/v1/auth/mfa/verify — verify TOTP code and enable MFA
 pub async fn verify_totp_setup(
-    State(state): State<AppState>, auth: AuthUser, Json(req): Json<VerifyTotpRequest>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<VerifyTotpRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let pool = state.db.pool();
 
-    let (secret,): (Option<String>,) = sqlx::query_as("SELECT totp_secret FROM users WHERE id = $1")
-        .bind(auth.claims.sub).fetch_one(pool).await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let (secret,): (Option<String>,) =
+        sqlx::query_as("SELECT totp_secret FROM users WHERE id = $1")
+            .bind(auth.claims.sub)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    let secret = secret.ok_or_else(|| AppError::Validation("TOTP not set up. Call /mfa/setup first".to_string()))?;
+    let secret = secret.ok_or_else(|| {
+        AppError::Validation("TOTP not set up. Call /mfa/setup first".to_string())
+    })?;
 
     if !verify_totp(&secret, &req.code) {
         return Err(AppError::Unauthorized("Invalid TOTP code".to_string()));
@@ -177,22 +200,30 @@ pub async fn verify_totp_setup(
 
     // Enable MFA
     sqlx::query("UPDATE users SET totp_enabled = true, totp_verified_at = NOW() WHERE id = $1")
-        .bind(auth.claims.sub).execute(pool).await
+        .bind(auth.claims.sub)
+        .execute(pool)
+        .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    Ok(Json(serde_json::json!({ "message": "MFA enabled successfully" })))
+    Ok(Json(
+        serde_json::json!({ "message": "MFA enabled successfully" }),
+    ))
 }
 
 /// POST /api/v1/auth/mfa/disable — disable MFA (requires valid TOTP code)
 pub async fn disable_totp(
-    State(state): State<AppState>, auth: AuthUser, Json(req): Json<VerifyTotpRequest>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<VerifyTotpRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let pool = state.db.pool();
 
-    let (secret, enabled): (Option<String>, bool) = sqlx::query_as(
-        "SELECT totp_secret, totp_enabled FROM users WHERE id = $1"
-    ).bind(auth.claims.sub).fetch_one(pool).await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let (secret, enabled): (Option<String>, bool) =
+        sqlx::query_as("SELECT totp_secret, totp_enabled FROM users WHERE id = $1")
+            .bind(auth.claims.sub)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if !enabled {
         return Err(AppError::Validation("MFA is not enabled".to_string()));
@@ -213,12 +244,15 @@ pub async fn disable_totp(
 
 /// GET /api/v1/auth/mfa/status
 pub async fn mfa_status(
-    State(state): State<AppState>, auth: AuthUser,
+    State(state): State<AppState>,
+    auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let (enabled, verified_at): (bool, Option<chrono::DateTime<chrono::Utc>>) = sqlx::query_as(
-        "SELECT totp_enabled, totp_verified_at FROM users WHERE id = $1"
-    ).bind(auth.claims.sub).fetch_one(state.db.pool()).await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let (enabled, verified_at): (bool, Option<chrono::DateTime<chrono::Utc>>) =
+        sqlx::query_as("SELECT totp_enabled, totp_verified_at FROM users WHERE id = $1")
+            .bind(auth.claims.sub)
+            .fetch_one(state.db.pool())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(Json(serde_json::json!({
         "mfa_enabled": enabled,

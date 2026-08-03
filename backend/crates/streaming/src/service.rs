@@ -2,7 +2,7 @@
 //!
 //! Manages media transcoding via Docker-based FFmpeg, serves HLS streams,
 //! and provides media metadata probing.
-//! 
+//!
 //! Architecture: Backend dispatches transcoding jobs to the `pcos-transcoder` Docker
 //! container. Transcoded HLS segments are stored alongside the original file.
 
@@ -24,9 +24,9 @@ pub enum TranscodeStatus {
 /// Transcoding profile — determines output quality levels.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TranscodeProfile {
-    Adaptive,   // 360p + 720p + 1080p HLS
-    AudioOnly,  // HLS audio + MP3 fallback
-    Thumbnail,  // Preview thumbnail + sprite sheet
+    Adaptive,  // 360p + 720p + 1080p HLS
+    AudioOnly, // HLS audio + MP3 fallback
+    Thumbnail, // Preview thumbnail + sprite sheet
 }
 
 impl TranscodeProfile {
@@ -97,29 +97,45 @@ pub async fn queue_transcode(
 pub async fn execute_transcode(pool: &PgPool, job_id: Uuid) -> AppResult<TranscodeJob> {
     // Mark as processing
     sqlx::query("UPDATE transcode_jobs SET status = 'processing' WHERE id = $1")
-        .bind(job_id).execute(pool).await?;
+        .bind(job_id)
+        .execute(pool)
+        .await?;
 
-    let job: TranscodeJob = sqlx::query_as(
-        "SELECT * FROM transcode_jobs WHERE id = $1"
-    ).bind(job_id).fetch_one(pool).await?;
+    let job: TranscodeJob = sqlx::query_as("SELECT * FROM transcode_jobs WHERE id = $1")
+        .bind(job_id)
+        .fetch_one(pool)
+        .await?;
 
     // Run FFmpeg via Docker
     let output = tokio::process::Command::new("docker")
         .args([
-            "run", "--rm",
-            "-v", &format!("{}:{}", std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or("/data/pcos/storage".into()), "/data"),
+            "run",
+            "--rm",
+            "-v",
+            &format!(
+                "{}:{}",
+                std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or("/data/pcos/storage".into()),
+                "/data"
+            ),
             "pcos-transcoder:latest",
-            "transcode", &job.input_path, &job.output_dir, &job.profile,
+            "transcode",
+            &job.input_path,
+            &job.output_dir,
+            &job.profile,
         ])
         .output()
         .await
         .map_err(|e| AppError::Internal(format!("Docker transcode failed: {e}")))?;
 
     if output.status.success() {
-        let master = format!("{}/{}.m3u8", job.output_dir,
-            std::path::Path::new(&job.input_path).file_stem()
+        let master = format!(
+            "{}/{}.m3u8",
+            job.output_dir,
+            std::path::Path::new(&job.input_path)
+                .file_stem()
                 .map(|s| s.to_string_lossy().to_string())
-                .unwrap_or("stream".into()));
+                .unwrap_or("stream".into())
+        );
 
         sqlx::query(
             "UPDATE transcode_jobs SET status = 'completed', master_playlist = $1, completed_at = NOW() WHERE id = $2"
@@ -136,7 +152,9 @@ pub async fn execute_transcode(pool: &PgPool, job_id: Uuid) -> AppResult<Transco
     }
 
     sqlx::query_as("SELECT * FROM transcode_jobs WHERE id = $1")
-        .bind(job_id).fetch_one(pool).await
+        .bind(job_id)
+        .fetch_one(pool)
+        .await
         .map_err(|e| AppError::Internal(e.to_string()))
 }
 
@@ -144,10 +162,17 @@ pub async fn execute_transcode(pool: &PgPool, job_id: Uuid) -> AppResult<Transco
 pub async fn probe_media(file_path: &str) -> AppResult<MediaInfo> {
     let output = tokio::process::Command::new("docker")
         .args([
-            "run", "--rm",
-            "-v", &format!("{}:{}", std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or("/data/pcos/storage".into()), "/data"),
+            "run",
+            "--rm",
+            "-v",
+            &format!(
+                "{}:{}",
+                std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or("/data/pcos/storage".into()),
+                "/data"
+            ),
             "pcos-transcoder:latest",
-            "probe", file_path,
+            "probe",
+            file_path,
         ])
         .output()
         .await
@@ -161,12 +186,24 @@ pub async fn probe_media(file_path: &str) -> AppResult<MediaInfo> {
     let streams = probe["streams"].as_array();
 
     let mut info = MediaInfo {
-        duration_secs: format["duration"].as_str().and_then(|s| s.parse().ok()).unwrap_or(0.0),
-        width: None, height: None,
-        video_codec: None, audio_codec: None,
-        bitrate_kbps: format["bit_rate"].as_str().and_then(|s| s.parse::<u64>().ok()).map(|b| b / 1000),
-        format: format["format_name"].as_str().unwrap_or("unknown").to_string(),
-        has_video: false, has_audio: false,
+        duration_secs: format["duration"]
+            .as_str()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0.0),
+        width: None,
+        height: None,
+        video_codec: None,
+        audio_codec: None,
+        bitrate_kbps: format["bit_rate"]
+            .as_str()
+            .and_then(|s| s.parse::<u64>().ok())
+            .map(|b| b / 1000),
+        format: format["format_name"]
+            .as_str()
+            .unwrap_or("unknown")
+            .to_string(),
+        has_video: false,
+        has_audio: false,
     };
 
     if let Some(streams) = streams {
@@ -193,16 +230,22 @@ pub async fn probe_media(file_path: &str) -> AppResult<MediaInfo> {
 /// List transcoding jobs for a user.
 pub async fn list_jobs(pool: &PgPool, user_id: Uuid) -> AppResult<Vec<TranscodeJob>> {
     Ok(sqlx::query_as::<_, TranscodeJob>(
-        "SELECT * FROM transcode_jobs WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50"
-    ).bind(user_id).fetch_all(pool).await?)
+        "SELECT * FROM transcode_jobs WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await?)
 }
 
 /// Get the HLS stream URL for a completed transcoding job.
 pub async fn get_stream_url(pool: &PgPool, job_id: Uuid, user_id: Uuid) -> AppResult<String> {
-    let job: TranscodeJob = sqlx::query_as(
-        "SELECT * FROM transcode_jobs WHERE id = $1 AND user_id = $2"
-    ).bind(job_id).bind(user_id).fetch_one(pool).await
-    .map_err(|_| AppError::NotFound("Transcode job not found".into()))?;
+    let job: TranscodeJob =
+        sqlx::query_as("SELECT * FROM transcode_jobs WHERE id = $1 AND user_id = $2")
+            .bind(job_id)
+            .bind(user_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|_| AppError::NotFound("Transcode job not found".into()))?;
 
     job.master_playlist
         .ok_or_else(|| AppError::Validation("Transcoding not yet completed".into()))

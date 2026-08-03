@@ -44,14 +44,18 @@ pub struct HookContext {
 /// Result from a plugin hook execution.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HookResult {
-    pub allow: bool,           // false = block the operation
+    pub allow: bool, // false = block the operation
     pub modified_data: Option<serde_json::Value>,
     pub message: Option<String>,
 }
 
 impl Default for HookResult {
     fn default() -> Self {
-        Self { allow: true, modified_data: None, message: None }
+        Self {
+            allow: true,
+            modified_data: None,
+            message: None,
+        }
     }
 }
 
@@ -85,7 +89,9 @@ pub struct PluginRegistry {
 
 impl PluginRegistry {
     pub fn new() -> Self {
-        Self { plugins: Vec::new() }
+        Self {
+            plugins: Vec::new(),
+        }
     }
 
     pub fn register(&mut self, plugin: Box<dyn Plugin>) {
@@ -132,15 +138,22 @@ mod tests {
     impl Plugin for TestPlugin {
         fn manifest(&self) -> &PluginManifest {
             &PluginManifest {
-                id: "test".into(), name: "Test Plugin".into(), version: "1.0".into(),
-                description: "A test plugin".into(), author: "PCOS".into(),
+                id: "test".into(),
+                name: "Test Plugin".into(),
+                version: "1.0".into(),
+                description: "A test plugin".into(),
+                author: "PCOS".into(),
                 hooks: vec![HookType::AfterUpload],
             }
         }
 
         // Workaround: return owned manifest
         async fn on_hook(&self, _hook: HookType, _ctx: HookContext) -> HookResult {
-            HookResult { allow: true, modified_data: None, message: Some("processed".into()) }
+            HookResult {
+                allow: true,
+                modified_data: None,
+                message: Some("processed".into()),
+            }
         }
     }
 
@@ -151,9 +164,19 @@ mod tests {
 
         // Can't easily test with trait object lifetime issues in simple test,
         // but structure is correct for production use.
-        assert!(registry.check_allowed(HookType::AfterUpload, HookContext {
-            user_id: Uuid::nil(), file_id: None, file_name: None,
-            mime_type: None, metadata: serde_json::Value::Null,
-        }).await);
+        assert!(
+            registry
+                .check_allowed(
+                    HookType::AfterUpload,
+                    HookContext {
+                        user_id: Uuid::nil(),
+                        file_id: None,
+                        file_name: None,
+                        mime_type: None,
+                        metadata: serde_json::Value::Null,
+                    }
+                )
+                .await
+        );
     }
 }

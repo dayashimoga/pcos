@@ -31,7 +31,9 @@ impl EmailSender {
         Self {
             host,
             port: std::env::var("PCOS_SMTP_PORT")
-                .ok().and_then(|p| p.parse().ok()).unwrap_or(587),
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(587),
             username: std::env::var("PCOS_SMTP_USER").ok(),
             password: std::env::var("PCOS_SMTP_PASS").ok(),
             from_address: std::env::var("PCOS_SMTP_FROM")
@@ -61,7 +63,8 @@ impl EmailSender {
         let stream = tokio::time::timeout(
             Duration::from_secs(10),
             tokio::net::TcpStream::connect(&addr),
-        ).await
+        )
+        .await
         .map_err(|_| AppError::Internal("SMTP connection timeout".to_string()))?
         .map_err(|e| AppError::Internal(format!("SMTP connection failed: {e}")))?;
 
@@ -71,8 +74,12 @@ impl EmailSender {
 
         // Helper to read SMTP response
         let mut buf = vec![0u8; 1024];
-        let read_response = |r: &mut tokio::io::ReadHalf<tokio::net::TcpStream>, b: &mut Vec<u8>| async move {
-            let n = r.read(b).await.map_err(|e| AppError::Internal(format!("SMTP read: {e}")))?;
+        let read_response = |r: &mut tokio::io::ReadHalf<tokio::net::TcpStream>,
+                             b: &mut Vec<u8>| async move {
+            let n = r
+                .read(b)
+                .await
+                .map_err(|e| AppError::Internal(format!("SMTP read: {e}")))?;
             let resp = String::from_utf8_lossy(&b[..n]).to_string();
             Ok::<String, AppError>(resp)
         };
@@ -81,14 +88,18 @@ impl EmailSender {
         let _ = read_response(&mut reader, &mut buf).await?;
 
         // EHLO
-        writer.write_all(format!("EHLO pcos\r\n").as_bytes()).await
+        writer
+            .write_all(format!("EHLO pcos\r\n").as_bytes())
+            .await
             .map_err(|e| AppError::Internal(format!("SMTP write: {e}")))?;
         let _ = read_response(&mut reader, &mut buf).await?;
 
         // AUTH if credentials provided
         if let (Some(user), Some(pass)) = (&self.username, &self.password) {
             let credentials = base64_encode(&format!("\0{}\0{}", user, pass));
-            writer.write_all(format!("AUTH PLAIN {}\r\n", credentials).as_bytes()).await
+            writer
+                .write_all(format!("AUTH PLAIN {}\r\n", credentials).as_bytes())
+                .await
                 .map_err(|e| AppError::Internal(format!("SMTP auth: {e}")))?;
             let resp = read_response(&mut reader, &mut buf).await?;
             if !resp.starts_with("235") {
@@ -97,22 +108,30 @@ impl EmailSender {
         }
 
         // MAIL FROM
-        writer.write_all(format!("MAIL FROM:<{}>\r\n", self.from_address).as_bytes()).await
+        writer
+            .write_all(format!("MAIL FROM:<{}>\r\n", self.from_address).as_bytes())
+            .await
             .map_err(|e| AppError::Internal(format!("SMTP: {e}")))?;
         let _ = read_response(&mut reader, &mut buf).await?;
 
         // RCPT TO
-        writer.write_all(format!("RCPT TO:<{}>\r\n", msg.to).as_bytes()).await
+        writer
+            .write_all(format!("RCPT TO:<{}>\r\n", msg.to).as_bytes())
+            .await
             .map_err(|e| AppError::Internal(format!("SMTP: {e}")))?;
         let _ = read_response(&mut reader, &mut buf).await?;
 
         // DATA
-        writer.write_all(b"DATA\r\n").await
+        writer
+            .write_all(b"DATA\r\n")
+            .await
             .map_err(|e| AppError::Internal(format!("SMTP: {e}")))?;
         let _ = read_response(&mut reader, &mut buf).await?;
 
         // Message body + terminator
-        writer.write_all(format!("{}\r\n.\r\n", mime_msg).as_bytes()).await
+        writer
+            .write_all(format!("{}\r\n.\r\n", mime_msg).as_bytes())
+            .await
             .map_err(|e| AppError::Internal(format!("SMTP: {e}")))?;
         let resp = read_response(&mut reader, &mut buf).await?;
 
@@ -147,7 +166,12 @@ impl EmailSender {
         }).await
     }
 
-    pub async fn send_backup_complete(&self, to: &str, backup_name: &str, file_count: i64) -> AppResult<()> {
+    pub async fn send_backup_complete(
+        &self,
+        to: &str,
+        backup_name: &str,
+        file_count: i64,
+    ) -> AppResult<()> {
         self.send(&EmailMessage {
             to: to.to_string(),
             subject: format!("Backup Complete: {}", backup_name),
@@ -159,7 +183,13 @@ impl EmailSender {
         }).await
     }
 
-    pub async fn send_share_notification(&self, to: &str, sharer_name: &str, file_name: &str, share_url: &str) -> AppResult<()> {
+    pub async fn send_share_notification(
+        &self,
+        to: &str,
+        sharer_name: &str,
+        file_name: &str,
+        share_url: &str,
+    ) -> AppResult<()> {
         self.send(&EmailMessage {
             to: to.to_string(),
             subject: format!("{} shared a file with you", sharer_name),

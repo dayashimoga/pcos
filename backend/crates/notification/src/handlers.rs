@@ -26,7 +26,9 @@ pub struct NotificationRow {
 
 /// POST /api/v1/notifications
 pub async fn create_notification(
-    State(s): State<AppState>, auth: AuthUser, Json(req): Json<CreateNotificationRequest>,
+    State(s): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<CreateNotificationRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let target_user_id = req.user_id.unwrap_or(auth.claims.sub);
 
@@ -42,7 +44,8 @@ pub async fn create_notification(
 
 /// GET /api/v1/notifications
 pub async fn list_notifications(
-    State(s): State<AppState>, auth: AuthUser,
+    State(s): State<AppState>,
+    auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let rows = sqlx::query_as::<_, NotificationRow>(
         "SELECT id, title, body, is_read, created_at FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50"
@@ -50,44 +53,70 @@ pub async fn list_notifications(
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let total = rows.len();
-    Ok(Json(serde_json::json!({ "notifications": rows, "total": total })))
+    Ok(Json(
+        serde_json::json!({ "notifications": rows, "total": total }),
+    ))
 }
 
 /// PUT /api/v1/notifications/:id/read
 pub async fn mark_read(
-    State(s): State<AppState>, auth: AuthUser, Path(id): Path<Uuid>,
+    State(s): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
     sqlx::query("UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2")
-        .bind(id).bind(auth.claims.sub).execute(s.db.pool()).await
+        .bind(id)
+        .bind(auth.claims.sub)
+        .execute(s.db.pool())
+        .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
     Ok(Json(serde_json::json!({ "message": "Marked as read" })))
 }
 
 /// POST /api/v1/notifications/read-all
 pub async fn mark_all_read(
-    State(s): State<AppState>, auth: AuthUser,
+    State(s): State<AppState>,
+    auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let result = sqlx::query("UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false")
-        .bind(auth.claims.sub).execute(s.db.pool()).await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-    Ok(Json(serde_json::json!({ "message": "All marked as read", "count": result.rows_affected() })))
+    let result = sqlx::query(
+        "UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false",
+    )
+    .bind(auth.claims.sub)
+    .execute(s.db.pool())
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+    Ok(Json(
+        serde_json::json!({ "message": "All marked as read", "count": result.rows_affected() }),
+    ))
 }
 
 /// GET /api/v1/notifications/unread-count
 pub async fn unread_count(
-    State(s): State<AppState>, auth: AuthUser,
+    State(s): State<AppState>,
+    auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false")
-        .bind(auth.claims.sub).fetch_one(s.db.pool()).await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let row: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false")
+            .bind(auth.claims.sub)
+            .fetch_one(s.db.pool())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
     Ok(Json(serde_json::json!({ "unread_count": row.0 })))
 }
 
 /// System helper — create notification programmatically from other services
-pub async fn create_system_notification(pool: &sqlx::PgPool, user_id: Uuid, title: &str, body: &str) -> Result<(), AppError> {
+pub async fn create_system_notification(
+    pool: &sqlx::PgPool,
+    user_id: Uuid,
+    title: &str,
+    body: &str,
+) -> Result<(), AppError> {
     sqlx::query("INSERT INTO notifications (user_id, title, body) VALUES ($1, $2, $3)")
-        .bind(user_id).bind(title).bind(body)
-        .execute(pool).await
+        .bind(user_id)
+        .bind(title)
+        .bind(body)
+        .execute(pool)
+        .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
     Ok(())
 }
@@ -95,7 +124,8 @@ pub async fn create_system_notification(pool: &sqlx::PgPool, user_id: Uuid, titl
 // ─── Web Push Handlers ──────────────────────────────────
 
 pub async fn push_subscribe(
-    State(s): State<AppState>, auth: AuthUser,
+    State(s): State<AppState>,
+    auth: AuthUser,
     Json(req): Json<crate::web_push::SubscribeRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let sub = crate::web_push::subscribe(s.db.pool(), auth.claims.sub, req, None).await?;
@@ -103,24 +133,30 @@ pub async fn push_subscribe(
 }
 
 pub async fn push_unsubscribe(
-    State(s): State<AppState>, auth: AuthUser,
+    State(s): State<AppState>,
+    auth: AuthUser,
     Json(req): Json<serde_json::Value>,
 ) -> Result<impl IntoResponse, AppError> {
-    let endpoint = req["endpoint"].as_str()
+    let endpoint = req["endpoint"]
+        .as_str()
         .ok_or_else(|| AppError::Validation("Missing endpoint".to_string()))?;
     crate::web_push::unsubscribe(s.db.pool(), auth.claims.sub, endpoint).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn push_list(
-    State(s): State<AppState>, auth: AuthUser,
+    State(s): State<AppState>,
+    auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let subs = crate::web_push::list_subscriptions(s.db.pool(), auth.claims.sub).await?;
-    Ok(Json(serde_json::json!({ "subscriptions": subs, "total": subs.len() })))
+    Ok(Json(
+        serde_json::json!({ "subscriptions": subs, "total": subs.len() }),
+    ))
 }
 
 pub async fn push_send(
-    State(s): State<AppState>, auth: AuthUser,
+    State(s): State<AppState>,
+    auth: AuthUser,
     Json(payload): Json<crate::web_push::PushPayload>,
 ) -> Result<impl IntoResponse, AppError> {
     let sent = crate::web_push::send_push(s.db.pool(), auth.claims.sub, &payload).await?;

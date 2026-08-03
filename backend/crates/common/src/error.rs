@@ -126,7 +126,10 @@ mod tests {
             AppError::Validation("test".into()).status_code(),
             StatusCode::UNPROCESSABLE_ENTITY
         );
-        assert_eq!(AppError::RateLimited.status_code(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(
+            AppError::RateLimited.status_code(),
+            StatusCode::TOO_MANY_REQUESTS
+        );
     }
 
     #[test]

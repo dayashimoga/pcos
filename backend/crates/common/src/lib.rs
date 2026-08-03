@@ -23,7 +23,11 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(db: DatabasePool, config: AppConfig) -> Self {
-        Self { db, config, search_index: None }
+        Self {
+            db,
+            config,
+            search_index: None,
+        }
     }
 
     pub fn with_search_index(mut self, index: Arc<dyn std::any::Any + Send + Sync>) -> Self {

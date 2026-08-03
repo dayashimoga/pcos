@@ -1,11 +1,11 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{doc, Index, IndexReader, IndexWriter, ReloadPolicy};
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use std::sync::Arc;
 
 /// Tantivy-based search index for file metadata.
 pub struct SearchIndex {
@@ -45,7 +45,8 @@ impl SearchIndex {
             Index::create_in_dir(&path, schema.clone())?
         };
 
-        let reader = index.reader_builder()
+        let reader = index
+            .reader_builder()
             .reload_policy(ReloadPolicy::OnCommitWithDelay)
             .try_into()?;
 
@@ -102,18 +103,18 @@ impl SearchIndex {
         limit: usize,
     ) -> Result<Vec<SearchResult>, tantivy::TantivyError> {
         let searcher = self.reader.searcher();
-        let query_parser = QueryParser::for_index(&self.index, vec![self.name_field, self.content_field]);
+        let query_parser =
+            QueryParser::for_index(&self.index, vec![self.name_field, self.content_field]);
 
         // Combine user filter with search query
         let full_query = format!("user_id:{} AND ({})", user_id, query_str);
-        let query = query_parser.parse_query(&full_query)
-            .unwrap_or_else(|_| {
-                // Fallback to just name search
-                let simple = query_parser.parse_query(query_str).unwrap_or_else(|_| {
-                    Box::new(tantivy::query::AllQuery)
-                });
-                simple
-            });
+        let query = query_parser.parse_query(&full_query).unwrap_or_else(|_| {
+            // Fallback to just name search
+            let simple = query_parser
+                .parse_query(query_str)
+                .unwrap_or_else(|_| Box::new(tantivy::query::AllQuery));
+            simple
+        });
 
         let top_docs = searcher.search(&query, &TopDocs::with_limit(limit))?;
 
@@ -121,19 +122,23 @@ impl SearchIndex {
         for (_score, doc_address) in top_docs {
             let doc: tantivy::TantivyDocument = searcher.doc(doc_address)?;
 
-            let id = doc.get_first(self.id_field)
+            let id = doc
+                .get_first(self.id_field)
                 .and_then(|v| v.as_str())
                 .unwrap_or_default()
                 .to_string();
-            let name = doc.get_first(self.name_field)
+            let name = doc
+                .get_first(self.name_field)
                 .and_then(|v| v.as_str())
                 .unwrap_or_default()
                 .to_string();
-            let mime = doc.get_first(self.mime_type_field)
+            let mime = doc
+                .get_first(self.mime_type_field)
                 .and_then(|v| v.as_str())
                 .unwrap_or_default()
                 .to_string();
-            let etype = doc.get_first(self.entry_type_field)
+            let etype = doc
+                .get_first(self.entry_type_field)
                 .and_then(|v| v.as_str())
                 .unwrap_or_default()
                 .to_string();

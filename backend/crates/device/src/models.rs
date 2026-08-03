@@ -22,7 +22,11 @@ pub struct Device {
 /// Request DTO for registering a new device.
 #[derive(Debug, Deserialize, Validate)]
 pub struct RegisterDeviceRequest {
-    #[validate(length(min = 1, max = 100, message = "Device name is required (max 100 chars)"))]
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Device name is required (max 100 chars)"
+    ))]
     pub name: String,
 
     #[validate(length(min = 1, max = 50, message = "Device type is required"))]

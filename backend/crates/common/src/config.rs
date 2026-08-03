@@ -84,8 +84,14 @@ mod tests {
     #[test]
     fn test_config_defaults() {
         // Clear any existing env vars that might interfere
-        std::env::set_var("PCOS_DATABASE__URL", "postgresql://test:test@localhost/test");
-        std::env::set_var("PCOS_AUTH__JWT_SECRET", "test-secret-that-is-long-enough-for-testing-purposes-64-chars!!");
+        std::env::set_var(
+            "PCOS_DATABASE__URL",
+            "postgresql://test:test@localhost/test",
+        );
+        std::env::set_var(
+            "PCOS_AUTH__JWT_SECRET",
+            "test-secret-that-is-long-enough-for-testing-purposes-64-chars!!",
+        );
 
         let config = AppConfig::load().expect("Failed to load config");
         assert_eq!(config.server.host, "0.0.0.0");

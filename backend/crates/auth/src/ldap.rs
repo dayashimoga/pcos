@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 /// LDAP server configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LdapConfig {
-    pub server_url: String,          // ldap://ldap.example.com:389 or ldaps://...
-    pub bind_dn: String,             // cn=admin,dc=example,dc=com
+    pub server_url: String, // ldap://ldap.example.com:389 or ldaps://...
+    pub bind_dn: String,    // cn=admin,dc=example,dc=com
     pub bind_password: String,
     pub base_dn: String,             // dc=example,dc=com
     pub user_search_filter: String,  // (&(objectClass=person)(uid={0}))
@@ -67,9 +67,15 @@ impl LdapConfig {
 
 /// Authenticate a user against LDAP.
 /// In production, use the `ldap3` crate for async LDAP operations.
-pub async fn authenticate(config: &LdapConfig, username: &str, password: &str) -> AppResult<LdapUser> {
+pub async fn authenticate(
+    config: &LdapConfig,
+    username: &str,
+    password: &str,
+) -> AppResult<LdapUser> {
     if !config.enabled {
-        return Err(AppError::Internal("LDAP authentication is not enabled".into()));
+        return Err(AppError::Internal(
+            "LDAP authentication is not enabled".into(),
+        ));
     }
 
     // Production implementation with `ldap3` crate:

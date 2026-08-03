@@ -23,13 +23,17 @@ pub async fn extract_text(file_path: &Path, mime_type: &str) -> AppResult<Extrac
         "text/plain" | "text/markdown" | "text/csv" | "text/html" | "application/json"
         | "application/xml" | "text/xml" => extract_plaintext(file_path).await,
         m if m.starts_with("image/") => extract_ocr(file_path).await,
-        _ => Err(AppError::Validation(format!("Unsupported MIME type for extraction: {}", mime_type))),
+        _ => Err(AppError::Validation(format!(
+            "Unsupported MIME type for extraction: {}",
+            mime_type
+        ))),
     }
 }
 
 /// Extract text from plain text files (direct read).
 async fn extract_plaintext(path: &Path) -> AppResult<ExtractionResult> {
-    let text = tokio::fs::read_to_string(path).await
+    let text = tokio::fs::read_to_string(path)
+        .await
         .map_err(|e| AppError::Internal(format!("Failed to read file: {e}")))?;
 
     // Limit to first 1MB of text for indexing
@@ -51,7 +55,8 @@ async fn extract_plaintext(path: &Path) -> AppResult<ExtractionResult> {
 /// Extract text from PDF files using basic text stream parsing.
 /// For production, integrate with `poppler` or `pdf-extract` crate.
 async fn extract_pdf(path: &Path) -> AppResult<ExtractionResult> {
-    let data = tokio::fs::read(path).await
+    let data = tokio::fs::read(path)
+        .await
         .map_err(|e| AppError::Internal(format!("Failed to read PDF: {e}")))?;
 
     // Simple PDF text extraction — find text between BT/ET markers
@@ -102,11 +107,17 @@ async fn extract_ocr(path: &Path) -> AppResult<ExtractionResult> {
     let output = tokio::process::Command::new("tesseract")
         .arg(path.to_string_lossy().as_ref())
         .arg("stdout")
-        .arg("--psm").arg("3") // Fully automatic page segmentation
-        .arg("-l").arg("eng") // English language
+        .arg("--psm")
+        .arg("3") // Fully automatic page segmentation
+        .arg("-l")
+        .arg("eng") // English language
         .output()
         .await
-        .map_err(|e| AppError::Internal(format!("Tesseract not available: {e}. Install with: apt-get install tesseract-ocr")))?;
+        .map_err(|e| {
+            AppError::Internal(format!(
+                "Tesseract not available: {e}. Install with: apt-get install tesseract-ocr"
+            ))
+        })?;
 
     if !output.status.success() {
         let err = String::from_utf8_lossy(&output.stderr);
@@ -140,7 +151,8 @@ pub async fn extract_metadata(path: &Path) -> AppResult<serde_json::Value> {
         }
         _ => {
             // Fallback: return basic file metadata
-            let meta = tokio::fs::metadata(path).await
+            let meta = tokio::fs::metadata(path)
+                .await
                 .map_err(|e| AppError::Internal(e.to_string()))?;
             Ok(serde_json::json!({
                 "size_bytes": meta.len(),

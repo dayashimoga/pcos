@@ -1,29 +1,49 @@
+use chrono::{DateTime, Utc};
 use pcos_common::error::{AppError, AppResult};
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, sqlx::FromRow, Serialize)]
 pub struct Backup {
-    pub id: Uuid, pub user_id: Uuid, pub name: String, pub status: String,
-    pub size_bytes: i64, pub file_count: i64, pub storage_path: String,
-    pub created_at: DateTime<Utc>, pub completed_at: Option<DateTime<Utc>>,
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub name: String,
+    pub status: String,
+    pub size_bytes: i64,
+    pub file_count: i64,
+    pub storage_path: String,
+    pub created_at: DateTime<Utc>,
+    pub completed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow, Serialize)]
 pub struct BackupSchedule {
-    pub id: Uuid, pub user_id: Uuid, pub name: String, pub cron_expression: String,
-    pub is_active: bool, pub last_run_at: Option<DateTime<Utc>>, pub created_at: DateTime<Utc>,
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub name: String,
+    pub cron_expression: String,
+    pub is_active: bool,
+    pub last_run_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CreateBackupRequest { pub name: String }
+pub struct CreateBackupRequest {
+    pub name: String,
+}
 
 #[derive(Debug, Deserialize)]
-pub struct CreateScheduleRequest { pub name: String, pub cron_expression: String }
+pub struct CreateScheduleRequest {
+    pub name: String,
+    pub cron_expression: String,
+}
 
-pub async fn create_backup(pool: &PgPool, user_id: Uuid, req: CreateBackupRequest) -> AppResult<Backup> {
+pub async fn create_backup(
+    pool: &PgPool,
+    user_id: Uuid,
+    req: CreateBackupRequest,
+) -> AppResult<Backup> {
     let backup_id = Uuid::new_v4();
     let storage_path = format!("backups/{}/{}", user_id, backup_id);
 
@@ -34,9 +54,11 @@ pub async fn create_backup(pool: &PgPool, user_id: Uuid, req: CreateBackupReques
         .bind(user_id).fetch_one(pool).await.unwrap_or((None,));
 
     // Get base storage path from environment
-    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".to_string());
+    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
+        .unwrap_or_else(|_| "/data/pcos/storage".to_string());
     let backup_dir = format!("{}/{}", base_path, storage_path);
-    tokio::fs::create_dir_all(&backup_dir).await
+    tokio::fs::create_dir_all(&backup_dir)
+        .await
         .map_err(|e| AppError::Internal(format!("Failed to create backup directory: {e}")))?;
 
     // Collect file entries with storage paths
@@ -53,7 +75,9 @@ pub async fn create_backup(pool: &PgPool, user_id: Uuid, req: CreateBackupReques
             let dst = format!("{}/{}", backup_dir, file_id);
             match tokio::fs::copy(&src, &dst).await {
                 Ok(_) => copied += 1,
-                Err(e) => tracing::warn!(file_id = %file_id, error = %e, "Failed to copy file to backup"),
+                Err(e) => {
+                    tracing::warn!(file_id = %file_id, error = %e, "Failed to copy file to backup")
+                }
             }
         }
     }
@@ -71,8 +95,12 @@ pub async fn create_backup(pool: &PgPool, user_id: Uuid, req: CreateBackupReques
         }).collect::<Vec<_>>(),
     });
     let manifest_path = format!("{}/manifest.json", backup_dir);
-    tokio::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest).unwrap_or_default()).await
-        .map_err(|e| AppError::Internal(format!("Failed to write manifest: {e}")))?;
+    tokio::fs::write(
+        &manifest_path,
+        serde_json::to_string_pretty(&manifest).unwrap_or_default(),
+    )
+    .await
+    .map_err(|e| AppError::Internal(format!("Failed to write manifest: {e}")))?;
 
     // Try pg_dump for database backup (optional — may not have pg_dump binary)
     let db_dump_path = format!("{}/database.sql", backup_dir);
@@ -81,8 +109,10 @@ pub async fn create_backup(pool: &PgPool, user_id: Uuid, req: CreateBackupReques
             .arg(&db_url)
             .arg("--no-owner")
             .arg("--no-privileges")
-            .arg("-f").arg(&db_dump_path)
-            .output().await
+            .arg("-f")
+            .arg(&db_dump_path)
+            .output()
+            .await
         {
             Ok(output) if output.status.success() => {
                 tracing::info!(backup_id = %backup_id, "Database dump completed");
@@ -103,13 +133,20 @@ pub async fn create_backup(pool: &PgPool, user_id: Uuid, req: CreateBackupReques
 }
 
 pub async fn list_backups(pool: &PgPool, user_id: Uuid) -> AppResult<Vec<Backup>> {
-    Ok(sqlx::query_as::<_, Backup>("SELECT * FROM backups WHERE user_id = $1 ORDER BY created_at DESC")
-        .bind(user_id).fetch_all(pool).await?)
+    Ok(sqlx::query_as::<_, Backup>(
+        "SELECT * FROM backups WHERE user_id = $1 ORDER BY created_at DESC",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await?)
 }
 
 pub async fn get_backup(pool: &PgPool, user_id: Uuid, id: Uuid) -> AppResult<Backup> {
     sqlx::query_as::<_, Backup>("SELECT * FROM backups WHERE id = $1 AND user_id = $2")
-        .bind(id).bind(user_id).fetch_optional(pool).await?
+        .bind(id)
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?
         .ok_or_else(|| AppError::NotFound("Backup not found".to_string()))
 }
 
@@ -117,24 +154,31 @@ pub async fn delete_backup(pool: &PgPool, user_id: Uuid, id: Uuid) -> AppResult<
     let backup = get_backup(pool, user_id, id).await?;
 
     // Delete backup files from disk
-    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".to_string());
+    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
+        .unwrap_or_else(|_| "/data/pcos/storage".to_string());
     let backup_dir = format!("{}/{}", base_path, backup.storage_path);
     if let Err(e) = tokio::fs::remove_dir_all(&backup_dir).await {
         tracing::warn!(error = %e, "Failed to remove backup directory (may not exist)");
     }
 
-    sqlx::query("DELETE FROM backups WHERE id = $1 AND user_id = $2").bind(id).bind(user_id).execute(pool).await?;
+    sqlx::query("DELETE FROM backups WHERE id = $1 AND user_id = $2")
+        .bind(id)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
 pub async fn restore_backup(pool: &PgPool, user_id: Uuid, id: Uuid) -> AppResult<String> {
     let backup = get_backup(pool, user_id, id).await?;
-    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".to_string());
+    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
+        .unwrap_or_else(|_| "/data/pcos/storage".to_string());
     let backup_dir = format!("{}/{}", base_path, backup.storage_path);
 
     // Read manifest to know which files to restore
     let manifest_path = format!("{}/manifest.json", backup_dir);
-    let manifest_data = tokio::fs::read_to_string(&manifest_path).await
+    let manifest_data = tokio::fs::read_to_string(&manifest_path)
+        .await
         .map_err(|e| AppError::Internal(format!("Cannot read backup manifest: {e}")))?;
     let manifest: serde_json::Value = serde_json::from_str(&manifest_data)
         .map_err(|e| AppError::Internal(format!("Invalid manifest: {e}")))?;
@@ -157,12 +201,19 @@ pub async fn restore_backup(pool: &PgPool, user_id: Uuid, id: Uuid) -> AppResult
         }
     }
 
-    sqlx::query("UPDATE backups SET status = 'restored' WHERE id = $1").bind(id).execute(pool).await?;
+    sqlx::query("UPDATE backups SET status = 'restored' WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await?;
     tracing::info!(backup_id = %id, restored = restored, "Backup restore completed");
     Ok(format!("Restored {} files", restored))
 }
 
-pub async fn create_schedule(pool: &PgPool, user_id: Uuid, req: CreateScheduleRequest) -> AppResult<BackupSchedule> {
+pub async fn create_schedule(
+    pool: &PgPool,
+    user_id: Uuid,
+    req: CreateScheduleRequest,
+) -> AppResult<BackupSchedule> {
     let schedule = sqlx::query_as::<_, BackupSchedule>(
         "INSERT INTO backup_schedules (id, user_id, name, cron_expression, is_active, created_at) VALUES ($1,$2,$3,$4,true,NOW()) RETURNING *"
     ).bind(Uuid::new_v4()).bind(user_id).bind(&req.name).bind(&req.cron_expression)
@@ -171,19 +222,30 @@ pub async fn create_schedule(pool: &PgPool, user_id: Uuid, req: CreateScheduleRe
 }
 
 pub async fn list_schedules(pool: &PgPool, user_id: Uuid) -> AppResult<Vec<BackupSchedule>> {
-    Ok(sqlx::query_as::<_, BackupSchedule>("SELECT * FROM backup_schedules WHERE user_id = $1 ORDER BY created_at DESC")
-        .bind(user_id).fetch_all(pool).await?)
+    Ok(sqlx::query_as::<_, BackupSchedule>(
+        "SELECT * FROM backup_schedules WHERE user_id = $1 ORDER BY created_at DESC",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await?)
 }
 
 pub async fn delete_schedule(pool: &PgPool, user_id: Uuid, id: Uuid) -> AppResult<()> {
-    let r = sqlx::query("DELETE FROM backup_schedules WHERE id = $1 AND user_id = $2").bind(id).bind(user_id).execute(pool).await?;
-    if r.rows_affected() == 0 { return Err(AppError::NotFound("Schedule not found".to_string())); }
+    let r = sqlx::query("DELETE FROM backup_schedules WHERE id = $1 AND user_id = $2")
+        .bind(id)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    if r.rows_affected() == 0 {
+        return Err(AppError::NotFound("Schedule not found".to_string()));
+    }
     Ok(())
 }
 
 /// Enforce retention policy — keep only the N most recent backups, delete older ones.
 pub async fn enforce_retention(pool: &PgPool, user_id: Uuid, keep_count: i64) -> AppResult<i64> {
-    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".to_string());
+    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
+        .unwrap_or_else(|_| "/data/pcos/storage".to_string());
 
     let old_backups: Vec<(Uuid, String)> = sqlx::query_as(
         "SELECT id, storage_path FROM backups WHERE user_id = $1 ORDER BY created_at DESC OFFSET $2"
@@ -194,7 +256,11 @@ pub async fn enforce_retention(pool: &PgPool, user_id: Uuid, keep_count: i64) ->
     for (bid, spath) in &old_backups {
         let backup_dir = format!("{}/{}", base_path, spath);
         tokio::fs::remove_dir_all(&backup_dir).await.ok();
-        sqlx::query("DELETE FROM backups WHERE id = $1").bind(bid).execute(pool).await.ok();
+        sqlx::query("DELETE FROM backups WHERE id = $1")
+            .bind(bid)
+            .execute(pool)
+            .await
+            .ok();
         deleted += 1;
     }
 
@@ -207,12 +273,15 @@ pub async fn enforce_retention(pool: &PgPool, user_id: Uuid, keep_count: i64) ->
 /// Verify a backup by checking manifest integrity and file existence.
 pub async fn verify_backup(pool: &PgPool, user_id: Uuid, id: Uuid) -> AppResult<serde_json::Value> {
     let backup = get_backup(pool, user_id, id).await?;
-    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".to_string());
+    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
+        .unwrap_or_else(|_| "/data/pcos/storage".to_string());
     let backup_dir = format!("{}/{}", base_path, backup.storage_path);
 
     let manifest_path = format!("{}/manifest.json", backup_dir);
     let manifest_exists = tokio::fs::metadata(&manifest_path).await.is_ok();
-    let db_dump_exists = tokio::fs::metadata(format!("{}/database.sql", backup_dir)).await.is_ok();
+    let db_dump_exists = tokio::fs::metadata(format!("{}/database.sql", backup_dir))
+        .await
+        .is_ok();
 
     let mut files_present = 0i64;
     let mut files_missing = 0i64;

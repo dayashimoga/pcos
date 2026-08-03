@@ -34,7 +34,7 @@ pub async fn register_device(
 /// List all devices for a user.
 pub async fn list_devices(pool: &PgPool, user_id: Uuid) -> AppResult<DeviceListResponse> {
     let devices = sqlx::query_as::<_, Device>(
-        "SELECT * FROM devices WHERE user_id = $1 ORDER BY created_at DESC"
+        "SELECT * FROM devices WHERE user_id = $1 ORDER BY created_at DESC",
     )
     .bind(user_id)
     .fetch_all(pool)

@@ -6,17 +6,17 @@
 
 use crate::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 /// Encryption metadata stored alongside encrypted files.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptionMeta {
-    pub algorithm: String,         // "AES-256-GCM"
-    pub key_derivation: String,    // "argon2id"
-    pub salt: String,              // hex-encoded 32-byte salt
-    pub nonce: String,             // hex-encoded 12-byte nonce
-    pub key_hash: String,          // SHA-256 of derived key (for verification, not decryption)
-    pub version: u32,              // Schema version
+    pub algorithm: String,      // "AES-256-GCM"
+    pub key_derivation: String, // "argon2id"
+    pub salt: String,           // hex-encoded 32-byte salt
+    pub nonce: String,          // hex-encoded 12-byte nonce
+    pub key_hash: String,       // SHA-256 of derived key (for verification, not decryption)
+    pub version: u32,           // Schema version
 }
 
 /// Key pair for a user's E2EE vault.
@@ -73,14 +73,16 @@ pub fn derive_key(passphrase: &str, salt: Option<&[u8]>) -> AppResult<(String, S
 /// Generate encryption metadata for a file.
 pub fn create_encryption_meta(key_hex: &str, salt_hex: &str) -> EncryptionMeta {
     // Generate 12-byte nonce
-    let nonce: Vec<u8> = (0..12).map(|i| {
-        ((std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos() as u64)
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(i as u64)) as u8
-    }).collect();
+    let nonce: Vec<u8> = (0..12)
+        .map(|i| {
+            ((std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos() as u64)
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(i as u64)) as u8
+        })
+        .collect();
 
     // Hash the key for verification (not for decryption)
     let mut hasher = Sha256::new();
@@ -100,9 +102,9 @@ pub fn create_encryption_meta(key_hex: &str, salt_hex: &str) -> EncryptionMeta {
 /// XOR-based encryption (placeholder — replace with AES-256-GCM via `aes-gcm` crate).
 /// In production, use: `aes_gcm::Aes256Gcm` with proper nonce management.
 pub fn encrypt_bytes(data: &[u8], key_hex: &str) -> AppResult<Vec<u8>> {
-    let key_bytes = hex::decode(key_hex)
-        .map_err(|e| AppError::Internal(format!("Invalid key: {e}")))?;
-    
+    let key_bytes =
+        hex::decode(key_hex).map_err(|e| AppError::Internal(format!("Invalid key: {e}")))?;
+
     let mut encrypted = Vec::with_capacity(data.len());
     for (i, byte) in data.iter().enumerate() {
         encrypted.push(byte ^ key_bytes[i % key_bytes.len()]);

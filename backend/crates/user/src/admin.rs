@@ -53,7 +53,9 @@ pub async fn list_users(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    Ok(Json(serde_json::json!({ "users": users, "total": users.len() })))
+    Ok(Json(
+        serde_json::json!({ "users": users, "total": users.len() }),
+    ))
 }
 
 /// PUT /api/v1/admin/users/role — update user role (admin only)
@@ -66,13 +68,19 @@ pub async fn update_role(
 
     // Validate role
     match req.role.as_str() {
-        "admin" | "user" | "viewer" => {},
-        _ => return Err(AppError::Validation("Invalid role. Must be: admin, user, viewer".to_string())),
+        "admin" | "user" | "viewer" => {}
+        _ => {
+            return Err(AppError::Validation(
+                "Invalid role. Must be: admin, user, viewer".to_string(),
+            ))
+        }
     }
 
     // Prevent removing your own admin
     if req.user_id == auth.claims.sub && req.role != "admin" {
-        return Err(AppError::Validation("Cannot remove your own admin role".to_string()));
+        return Err(AppError::Validation(
+            "Cannot remove your own admin role".to_string(),
+        ));
     }
 
     sqlx::query("UPDATE users SET role = $1 WHERE id = $2")
@@ -82,7 +90,9 @@ pub async fn update_role(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    Ok(Json(serde_json::json!({ "message": "Role updated", "user_id": req.user_id, "role": req.role })))
+    Ok(Json(
+        serde_json::json!({ "message": "Role updated", "user_id": req.user_id, "role": req.role }),
+    ))
 }
 
 #[derive(Debug, Deserialize)]
