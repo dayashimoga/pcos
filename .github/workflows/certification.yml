@@ -142,7 +142,7 @@ jobs:
           REGISTER=$(curl -sf -X POST http://localhost:8080/api/v1/auth/register \
             -H "Content-Type: application/json" \
             -d '{"email":"ci@pcos.test","password":"CiP@ss123!","display_name":"CI User"}' || echo "{}")
-          TOKEN=$(echo "$REGISTER" | jq -r '.token // .access_token // empty')
+          TOKEN=$(echo "$REGISTER" | jq -r '.tokens.access_token // .token // .access_token // empty')
           
           if [ -n "$TOKEN" ]; then
             echo "✓ Registration successful"
