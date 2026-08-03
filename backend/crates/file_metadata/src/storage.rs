@@ -224,7 +224,7 @@ mod tests {
             .await
             .unwrap();
 
-        let (path, hash, size) = engine
+        let (path, _hash, size) = engine
             .assemble_chunks(user_id, upload_id, file_id, 2)
             .await
             .unwrap();

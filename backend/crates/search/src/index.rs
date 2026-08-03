@@ -12,6 +12,7 @@ pub struct SearchIndex {
     index: Index,
     reader: IndexReader,
     writer: Arc<RwLock<IndexWriter>>,
+    #[allow(dead_code)]
     schema: Schema,
     // Field handles
     pub id_field: Field,

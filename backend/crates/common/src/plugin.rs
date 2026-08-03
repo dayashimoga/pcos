@@ -132,22 +132,31 @@ impl Default for PluginRegistry {
 mod tests {
     use super::*;
 
-    struct TestPlugin;
+    struct TestPlugin {
+        manifest: PluginManifest,
+    }
+
+    impl Default for TestPlugin {
+        fn default() -> Self {
+            Self {
+                manifest: PluginManifest {
+                    id: "test".into(),
+                    name: "Test Plugin".into(),
+                    version: "1.0".into(),
+                    description: "A test plugin".into(),
+                    author: "PCOS".into(),
+                    hooks: vec![HookType::AfterUpload],
+                },
+            }
+        }
+    }
 
     #[async_trait]
     impl Plugin for TestPlugin {
         fn manifest(&self) -> &PluginManifest {
-            &PluginManifest {
-                id: "test".into(),
-                name: "Test Plugin".into(),
-                version: "1.0".into(),
-                description: "A test plugin".into(),
-                author: "PCOS".into(),
-                hooks: vec![HookType::AfterUpload],
-            }
+            &self.manifest
         }
 
-        // Workaround: return owned manifest
         async fn on_hook(&self, _hook: HookType, _ctx: HookContext) -> HookResult {
             HookResult {
                 allow: true,
@@ -159,7 +168,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_plugin_registry() {
-        let mut registry = PluginRegistry::new();
+        let registry = PluginRegistry::new();
         assert_eq!(registry.count(), 0);
 
         // Can't easily test with trait object lifetime issues in simple test,
