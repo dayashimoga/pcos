@@ -88,11 +88,13 @@ jobs:
 
       - name: Build Windows
         working-directory: frontend
+        env:
+          CMAKE_GENERATOR: "Visual Studio 17 2022"
         run: |
           flutter config --enable-windows-desktop
           flutter create --platforms=windows .
           flutter pub get
-          flutter build windows --release 2>&1 || true
+          flutter build windows --release
 
       - name: Package MSIX
         working-directory: frontend
@@ -103,9 +105,8 @@ jobs:
           } elseif (Test-Path build/windows/runner/Release) {
             Compress-Archive -Path build/windows/runner/Release/* -DestinationPath ../artifacts/windows/pcos-windows.zip
           } else {
-            mkdir -p build/windows/x64/runner/Release
-            Set-Content -Path build/windows/x64/runner/Release/README.txt -Value "PCOS Windows Release Package"
-            Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath ../artifacts/windows/pcos-windows.zip
+            Write-Error "Windows release build output directory not found!"
+            exit 1
           }
         shell: pwsh
 
