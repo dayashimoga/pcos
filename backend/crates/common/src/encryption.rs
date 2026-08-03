@@ -4,7 +4,7 @@
 //! Keys are derived per-user using Argon2id from a passphrase.
 //! Server never sees plaintext data or encryption keys.
 
-use pcos_common::error::{AppError, AppResult};
+use crate::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
 use sha2::{Sha256, Digest};
 

@@ -1,7 +1,7 @@
 use crate::auth::jwt::{validate_token, Claims};
 use crate::AppState;
 use axum::{
-    extract::{FromRequestParts, State},
+    extract::FromRequestParts,
     http::request::Parts,
 };
 

@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
-import '../pages/files_page.dart' show formatFileSize;
+
+String formatFileSize(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1048576) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  if (bytes < 1073741824) return '${(bytes / 1048576).toStringAsFixed(1)} MB';
+  return '${(bytes / 1073741824).toStringAsFixed(1)} GB';
+}
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});

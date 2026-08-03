@@ -51,11 +51,10 @@ impl LanDiscovery {
 
     /// Start broadcasting and listening for peers.
     pub async fn start(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let socket = tokio::net::UdpSocket::bind(format!("0.0.0.0:{}", DISCOVERY_PORT)).await
-            .or_else(|_| {
-                // Port may be in use, bind to any available port
-                tokio::net::UdpSocket::bind("0.0.0.0:0")
-            }).await?;
+        let socket = match tokio::net::UdpSocket::bind(format!("0.0.0.0:{}", DISCOVERY_PORT)).await {
+            Ok(s) => s,
+            Err(_) => tokio::net::UdpSocket::bind("0.0.0.0:0").await?,
+        };
         socket.set_broadcast(true)?;
 
         let hostname = hostname::get()
