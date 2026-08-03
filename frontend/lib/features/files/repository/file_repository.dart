@@ -1,3 +1,4 @@
+// ignore: unused_import
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';

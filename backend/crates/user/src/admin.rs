@@ -11,7 +11,9 @@ use uuid::Uuid;
 /// Check if the authenticated user has admin role.
 pub async fn require_admin(state: &AppState, user_id: Uuid) -> Result<(), AppError> {
     let (role,): (String,) = sqlx::query_as("SELECT role FROM users WHERE id = $1")
-        .bind(user_id).fetch_one(state.db.pool()).await
+        .bind(user_id)
+        .fetch_one(state.db.pool())
+        .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if role != "admin" {
@@ -28,7 +30,8 @@ pub struct UpdateRoleRequest {
 
 /// GET /api/v1/admin/users — list all users (admin only)
 pub async fn list_users(
-    State(state): State<AppState>, auth: AuthUser,
+    State(state): State<AppState>,
+    auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     require_admin(&state, auth.claims.sub).await?;
 
@@ -45,7 +48,9 @@ pub async fn list_users(
 
     let users = sqlx::query_as::<_, UserSummary>(
         "SELECT id, email, display_name, role, totp_enabled, storage_quota_bytes, created_at FROM users ORDER BY created_at DESC"
-    ).fetch_all(state.db.pool()).await
+    )
+    .fetch_all(state.db.pool())
+    .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(Json(serde_json::json!({ "users": users, "total": users.len() })))
@@ -53,7 +58,9 @@ pub async fn list_users(
 
 /// PUT /api/v1/admin/users/role — update user role (admin only)
 pub async fn update_role(
-    State(state): State<AppState>, auth: AuthUser, Json(req): Json<UpdateRoleRequest>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<UpdateRoleRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     require_admin(&state, auth.claims.sub).await?;
 
@@ -69,7 +76,10 @@ pub async fn update_role(
     }
 
     sqlx::query("UPDATE users SET role = $1 WHERE id = $2")
-        .bind(&req.role).bind(req.user_id).execute(state.db.pool()).await
+        .bind(&req.role)
+        .bind(req.user_id)
+        .execute(state.db.pool())
+        .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(Json(serde_json::json!({ "message": "Role updated", "user_id": req.user_id, "role": req.role })))
@@ -83,34 +93,56 @@ pub struct UpdateQuotaRequest {
 
 /// PUT /api/v1/admin/users/quota — update storage quota (admin only)
 pub async fn update_quota(
-    State(state): State<AppState>, auth: AuthUser, Json(req): Json<UpdateQuotaRequest>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<UpdateQuotaRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     require_admin(&state, auth.claims.sub).await?;
 
     sqlx::query("UPDATE users SET storage_quota_bytes = $1 WHERE id = $2")
-        .bind(req.storage_quota_bytes).bind(req.user_id).execute(state.db.pool()).await
+        .bind(req.storage_quota_bytes)
+        .bind(req.user_id)
+        .execute(state.db.pool())
+        .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    Ok(Json(serde_json::json!({ "message": "Quota updated", "user_id": req.user_id, "quota_bytes": req.storage_quota_bytes })))
+    Ok(Json(
+        serde_json::json!({ "message": "Quota updated", "user_id": req.user_id, "quota_bytes": req.storage_quota_bytes }),
+    ))
 }
 
 /// GET /api/v1/admin/system — system stats (admin only)
 pub async fn system_stats(
-    State(state): State<AppState>, auth: AuthUser,
+    State(state): State<AppState>,
+    auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     require_admin(&state, auth.claims.sub).await?;
     let pool = state.db.pool();
 
     let (total_users,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
-        .fetch_one(pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
-    let (total_files,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM file_entries WHERE entry_type = 'file'")
-        .fetch_one(pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
-    let (total_storage,): (i64,) = sqlx::query_as("SELECT COALESCE(SUM(size_bytes), 0) FROM file_entries WHERE entry_type = 'file' AND is_trashed = false")
-        .fetch_one(pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
-    let (total_shares,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM share_links WHERE is_active = true")
-        .fetch_one(pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let (total_files,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM file_entries WHERE entry_type = 'file'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+    let (total_storage,): (i64,) = sqlx::query_as(
+        "SELECT COALESCE(SUM(size_bytes), 0) FROM file_entries WHERE entry_type = 'file' AND is_trashed = false",
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let (total_shares,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM share_links WHERE is_active = true")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
     let (total_devices,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM devices")
-        .fetch_one(pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(Json(serde_json::json!({
         "total_users": total_users,

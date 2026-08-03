@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// ignore: unused_import
 import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';

@@ -13,7 +13,7 @@ class MfaSettingsPage extends StatefulWidget {
 class _MfaSettingsPageState extends State<MfaSettingsPage> {
   bool _mfaEnabled = false;
   String? _secret;
-  String? _provisioningUri;
+  String? _provisioningUri; // ignore: unused_field
   bool _loading = true;
   final _codeController = TextEditingController();
 
