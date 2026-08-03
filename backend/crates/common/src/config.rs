@@ -64,12 +64,27 @@ impl AppConfig {
             .set_default("storage.max_upload_size_mb", 10240)?
             .add_source(
                 config::Environment::with_prefix("PCOS")
+                    .prefix_separator("_")
                     .separator("__")
                     .try_parsing(true),
             )
             .build()?;
 
-        cfg.try_deserialize()
+        let mut config: Self = cfg.try_deserialize()?;
+
+        // Environment overrides for standard DATABASE_URL / JWT_SECRET if provided directly
+        if let Ok(db_url) = std::env::var("DATABASE_URL") {
+            if !db_url.is_empty() {
+                config.database.url = db_url;
+            }
+        }
+        if let Ok(jwt_secret) = std::env::var("JWT_SECRET") {
+            if !jwt_secret.is_empty() {
+                config.auth.jwt_secret = jwt_secret;
+            }
+        }
+
+        Ok(config)
     }
 }
 
