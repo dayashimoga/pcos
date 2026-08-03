@@ -20,11 +20,15 @@ frontend/.flutter-plugins-dependencies
 frontend/build/
 frontend/.pub-cache/
 frontend/pubspec.lock
-frontend/android/
-frontend/ios/
-frontend/macos/
-frontend/windows/
-frontend/linux/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/Flutter.podspec
+frontend/ios/Flutter/Flutter.framework
+frontend/ios/Flutter/App.framework
+frontend/windows/flutter/ephemeral/
+frontend/linux/flutter/ephemeral/
 
 # ─── Agent ───────────────────────────────────────────────
 agent/target/
