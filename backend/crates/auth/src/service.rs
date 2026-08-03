@@ -1,6 +1,6 @@
 use crate::models::{
     AuthResponse, LoginRequest, LogoutRequest, RefreshToken, RefreshTokenRequest, RegisterRequest,
-    User, UserResponse,
+    User,
 };
 use pcos_common::auth::jwt::generate_token_pair;
 use pcos_common::auth::password::{hash_password, verify_password};

@@ -3,7 +3,7 @@ pub mod handlers;
 pub mod web_push;
 
 use axum::{
-    routing::{delete, get, post, put},
+    routing::{get, post, put},
     Router,
 };
 use pcos_common::AppState;

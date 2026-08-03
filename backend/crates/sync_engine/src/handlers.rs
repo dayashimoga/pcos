@@ -38,7 +38,7 @@ pub async fn sync_websocket(
     Ok(ws.on_upgrade(|socket| handle_sync_ws(socket, state)))
 }
 
-async fn handle_sync_ws(mut socket: WebSocket, state: AppState) {
+async fn handle_sync_ws(mut socket: WebSocket, _state: AppState) {
     while let Some(Ok(msg)) = socket.recv().await {
         match msg {
             Message::Text(text) => {

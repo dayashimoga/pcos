@@ -194,7 +194,7 @@ pub async fn download_shared(pool: &PgPool, token: &str) -> AppResult<(String, V
             .fetch_one(pool)
             .await?;
 
-    let path = storage_path.ok_or_else(|| AppError::Internal("No storage path".to_string()))?;
+    let _path = storage_path.ok_or_else(|| AppError::Internal("No storage path".to_string()))?;
     // Storage read is handled by the handler layer
     Ok((name, vec![])) // placeholder - handler reads from storage
 }

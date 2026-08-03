@@ -1,13 +1,13 @@
 # Build stage
-FROM rust:1.79-bookworm AS builder
+FROM rust:latest AS builder
 
 WORKDIR /app
 
 # Install required system dependencies
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace manifest first for dependency caching
-COPY Cargo.toml Cargo.toml
+# Copy workspace manifest and lockfile for dependency caching
+COPY Cargo.toml Cargo.lock* ./
 
 # Copy ALL crate manifests for workspace dependency resolution
 COPY crates/common/Cargo.toml crates/common/Cargo.toml
@@ -24,9 +24,10 @@ COPY crates/worker/Cargo.toml crates/worker/Cargo.toml
 COPY crates/backup/Cargo.toml crates/backup/Cargo.toml
 COPY crates/analytics/Cargo.toml crates/analytics/Cargo.toml
 COPY crates/gateway/Cargo.toml crates/gateway/Cargo.toml
+COPY crates/streaming/Cargo.toml crates/streaming/Cargo.toml
 
 # Create dummy source files to cache dependency compilation
-RUN for crate in common auth user device file_metadata search ai sharing sync_engine notification worker backup analytics; do \
+RUN for crate in common auth user device file_metadata search ai sharing sync_engine notification worker backup analytics streaming; do \
       mkdir -p crates/$crate/src && echo "" > crates/$crate/src/lib.rs; \
     done && \
     mkdir -p crates/gateway/src && echo "fn main() {}" > crates/gateway/src/main.rs

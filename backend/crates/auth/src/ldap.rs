@@ -70,7 +70,7 @@ impl LdapConfig {
 pub async fn authenticate(
     config: &LdapConfig,
     username: &str,
-    password: &str,
+    _password: &str,
 ) -> AppResult<LdapUser> {
     if !config.enabled {
         return Err(AppError::Internal(

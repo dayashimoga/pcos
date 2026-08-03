@@ -2,6 +2,19 @@ use pcos_common::error::{AppError, AppResult};
 use serde::Deserialize;
 use std::time::Duration;
 
+async fn read_smtp_response(
+    r: &mut tokio::io::ReadHalf<tokio::net::TcpStream>,
+    b: &mut [u8],
+) -> Result<String, AppError> {
+    use tokio::io::AsyncReadExt;
+    let n = r
+        .read(b)
+        .await
+        .map_err(|e| AppError::Internal(format!("SMTP read: {e}")))?;
+    let resp = String::from_utf8_lossy(&b[..n]).to_string();
+    Ok(resp)
+}
+
 /// SMTP email notification sender.
 /// Configure via environment: PCOS_SMTP_HOST, PCOS_SMTP_PORT, PCOS_SMTP_USER, PCOS_SMTP_PASS, PCOS_SMTP_FROM
 #[derive(Debug, Clone)]
@@ -69,30 +82,21 @@ impl EmailSender {
         .map_err(|e| AppError::Internal(format!("SMTP connection failed: {e}")))?;
 
         // Simple SMTP conversation
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::io::AsyncWriteExt;
         let (mut reader, mut writer) = tokio::io::split(stream);
 
         // Helper to read SMTP response
         let mut buf = vec![0u8; 1024];
-        let read_response = |r: &mut tokio::io::ReadHalf<tokio::net::TcpStream>,
-                             b: &mut Vec<u8>| async move {
-            let n = r
-                .read(b)
-                .await
-                .map_err(|e| AppError::Internal(format!("SMTP read: {e}")))?;
-            let resp = String::from_utf8_lossy(&b[..n]).to_string();
-            Ok::<String, AppError>(resp)
-        };
 
         // Read greeting
-        let _ = read_response(&mut reader, &mut buf).await?;
+        let _ = read_smtp_response(&mut reader, &mut buf).await?;
 
         // EHLO
         writer
             .write_all(format!("EHLO pcos\r\n").as_bytes())
             .await
             .map_err(|e| AppError::Internal(format!("SMTP write: {e}")))?;
-        let _ = read_response(&mut reader, &mut buf).await?;
+        let _ = read_smtp_response(&mut reader, &mut buf).await?;
 
         // AUTH if credentials provided
         if let (Some(user), Some(pass)) = (&self.username, &self.password) {
@@ -101,7 +105,7 @@ impl EmailSender {
                 .write_all(format!("AUTH PLAIN {}\r\n", credentials).as_bytes())
                 .await
                 .map_err(|e| AppError::Internal(format!("SMTP auth: {e}")))?;
-            let resp = read_response(&mut reader, &mut buf).await?;
+            let resp = read_smtp_response(&mut reader, &mut buf).await?;
             if !resp.starts_with("235") {
                 return Err(AppError::Internal(format!("SMTP auth failed: {resp}")));
             }
@@ -112,28 +116,28 @@ impl EmailSender {
             .write_all(format!("MAIL FROM:<{}>\r\n", self.from_address).as_bytes())
             .await
             .map_err(|e| AppError::Internal(format!("SMTP: {e}")))?;
-        let _ = read_response(&mut reader, &mut buf).await?;
+        let _ = read_smtp_response(&mut reader, &mut buf).await?;
 
         // RCPT TO
         writer
             .write_all(format!("RCPT TO:<{}>\r\n", msg.to).as_bytes())
             .await
             .map_err(|e| AppError::Internal(format!("SMTP: {e}")))?;
-        let _ = read_response(&mut reader, &mut buf).await?;
+        let _ = read_smtp_response(&mut reader, &mut buf).await?;
 
         // DATA
         writer
             .write_all(b"DATA\r\n")
             .await
             .map_err(|e| AppError::Internal(format!("SMTP: {e}")))?;
-        let _ = read_response(&mut reader, &mut buf).await?;
+        let _ = read_smtp_response(&mut reader, &mut buf).await?;
 
         // Message body + terminator
         writer
             .write_all(format!("{}\r\n.\r\n", mime_msg).as_bytes())
             .await
             .map_err(|e| AppError::Internal(format!("SMTP: {e}")))?;
-        let resp = read_response(&mut reader, &mut buf).await?;
+        let resp = read_smtp_response(&mut reader, &mut buf).await?;
 
         // QUIT
         writer.write_all(b"QUIT\r\n").await.ok();

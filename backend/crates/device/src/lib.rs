@@ -3,7 +3,7 @@ pub mod models;
 pub mod service;
 
 use axum::{
-    routing::{delete, get, post, put},
+    routing::{delete, post, put},
     Router,
 };
 use pcos_common::AppState;

@@ -4,7 +4,6 @@ use pcos_common::AppState;
 use serde::Serialize;
 use std::time::Duration;
 use tower_http::cors::CorsLayer;
-use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

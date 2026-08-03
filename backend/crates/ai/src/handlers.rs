@@ -20,8 +20,8 @@ pub struct SmartSearchQuery {
 
 /// POST /api/v1/ai/tag
 pub async fn auto_tag(
-    State(state): State<AppState>,
-    auth: AuthUser,
+    State(_state): State<AppState>,
+    _auth: AuthUser,
     Json(req): Json<TagRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let provider = AiProvider::from_env()
@@ -43,8 +43,8 @@ pub async fn find_duplicates(
 
 /// POST /api/v1/ai/classify
 pub async fn classify_file(
-    State(state): State<AppState>,
-    auth: AuthUser,
+    State(_state): State<AppState>,
+    _auth: AuthUser,
     Json(req): Json<TagRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let provider = AiProvider::from_env()
@@ -80,7 +80,7 @@ pub async fn smart_search(
 /// GET /api/v1/ai/status
 pub async fn ai_status(
     State(_state): State<AppState>,
-    auth: AuthUser,
+    _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let provider = AiProvider::from_env();
     let available = match &provider {

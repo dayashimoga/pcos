@@ -33,39 +33,40 @@ pub async fn propfind(
     path: Option<Path<String>>,
 ) -> Result<Response, AppError> {
     let pool = state.db.pool();
-    let depth = headers
+    let _depth = headers
         .get("Depth")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("1");
 
     // Resolve parent folder — root if no path
-    let entries: Vec<(Uuid, String, String, i64, String)> = if path.is_none()
-        || path.as_ref().map(|p| p.0.as_str()) == Some("")
-    {
-        sqlx::query_as(
-            "SELECT id, name, entry_type, size_bytes, to_char(updated_at, 'Dy, DD Mon YYYY HH24:MI:SS GMT') FROM file_entries WHERE user_id = $1 AND parent_id IS NULL AND is_trashed = false ORDER BY entry_type DESC, name"
-        ).bind(auth.claims.sub).fetch_all(pool).await
-        .map_err(|e| AppError::Internal(e.to_string()))?
-    } else {
-        let folder_name = path.unwrap().0;
-        // Find folder by name path
-        let folder: Option<(Uuid,)> = sqlx::query_as(
-            "SELECT id FROM file_entries WHERE user_id = $1 AND name = $2 AND entry_type = 'folder' AND is_trashed = false LIMIT 1"
-        ).bind(auth.claims.sub).bind(&folder_name).fetch_optional(pool).await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let entries: Vec<(Uuid, String, String, i64, String)> =
+        match path.as_ref().map(|p| p.0.as_str()) {
+            Some(folder_name) if !folder_name.is_empty() => {
+                // Find folder by name path
+                let folder: Option<(Uuid,)> = sqlx::query_as(
+                    "SELECT id FROM file_entries WHERE user_id = $1 AND name = $2 AND entry_type = 'folder' AND is_trashed = false LIMIT 1"
+                ).bind(auth.claims.sub).bind(folder_name).fetch_optional(pool).await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        if let Some((folder_id,)) = folder {
-            sqlx::query_as(
-                "SELECT id, name, entry_type, size_bytes, to_char(updated_at, 'Dy, DD Mon YYYY HH24:MI:SS GMT') FROM file_entries WHERE user_id = $1 AND parent_id = $2 AND is_trashed = false ORDER BY entry_type DESC, name"
-            ).bind(auth.claims.sub).bind(folder_id).fetch_all(pool).await
-            .map_err(|e| AppError::Internal(e.to_string()))?
-        } else {
-            return Ok(Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::empty())
-                .unwrap());
-        }
-    };
+                if let Some((folder_id,)) = folder {
+                    sqlx::query_as(
+                        "SELECT id, name, entry_type, size_bytes, to_char(updated_at, 'Dy, DD Mon YYYY HH24:MI:SS GMT') FROM file_entries WHERE user_id = $1 AND parent_id = $2 AND is_trashed = false ORDER BY entry_type DESC, name"
+                    ).bind(auth.claims.sub).bind(folder_id).fetch_all(pool).await
+                    .map_err(|e| AppError::Internal(e.to_string()))?
+                } else {
+                    return Ok(Response::builder()
+                        .status(StatusCode::NOT_FOUND)
+                        .body(Body::empty())
+                        .unwrap());
+                }
+            }
+            _ => {
+                sqlx::query_as(
+                    "SELECT id, name, entry_type, size_bytes, to_char(updated_at, 'Dy, DD Mon YYYY HH24:MI:SS GMT') FROM file_entries WHERE user_id = $1 AND parent_id IS NULL AND is_trashed = false ORDER BY entry_type DESC, name"
+                ).bind(auth.claims.sub).fetch_all(pool).await
+                .map_err(|e| AppError::Internal(e.to_string()))?
+            }
+        };
 
     let xml = propfind_xml(&entries);
     Ok(Response::builder()

@@ -32,7 +32,7 @@ pub struct PushKeys {
     pub auth: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PushPayload {
     pub title: String,
     pub body: String,

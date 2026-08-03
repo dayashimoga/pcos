@@ -6,7 +6,7 @@ use pcos_common::auth::middleware::AuthUser;
 use pcos_common::error::AppError;
 use pcos_common::AppState;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 /// Generate a random Base32 TOTP secret (160-bit / 20 bytes)
 fn generate_totp_secret() -> String {
