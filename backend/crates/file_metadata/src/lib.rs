@@ -70,9 +70,10 @@ pub fn router() -> Router<AppState> {
         .route("/webdav", get(webdav::propfind))
         .route(
             "/webdav/*path",
-            get(webdav::propfind).delete(webdav::webdav_delete),
+            get(webdav::propfind)
+                .post(webdav::mkcol)
+                .delete(webdav::webdav_delete),
         )
-        .route("/webdav/:name", post(webdav::mkcol))
         // S3-compatible routes
         .route("/s3", get(s3_compat::list_buckets))
         .route("/s3/pcos-files", get(s3_compat::list_objects))
