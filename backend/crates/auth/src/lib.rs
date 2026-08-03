@@ -1,6 +1,7 @@
 pub mod handlers;
 pub mod mfa;
 pub mod models;
+pub mod oidc;
 pub mod service;
 
 use axum::{routing::{get, post}, Router};

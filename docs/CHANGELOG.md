@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-08-03
+
+### Added
+- **E2EE Module**: Key derivation (100K-iteration SHA-256), AES-256-GCM encryption metadata, encrypt/decrypt bytes with roundtrip verification. 3 unit tests.
+- **SSO/OIDC**: OpenID Connect discovery, authorization URL builder, authorization code exchange, user info fetch. Compatible with Keycloak, Auth0, Okta, Azure AD, Google.
+- **Plugin SDK**: `PluginManifest`, 8 lifecycle hooks (`BeforeUpload`/`AfterUpload`/`BeforeDownload`/`AfterDelete`/`OnSearch`/`OnShare`/`OnNotification`/`OnSchedule`), `HookContext`, `PluginRegistry` with dispatch and `check_allowed`. 1 test.
+- **Localization (i18n)**: 10 locales (en/es/fr/de/ja/zh/ko/pt/hi/ar), 16 translation keys, `Accept-Language` header parsing, locale fallback chain. 5 unit tests.
+- **Helm Chart**: `Chart.yaml`, `values.yaml` (replicas, images, storage, resources, ingress, secrets), deployment template with Secrets, Backend, Frontend, PVC, conditional Ingress+TLS.
+
+---
+
 ## [0.6.0] - 2026-08-02
 
 ### Added

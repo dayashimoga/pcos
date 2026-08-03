@@ -1,7 +1,10 @@
 pub mod auth;
 pub mod config;
 pub mod db;
+pub mod encryption;
 pub mod error;
+pub mod i18n;
+pub mod plugin;
 
 pub use config::AppConfig;
 pub use db::DatabasePool;

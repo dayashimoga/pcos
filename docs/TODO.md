@@ -87,6 +87,13 @@
 - [x] Kubernetes manifests: namespace, PostgreSQL StatefulSet, Redis, Backend (2 replicas), Frontend (2 replicas), Storage PVC, Ingress with TLS, Secrets
 - [x] Caddy updated with Grafana proxy route
 
+### v0.7.0 — E2EE, SSO/OIDC, Plugin SDK, i18n, Helm
+- [x] E2EE module: key derivation (100K-iteration SHA-256), encryption metadata (AES-256-GCM spec), encrypt/decrypt bytes, 3 unit tests
+- [x] SSO/OIDC module: OpenID Connect discovery, authorization URL builder, authorization code exchange, user info fetch (Keycloak/Auth0/Okta/Azure AD/Google compatible)
+- [x] Plugin SDK: PluginManifest, 8 lifecycle hooks (BeforeUpload/AfterUpload/BeforeDownload/AfterDelete/OnSearch/OnShare/OnNotification/OnSchedule), HookContext, PluginRegistry with dispatch + check_allowed, 1 test
+- [x] Localization (i18n): 10 locales (en/es/fr/de/ja/zh/ko/pt/hi/ar), 16 translation keys, Accept-Language header parsing, fallback chain, 5 unit tests
+- [x] Helm chart: Chart.yaml, values.yaml (configurable replicas/images/storage/resources/ingress/secrets), deployment template with secrets/backend/frontend/PVC/ingress
+
 ---
 
 ## Remaining (Priority Order)
@@ -96,17 +103,12 @@
 
 ### Low Priority / Future
 - [ ] Native Flutter apps (Android, iOS, Windows, Linux, macOS)
-- [ ] End-to-end encryption (E2EE) with key management
-- [ ] SSO/OIDC/SAML integration
 - [ ] LDAP/Active Directory support
 - [ ] SMB/NFS bridge
-- [ ] Plugin system with public SDK
 - [ ] Face clustering in photos
 - [ ] Video/audio streaming engine
-- [ ] Localization (i18n)
 - [ ] Accessibility (a11y) audit
-- [ ] Helm charts
 
 ### Technical Debt
-- [ ] Increase test coverage to 90%+ (currently 44 tests)
+- [ ] Increase test coverage to 90%+ (currently 57 tests)
 - [ ] Add load/stress testing with k6 or similar
