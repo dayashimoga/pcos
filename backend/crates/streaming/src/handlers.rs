@@ -34,15 +34,21 @@ pub async fn transcode(
         sqlx::query_as("SELECT storage_path FROM file_entries WHERE id = $1 AND user_id = $2")
             .bind(req.file_id)
             .bind(auth.claims.sub)
-            .fetch_one(&*state.db)
+            .fetch_one(state.db.pool())
             .await
             .map_err(|_| AppError::NotFound("File not found".into()))?;
 
-    let job =
-        service::queue_transcode(&state.db, req.file_id, auth.claims.sub, &file.0, profile).await?;
+    let job = service::queue_transcode(
+        state.db.pool(),
+        req.file_id,
+        auth.claims.sub,
+        &file.0,
+        profile,
+    )
+    .await?;
 
     // Spawn background transcoding
-    let pool = state.db.clone();
+    let pool = state.db.pool().clone();
     let job_id = job.id;
     tokio::spawn(async move {
         if let Err(e) = service::execute_transcode(&pool, job_id).await {
@@ -66,7 +72,7 @@ pub async fn list_jobs(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let jobs = service::list_jobs(&state.db, auth.claims.sub).await?;
+    let jobs = service::list_jobs(state.db.pool(), auth.claims.sub).await?;
     Ok(Json(
         serde_json::json!({ "jobs": jobs, "total": jobs.len() }),
     ))
@@ -82,7 +88,7 @@ pub async fn get_job(
         sqlx::query_as("SELECT * FROM transcode_jobs WHERE id = $1 AND user_id = $2")
             .bind(job_id)
             .bind(auth.claims.sub)
-            .fetch_one(&*state.db)
+            .fetch_one(state.db.pool())
             .await
             .map_err(|_| AppError::NotFound("Job not found".into()))?;
 
@@ -95,7 +101,7 @@ pub async fn stream_url(
     auth: AuthUser,
     Path(job_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
-    let url = service::get_stream_url(&state.db, job_id, auth.claims.sub).await?;
+    let url = service::get_stream_url(state.db.pool(), job_id, auth.claims.sub).await?;
     Ok(Json(serde_json::json!({
         "stream_url": url,
         "type": "application/x-mpegURL",
@@ -113,7 +119,7 @@ pub async fn probe(
         sqlx::query_as("SELECT storage_path FROM file_entries WHERE id = $1 AND user_id = $2")
             .bind(file_id)
             .bind(auth.claims.sub)
-            .fetch_one(&*state.db)
+            .fetch_one(state.db.pool())
             .await
             .map_err(|_| AppError::NotFound("File not found".into()))?;
 

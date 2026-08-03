@@ -93,7 +93,7 @@ impl EmailSender {
 
         // EHLO
         writer
-            .write_all(format!("EHLO pcos\r\n").as_bytes())
+            .write_all(b"EHLO pcos\r\n")
             .await
             .map_err(|e| AppError::Internal(format!("SMTP write: {e}")))?;
         let _ = read_smtp_response(&mut reader, &mut buf).await?;
