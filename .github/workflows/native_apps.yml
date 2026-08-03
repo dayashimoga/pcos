@@ -53,6 +53,7 @@ jobs:
       - name: Build iOS (no code signing)
         working-directory: frontend
         run: |
+          flutter create --platforms=ios .
           flutter pub get
           flutter build ios --release --no-codesign 2>&1 || true
 
@@ -86,6 +87,7 @@ jobs:
         working-directory: frontend
         run: |
           flutter config --enable-windows-desktop
+          flutter create --platforms=windows .
           flutter pub get
           flutter build windows --release
 
@@ -139,6 +141,7 @@ jobs:
         working-directory: frontend
         run: |
           flutter config --enable-macos-desktop
+          flutter create --platforms=macos .
           flutter pub get
           flutter build macos --release 2>&1 || true
 
