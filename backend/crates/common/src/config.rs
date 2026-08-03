@@ -50,8 +50,13 @@ impl AppConfig {
         let cfg = config::Config::builder()
             .set_default("server.host", "0.0.0.0")?
             .set_default("server.port", 8080)?
+            .set_default("database.url", "postgresql://pcos:pcos@localhost:5432/pcos")?
             .set_default("database.max_connections", 20)?
             .set_default("database.min_connections", 5)?
+            .set_default(
+                "auth.jwt_secret",
+                "default-jwt-secret-key-must-be-changed-in-production-32-chars",
+            )?
             .set_default("auth.access_token_expiry_secs", 900)?
             .set_default("auth.refresh_token_expiry_secs", 604800)?
             .set_default("redis.url", "redis://localhost:6379")?
