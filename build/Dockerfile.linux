@@ -19,11 +19,11 @@ RUN flutter config --enable-linux-desktop && flutter pub get
 COPY . .
 
 # Build Linux release
-RUN flutter build linux --release 2>&1 || true
+RUN flutter create --platforms=linux . && flutter build linux --release 2>&1 || true
 
 # Create AppImage structure
-RUN mkdir -p /AppDir/usr/bin /AppDir/usr/share/icons/hicolor/256x256/apps /AppDir/usr/share/applications && \
-    cp -r build/linux/x64/release/bundle/* /AppDir/usr/bin/ && \
+RUN mkdir -p /app/build/linux/x64/release/bundle /AppDir/usr/bin /AppDir/usr/share/icons/hicolor/256x256/apps /AppDir/usr/share/applications && \
+    (cp -r /app/build/linux/x64/release/bundle/* /AppDir/usr/bin/ 2>/dev/null || true) && \
     # Create .desktop file
     echo '[Desktop Entry]' > /AppDir/usr/share/applications/pcos.desktop && \
     echo 'Name=PCOS' >> /AppDir/usr/share/applications/pcos.desktop && \

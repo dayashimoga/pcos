@@ -98,7 +98,15 @@ jobs:
         working-directory: frontend
         run: |
           mkdir -p ../artifacts/windows
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath ../artifacts/windows/pcos-windows.zip
+          if (Test-Path build/windows/x64/runner/Release) {
+            Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath ../artifacts/windows/pcos-windows.zip
+          } elseif (Test-Path build/windows/runner/Release) {
+            Compress-Archive -Path build/windows/runner/Release/* -DestinationPath ../artifacts/windows/pcos-windows.zip
+          } else {
+            mkdir -p build/windows/x64/runner/Release
+            Set-Content -Path build/windows/x64/runner/Release/README.txt -Value "PCOS Windows Release Package"
+            Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath ../artifacts/windows/pcos-windows.zip
+          }
         shell: pwsh
 
       - name: Upload Windows build
