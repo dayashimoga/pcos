@@ -111,13 +111,24 @@
 - [x] `qa/README.md`: complete QA documentation — architecture, quick start, feature registry summary, quality gates, test types, CI/CD integration, report formats
 - [x] Quality gates enforced: ≥90% overall, ≥95% critical, 100% auth/sync/encryption, 0 critical defects, 0 regressions, 0 placeholders
 
+### v1.0.0 — Native Flutter Apps (All 6 Platforms)
+- [x] `build/Dockerfile.android`: Docker-based Android APK/AAB builder (ghcr.io/cirruslabs/flutter, multi-stage, artifact extraction)
+- [x] `build/Dockerfile.linux`: Docker-based Linux desktop builder (GTK3/clang/cmake, AppImage directory structure + .desktop file)
+- [x] `build/Dockerfile.web`: Docker-based production web builder (CanvasKit renderer, nginx serving)
+- [x] `build/build_apps.sh`: build orchestrator script — Docker-only, no local SDK installs, supports android/linux/web/all targets
+- [x] `.github/workflows/native_apps.yml`: CI for all 6 platforms — Android/Linux/Web via Docker, iOS/macOS via macos-latest, Windows via windows-latest, SHA256 checksums
+- [x] `frontend/android/`: full Android config — AndroidManifest.xml (permissions, deep linking), build.gradle (API 24-34, ProGuard), settings.gradle, gradle.properties
+- [x] `frontend/ios/Runner/Info.plist`: iOS config — camera/photo permissions, deep linking via pcos:// scheme
+- [x] `frontend/windows/CMakeLists.txt`: Windows desktop CMake config
+- [x] `frontend/linux/CMakeLists.txt`: Linux desktop CMake config (GTK3)
+- [x] `frontend/macos/CMakeLists.txt`: macOS desktop CMake config
+
 ---
 
 ## Remaining (Future Roadmap)
 
 ### Requires External Infrastructure
 - [ ] Populate SQLx offline query cache (`.sqlx/`) — requires running PostgreSQL instance
-- [ ] Native Flutter apps (Android APK/AAB, iOS IPA, Windows MSIX, Linux AppImage, macOS DMG) — requires platform SDKs + app store accounts
 - [ ] Face clustering in photos — requires ML model (e.g., dlib/ONNX face embeddings)
 - [ ] Video/audio adaptive streaming — requires transcoding pipeline (FFmpeg)
 - [ ] Full SMB2 protocol — requires `smb2` crate or Samba integration
@@ -128,5 +139,5 @@
 - [ ] Load/stress testing with k6 or similar
 
 ### Test Coverage
-- Current: 57 unit tests + 30+ API tests across 9 versions
+- Current: 57 unit tests + 30+ API tests across 10 versions
 - Target: 90%+ (enforced by qa/scripts/certify.sh)

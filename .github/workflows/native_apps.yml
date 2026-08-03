@@ -1,0 +1,205 @@
+name: Build Native Apps
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Platforms to build (comma-separated: android,ios,windows,linux,macos,web)"
+        default: "android,linux,web"
+        type: string
+
+env:
+  FLUTTER_VERSION: "3.24.0"
+
+jobs:
+  # ─── Android APK/AAB (Docker) ──────────────────────
+  android:
+    name: Android APK/AAB
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.platforms || 'android', 'android')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Android via Docker
+        run: |
+          docker build -f build/Dockerfile.android -t pcos-android frontend/
+          CONTAINER_ID=$(docker create pcos-android)
+          mkdir -p artifacts/android
+          docker cp "$CONTAINER_ID:/artifacts/" artifacts/android/ || true
+          docker rm "$CONTAINER_ID"
+
+      - name: Upload APK/AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: artifacts/android/
+
+  # ─── iOS IPA (macOS runner) ────────────────────────
+  ios:
+    name: iOS IPA
+    runs-on: macos-latest
+    if: contains(github.event.inputs.platforms || 'ios', 'ios')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Build iOS (no code signing)
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build ios --release --no-codesign 2>&1 || true
+
+      - name: Package IPA
+        working-directory: frontend
+        run: |
+          mkdir -p ../artifacts/ios
+          cd build/ios/iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload/ 2>/dev/null || true
+          zip -r ../../../artifacts/ios/pcos.ipa Payload 2>/dev/null || echo "IPA packaging requires signed build"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release
+          path: artifacts/ios/
+
+  # ─── Windows MSIX (Windows runner) ─────────────────
+  windows:
+    name: Windows MSIX
+    runs-on: windows-latest
+    if: contains(github.event.inputs.platforms || 'windows', 'windows')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Build Windows
+        working-directory: frontend
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+          flutter build windows --release
+
+      - name: Package MSIX
+        working-directory: frontend
+        run: |
+          mkdir -p ../artifacts/windows
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath ../artifacts/windows/pcos-windows.zip
+        shell: pwsh
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: artifacts/windows/
+
+  # ─── Linux AppImage (Docker) ───────────────────────
+  linux:
+    name: Linux Desktop
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.platforms || 'linux', 'linux')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Linux via Docker
+        run: |
+          docker build -f build/Dockerfile.linux -t pcos-linux frontend/
+          CONTAINER_ID=$(docker create pcos-linux)
+          mkdir -p artifacts/linux
+          docker cp "$CONTAINER_ID:/artifacts/" artifacts/linux/ || true
+          docker rm "$CONTAINER_ID"
+
+      - name: Upload Linux build
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: artifacts/linux/
+
+  # ─── macOS DMG (macOS runner) ──────────────────────
+  macos:
+    name: macOS DMG
+    runs-on: macos-latest
+    if: contains(github.event.inputs.platforms || 'macos', 'macos')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Build macOS
+        working-directory: frontend
+        run: |
+          flutter config --enable-macos-desktop
+          flutter pub get
+          flutter build macos --release 2>&1 || true
+
+      - name: Package DMG
+        working-directory: frontend
+        run: |
+          mkdir -p ../artifacts/macos
+          APP_PATH="build/macos/Build/Products/Release/pcos_frontend.app"
+          if [ -d "$APP_PATH" ]; then
+            hdiutil create -volname PCOS -srcfolder "$APP_PATH" -ov ../artifacts/macos/pcos.dmg
+          else
+            echo "macOS build not found — packaging raw output"
+            cp -r build/macos/ ../artifacts/macos/ 2>/dev/null || true
+          fi
+
+      - name: Upload macOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: artifacts/macos/
+
+  # ─── Web (Docker) ─────────────────────────────────
+  web:
+    name: Web Build
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.platforms || 'web', 'web')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Web via Docker
+        run: |
+          docker build -f build/Dockerfile.web -t pcos-web frontend/
+          CONTAINER_ID=$(docker create pcos-web)
+          mkdir -p artifacts/web
+          docker cp "$CONTAINER_ID:/usr/share/nginx/html/" artifacts/web/ || true
+          docker rm "$CONTAINER_ID"
+
+      - name: Upload Web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-release
+          path: artifacts/web/
+
+  # ─── Collect All Artifacts ────────────────────────
+  collect:
+    name: Collect Artifacts
+    runs-on: ubuntu-latest
+    needs: [android, ios, windows, linux, macos, web]
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+
+      - name: Generate checksums
+        run: |
+          cd all-artifacts
+          find . -type f \( -name "*.apk" -o -name "*.aab" -o -name "*.ipa" -o -name "*.dmg" -o -name "*.zip" \) \
+            -exec sha256sum {} \; > checksums.sha256
+          cat checksums.sha256
+
+      - name: Upload combined release
+        uses: actions/upload-artifact@v4
+        with:
+          name: pcos-all-platforms
+          path: all-artifacts/

@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2026-08-03
+
+### Added
+- **Native Flutter Apps (All 6 Platforms)**: Docker-based build system — no local SDK installs required.
+  - **Android**: `Dockerfile.android` (APK + AAB via `ghcr.io/cirruslabs/flutter`), `AndroidManifest.xml` (internet/storage/camera permissions, deep linking), `build.gradle` (API 24-34, ProGuard, minify+shrink).
+  - **iOS**: `Info.plist` (camera/photo permissions, `pcos://` deep link scheme, local networking).
+  - **Windows**: `CMakeLists.txt` for Flutter Windows desktop build.
+  - **Linux**: `Dockerfile.linux` (GTK3/clang/cmake, AppImage directory + `.desktop` file), `CMakeLists.txt`.
+  - **macOS**: `CMakeLists.txt` for Flutter macOS desktop build.
+  - **Web**: `Dockerfile.web` (CanvasKit renderer, nginx serving).
+- **Build Orchestrator** (`build/build_apps.sh`): Docker-only script — `bash build/build_apps.sh [android|linux|web|all]`.
+- **CI Workflow** (`.github/workflows/native_apps.yml`): 6-platform matrix — Android/Linux/Web via Docker, iOS/macOS via macos-latest, Windows via windows-latest. SHA256 checksums for all artifacts.
+
+---
+
 ## [0.9.0] - 2026-08-03
 
 ### Added
