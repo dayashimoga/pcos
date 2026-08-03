@@ -88,6 +88,30 @@ jobs:
           workspaces: agent
       - run: cargo build --manifest-path agent/Cargo.toml --release
       - run: cargo test --manifest-path agent/Cargo.toml --all
+      - name: Upload Agent Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pcos-agent-release
+          path: agent/target/release/pcos-agent
+
+  backend-build:
+    name: Backend Build & Artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+      - name: Build backend release binary
+        run: cargo build --manifest-path backend/Cargo.toml --release --bin pcos-server
+        env:
+          SQLX_OFFLINE: "true"
+      - name: Upload Backend Server Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pcos-backend-server-release
+          path: backend/target/release/pcos-server
 
   # ─── Frontend Checks ────────────────────────────────────
   frontend-analyze:
@@ -119,11 +143,30 @@ jobs:
           flutter pub get
           flutter test --coverage
 
+  frontend-build:
+    name: Frontend Web Build & Artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release
+      - name: Upload Frontend Web Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pcos-frontend-web-release
+          path: frontend/build/web/
+
   # ─── Docker Build ────────────────────────────────────────
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
-    needs: [backend-format, backend-lint, backend-test, frontend-analyze, frontend-test, agent-build]
+    needs: [backend-format, backend-lint, backend-test, backend-build, frontend-analyze, frontend-test, frontend-build, agent-build]
     steps:
       - uses: actions/checkout@v4
       - name: Build backend image
