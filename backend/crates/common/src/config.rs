@@ -60,7 +60,7 @@ impl AppConfig {
             .set_default("auth.access_token_expiry_secs", 900)?
             .set_default("auth.refresh_token_expiry_secs", 604800)?
             .set_default("redis.url", "redis://localhost:6379")?
-            .set_default("storage.base_path", "/data/pcos/storage")?
+            .set_default("storage.base_path", "./data/storage")?
             .set_default("storage.max_upload_size_mb", 10240)?
             .add_source(
                 config::Environment::with_prefix("PCOS")
