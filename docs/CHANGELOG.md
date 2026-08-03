@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2026-08-03
+
+### Added
+- **Autonomous QA Framework** (`qa/`): Feature registry (36 features, 12 modules), Docker test environment, test fixtures (users/files/chaos), orchestrator script (30+ API tests + Rust unit tests), quality gate verifier, self-healing iteration loop.
+- **Certification CI/CD** (`.github/workflows/certification.yml`): 5-phase pipeline — build+test, security scan (cargo-deny + secret scanning), integration tests (live PostgreSQL+Redis), Docker Compose validation, certification report with GitHub Summary.
+- **Quality Gates**: ≥90% overall pass rate, ≥95% critical modules, 100% auth/sync/encryption, 0 critical/high defects, 0 regressions, 0 placeholders — enforced in CI.
+- **Reports**: JSON (`certification.json`), JUnit XML (`results.xml`), Markdown (`certification_report.md`) with feature completion matrix, pass/fail status, and remediation guidance.
+
+---
+
 ## [0.8.0] - 2026-08-03
 
 ### Added

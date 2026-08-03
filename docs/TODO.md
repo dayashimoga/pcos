@@ -100,6 +100,17 @@
 - [x] Service Worker (frontend): static asset caching for offline support, Web Push notification handler with click-to-open, cache versioning
 - [x] All protocol bridges wired into crate routers (smb_bridge in file_metadata, ldap in auth)
 
+### v0.9.0 — Autonomous Production Certification Framework
+- [x] `qa/feature_registry.json`: 36 features across 12 modules, machine-readable acceptance criteria, coverage targets, blocker annotations
+- [x] `qa/docker-compose.test.yml`: isolated test environment (PostgreSQL, Redis, NATS, backend, Prometheus) with health checks
+- [x] `qa/fixtures/seed_data.json`: 3 test users, 4 test files, 4 folders, 2 shares, 2 devices, 5 chaos scenarios, performance thresholds
+- [x] `qa/scripts/orchestrator.sh`: autonomous test orchestrator — provisions stack, seeds data, runs 30+ API tests + Rust unit/agent tests, security validation, generates JSON/JUnit/Markdown reports, auto-teardown
+- [x] `qa/scripts/certify.sh`: quality gate verifier — reads certification report, enforces gates from feature registry, CI/CD exit codes
+- [x] `qa/scripts/self_heal.sh`: self-healing iteration loop (max 5 iterations), failure analysis, blocker identification, auto-retry
+- [x] `.github/workflows/certification.yml`: 5-phase CI pipeline — build+test, security scan (cargo-deny + secret scanning), integration tests (live PostgreSQL+Redis), Docker Compose validation, certification report + GitHub Summary
+- [x] `qa/README.md`: complete QA documentation — architecture, quick start, feature registry summary, quality gates, test types, CI/CD integration, report formats
+- [x] Quality gates enforced: ≥90% overall, ≥95% critical, 100% auth/sync/encryption, 0 critical defects, 0 regressions, 0 placeholders
+
 ---
 
 ## Remaining (Future Roadmap)
@@ -117,5 +128,5 @@
 - [ ] Load/stress testing with k6 or similar
 
 ### Test Coverage
-- Current: 57 tests across 8 versions
-- Target: 90%+ (ongoing effort)
+- Current: 57 unit tests + 30+ API tests across 9 versions
+- Target: 90%+ (enforced by qa/scripts/certify.sh)

@@ -1,0 +1,242 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-08-03",
+  "features": [
+    {
+      "id": "AUTH-001", "name": "User Registration", "module": "auth", "priority": "critical",
+      "criteria": ["POST /api/v1/auth/register returns 201", "Argon2id password hash stored", "JWT token returned"],
+      "test_suites": ["unit", "integration", "api", "security"],
+      "coverage_target": 100
+    },
+    {
+      "id": "AUTH-002", "name": "User Login", "module": "auth", "priority": "critical",
+      "criteria": ["POST /api/v1/auth/login returns 200 with valid credentials", "Returns 401 with invalid", "JWT access+refresh tokens returned"],
+      "test_suites": ["unit", "integration", "api", "security", "load"],
+      "coverage_target": 100
+    },
+    {
+      "id": "AUTH-003", "name": "MFA/TOTP", "module": "auth", "priority": "critical",
+      "criteria": ["TOTP secret generation", "TOTP enable/verify flow", "Login requires TOTP when enabled"],
+      "test_suites": ["unit", "integration", "api"],
+      "coverage_target": 100
+    },
+    {
+      "id": "AUTH-004", "name": "RBAC", "module": "auth", "priority": "critical",
+      "criteria": ["Admin/user/viewer roles enforced", "Admin-only endpoints reject non-admins", "Role assignment persists"],
+      "test_suites": ["unit", "integration", "api", "security"],
+      "coverage_target": 95
+    },
+    {
+      "id": "AUTH-005", "name": "Token Refresh", "module": "auth", "priority": "critical",
+      "criteria": ["Refresh token generates new access token", "Expired refresh rejected", "Token rotation works"],
+      "test_suites": ["unit", "integration", "api"],
+      "coverage_target": 100
+    },
+    {
+      "id": "AUTH-006", "name": "SSO/OIDC", "module": "auth", "priority": "high",
+      "criteria": ["Discovery endpoint fetched", "Authorization URL generated", "Code exchange returns tokens"],
+      "test_suites": ["unit", "integration"],
+      "coverage_target": 90
+    },
+    {
+      "id": "AUTH-007", "name": "LDAP/AD", "module": "auth", "priority": "medium",
+      "criteria": ["LdapConfig created with presets", "Authentication stub callable", "Group sync stub callable"],
+      "test_suites": ["unit"],
+      "coverage_target": 80,
+      "blocked": "Requires ldap3 crate + LDAP server"
+    },
+    {
+      "id": "FILE-001", "name": "File Upload", "module": "file_metadata", "priority": "critical",
+      "criteria": ["Single file upload returns 201", "File stored on disk", "DB entry created with correct metadata"],
+      "test_suites": ["unit", "integration", "api", "e2e", "load"],
+      "coverage_target": 100
+    },
+    {
+      "id": "FILE-002", "name": "File Download", "module": "file_metadata", "priority": "critical",
+      "criteria": ["GET returns file bytes", "Range headers supported", "Content-Type correct"],
+      "test_suites": ["unit", "integration", "api", "e2e"],
+      "coverage_target": 100
+    },
+    {
+      "id": "FILE-003", "name": "File Versioning", "module": "file_metadata", "priority": "high",
+      "criteria": ["Upload creates new version", "List versions returns history", "Restore version works"],
+      "test_suites": ["unit", "integration", "api"],
+      "coverage_target": 95
+    },
+    {
+      "id": "FILE-004", "name": "Folder Operations", "module": "file_metadata", "priority": "high",
+      "criteria": ["Create folder", "List children", "Move/rename", "Delete (trash)"],
+      "test_suites": ["unit", "integration", "api", "e2e"],
+      "coverage_target": 95
+    },
+    {
+      "id": "FILE-005", "name": "Trash & Restore", "module": "file_metadata", "priority": "high",
+      "criteria": ["Delete moves to trash", "List trash", "Restore from trash", "Permanent delete"],
+      "test_suites": ["unit", "integration", "api"],
+      "coverage_target": 95
+    },
+    {
+      "id": "SHARE-001", "name": "Share Links", "module": "sharing", "priority": "high",
+      "criteria": ["Create share link", "Password protection", "Expiration enforced", "Download limit enforced"],
+      "test_suites": ["unit", "integration", "api", "security"],
+      "coverage_target": 95
+    },
+    {
+      "id": "SEARCH-001", "name": "Full-Text Search", "module": "search", "priority": "high",
+      "criteria": ["Tantivy index returns results", "DB fallback works", "Results include score"],
+      "test_suites": ["unit", "integration", "api"],
+      "coverage_target": 90
+    },
+    {
+      "id": "SEARCH-002", "name": "OCR Extraction", "module": "search", "priority": "medium",
+      "criteria": ["Plaintext extraction works", "PDF text extraction works", "Results indexed to Tantivy"],
+      "test_suites": ["unit", "integration"],
+      "coverage_target": 85,
+      "blocked": "Tesseract OCR binary required for image extraction"
+    },
+    {
+      "id": "SYNC-001", "name": "WebSocket Sync", "module": "sync", "priority": "critical",
+      "criteria": ["WS connection with JWT auth", "Change events broadcast", "Conflict resolution"],
+      "test_suites": ["unit", "integration", "e2e"],
+      "coverage_target": 100
+    },
+    {
+      "id": "SYNC-002", "name": "Delta Sync", "module": "agent", "priority": "high",
+      "criteria": ["Content-defined chunking", "SHA-256 per chunk", "Only changed chunks uploaded"],
+      "test_suites": ["unit"],
+      "coverage_target": 90
+    },
+    {
+      "id": "SYNC-003", "name": "LAN Discovery", "module": "agent", "priority": "medium",
+      "criteria": ["UDP broadcast sent", "Peers tracked", "Timeout cleanup works"],
+      "test_suites": ["unit"],
+      "coverage_target": 85
+    },
+    {
+      "id": "BACKUP-001", "name": "Backup Create/Restore", "module": "backup", "priority": "critical",
+      "criteria": ["Backup creates pg_dump + file copy + manifest", "Restore rebuilds state", "Manifest valid JSON"],
+      "test_suites": ["unit", "integration", "api", "recovery"],
+      "coverage_target": 100
+    },
+    {
+      "id": "BACKUP-002", "name": "Backup Retention", "module": "backup", "priority": "high",
+      "criteria": ["Retention deletes old backups", "Keep count honored", "API returns deleted count"],
+      "test_suites": ["unit", "integration", "api"],
+      "coverage_target": 95
+    },
+    {
+      "id": "BACKUP-003", "name": "Backup Verification", "module": "backup", "priority": "high",
+      "criteria": ["Verify checks manifest integrity", "Reports missing files", "Returns health status"],
+      "test_suites": ["unit", "integration", "api"],
+      "coverage_target": 95
+    },
+    {
+      "id": "NOTIF-001", "name": "In-App Notifications", "module": "notification", "priority": "high",
+      "criteria": ["CRUD operations", "Unread count", "Mark all read", "System notifications"],
+      "test_suites": ["unit", "integration", "api"],
+      "coverage_target": 90
+    },
+    {
+      "id": "NOTIF-002", "name": "Email Notifications", "module": "notification", "priority": "medium",
+      "criteria": ["SMTP connection", "Template rendering", "Send on events"],
+      "test_suites": ["unit", "integration"],
+      "coverage_target": 85
+    },
+    {
+      "id": "NOTIF-003", "name": "Web Push", "module": "notification", "priority": "medium",
+      "criteria": ["Subscribe endpoint", "Unsubscribe endpoint", "Push delivery", "Expired cleanup"],
+      "test_suites": ["unit", "integration", "api"],
+      "coverage_target": 85
+    },
+    {
+      "id": "COMPAT-001", "name": "WebDAV", "module": "file_metadata", "priority": "high",
+      "criteria": ["PROPFIND returns XML", "MKCOL creates folder", "DELETE trashes", "MOVE renames", "OPTIONS advertises DAV"],
+      "test_suites": ["unit", "integration", "api", "compatibility"],
+      "coverage_target": 90
+    },
+    {
+      "id": "COMPAT-002", "name": "S3 Gateway", "module": "file_metadata", "priority": "high",
+      "criteria": ["ListBuckets XML", "ListObjectsV2 XML", "HeadObject headers", "DeleteObject"],
+      "test_suites": ["unit", "integration", "api", "compatibility"],
+      "coverage_target": 90
+    },
+    {
+      "id": "AI-001", "name": "AI Auto-Tag", "module": "ai", "priority": "medium",
+      "criteria": ["Ollama connection", "Tag generation", "Classification"],
+      "test_suites": ["unit", "integration"],
+      "coverage_target": 80,
+      "blocked": "Requires running Ollama instance"
+    },
+    {
+      "id": "DEVICE-001", "name": "Device Management", "module": "device", "priority": "high",
+      "criteria": ["Register device", "Heartbeat update", "Online status", "List devices"],
+      "test_suites": ["unit", "integration", "api"],
+      "coverage_target": 90
+    },
+    {
+      "id": "ADMIN-001", "name": "Admin Portal", "module": "admin", "priority": "high",
+      "criteria": ["User list", "User management", "System stats", "Metrics endpoint"],
+      "test_suites": ["unit", "integration", "api", "security"],
+      "coverage_target": 90
+    },
+    {
+      "id": "MONITOR-001", "name": "Observability", "module": "monitoring", "priority": "high",
+      "criteria": ["Prometheus metrics exposed", "Grafana dashboard loads", "Health endpoint returns status"],
+      "test_suites": ["integration", "e2e"],
+      "coverage_target": 85
+    },
+    {
+      "id": "ENCRYPT-001", "name": "E2EE", "module": "common", "priority": "critical",
+      "criteria": ["Key derivation produces 32-byte key", "Encrypt/decrypt roundtrip", "Metadata generated correctly"],
+      "test_suites": ["unit"],
+      "coverage_target": 100
+    },
+    {
+      "id": "PLUGIN-001", "name": "Plugin SDK", "module": "common", "priority": "medium",
+      "criteria": ["PluginManifest created", "Hooks registered", "Dispatch works", "check_allowed returns correct"],
+      "test_suites": ["unit"],
+      "coverage_target": 85
+    },
+    {
+      "id": "I18N-001", "name": "Localization", "module": "common", "priority": "medium",
+      "criteria": ["10 locales supported", "Fallback chain works", "Accept-Language parsed"],
+      "test_suites": ["unit"],
+      "coverage_target": 90
+    },
+    {
+      "id": "DEPLOY-001", "name": "Docker Compose", "module": "infrastructure", "priority": "critical",
+      "criteria": ["docker compose up starts all 13 services", "Health checks pass", "Services communicate"],
+      "test_suites": ["integration", "e2e", "smoke"],
+      "coverage_target": 95
+    },
+    {
+      "id": "DEPLOY-002", "name": "Kubernetes", "module": "infrastructure", "priority": "high",
+      "criteria": ["kubectl apply succeeds", "Pods reach Ready state", "Ingress routes traffic"],
+      "test_suites": ["integration"],
+      "coverage_target": 85,
+      "blocked": "Requires Kubernetes cluster"
+    },
+    {
+      "id": "CICD-001", "name": "CI/CD Pipeline", "module": "infrastructure", "priority": "critical",
+      "criteria": ["CI builds backend+frontend+agent", "Tests run", "SBOM generated", "Docker images built"],
+      "test_suites": ["smoke"],
+      "coverage_target": 90
+    }
+  ],
+  "quality_gates": {
+    "overall_coverage": 90,
+    "critical_module_coverage": 95,
+    "auth_coverage": 100,
+    "sync_coverage": 100,
+    "encryption_coverage": 100,
+    "max_critical_defects": 0,
+    "max_high_defects": 0,
+    "max_regressions": 0,
+    "max_placeholders": 0,
+    "max_incomplete_workflows": 0
+  },
+  "test_types": [
+    "unit", "integration", "api", "e2e", "smoke", "load", "stress",
+    "chaos", "recovery", "security", "accessibility", "compatibility"
+  ]
+}
