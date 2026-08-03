@@ -19,7 +19,7 @@ RUN flutter config --enable-linux-desktop && flutter pub get
 COPY . .
 
 # Build Linux release
-RUN flutter create --platforms=linux . && flutter build linux --release 2>&1 || true
+RUN rm -rf linux && flutter create --platforms=linux . && flutter build linux --release
 
 # Create AppImage structure
 RUN mkdir -p /app/build/linux/x64/release/bundle /AppDir/usr/bin /AppDir/usr/share/icons/hicolor/256x256/apps /AppDir/usr/share/applications && \
