@@ -309,6 +309,9 @@ class _FilesContentState extends State<_FilesContent> {
       case 'info':
         _showFileInfo(context, entry);
         break;
+      case 'move':
+        _showMoveDialog(context, entry);
+        break;
     }
   }
 
@@ -387,7 +390,72 @@ class _FilesContentState extends State<_FilesContent> {
   );
 
   void _handleUpload(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Row(children: [
+        SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+        SizedBox(width: 12),
+        Text('Uploading...'),
+      ]),
+      backgroundColor: AppTheme.primary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      duration: const Duration(seconds: 2),
+    ));
     platform.pickAndUploadFiles(context, _currentFolderId);
+  }
+
+  void _showMoveDialog(BuildContext context, Map<String, dynamic> entry) {
+    final folderIdCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: AppTheme.accent.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.drive_file_move_rounded, size: 20, color: AppTheme.accent),
+                ),
+                const SizedBox(width: 12),
+                const Text('Move Item', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+              ]),
+              const SizedBox(height: 8),
+              Text('Moving "${entry['name']}"', style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+              const SizedBox(height: 20),
+              TextField(
+                controller: folderIdCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Target Folder ID',
+                  hintText: 'Leave empty for root',
+                  prefixIcon: Icon(Icons.folder_open_rounded, size: 20),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text('Tip: Copy a folder ID from the URL or folder Info dialog', style: TextStyle(fontSize: 11, color: AppTheme.textMuted.withOpacity(0.7))),
+              const SizedBox(height: 24),
+              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () {
+                    final targetId = folderIdCtrl.text.trim().isEmpty ? null : folderIdCtrl.text.trim();
+                    context.read<FileBloc>().add(FileMoveRequested(itemId: entry['id'], targetFolderId: targetId));
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Move'),
+                ),
+              ]),
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showNewFolderDialog(BuildContext context) {
@@ -603,6 +671,7 @@ class _FileGridCard extends StatelessWidget {
                 if (entry['entry_type'] == 'file')
                   const PopupMenuItem(value: 'share', child: Row(children: [Icon(Icons.link_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Copy Link')])),
                 const PopupMenuItem(value: 'info', child: Row(children: [Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Info')])),
+                const PopupMenuItem(value: 'move', child: Row(children: [Icon(Icons.drive_file_move_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Move')])),
                 const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Rename')])),
                 const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 16, color: AppTheme.error), SizedBox(width: 8), Text('Move to Trash', style: TextStyle(color: AppTheme.error))])),
               ]),
@@ -664,6 +733,7 @@ class _FileList extends StatelessWidget {
                   if (e['entry_type'] == 'file')
                     const PopupMenuItem(value: 'share', child: Row(children: [Icon(Icons.link_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Copy Link')])),
                   const PopupMenuItem(value: 'info', child: Row(children: [Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Info')])),
+                  const PopupMenuItem(value: 'move', child: Row(children: [Icon(Icons.drive_file_move_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Move')])),
                   const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Rename')])),
                   const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 16, color: AppTheme.error), SizedBox(width: 8), Text('Move to Trash', style: TextStyle(color: AppTheme.error))])),
                 ]),
