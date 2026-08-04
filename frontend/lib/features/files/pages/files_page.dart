@@ -283,8 +283,6 @@ class _FilesContentState extends State<_FilesContent> {
       case 'rename': _showRenameDialog(context, entry); break;
       case 'delete': context.read<FileBloc>().add(FileDeleteRequested(entry['id'])); break;
       case 'download':
-        final api = getIt<ApiClient>();
-        final url = '${api.dio.options.baseUrl}api/v1/files/${entry['id']}/download';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Row(children: [
             const Icon(Icons.download_rounded, color: Colors.white, size: 18),

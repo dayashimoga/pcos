@@ -26,26 +26,24 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadData() async {
+    final api = getIt<ApiClient>();
+    dynamic versionData;
+    dynamic userData;
     try {
-      final api = getIt<ApiClient>();
-      final futures = await Future.wait([
-        api.dio.get('/api/v1/version').catchError((_) => null),
-        api.dio.get('/api/v1/users/me').catchError((_) => null),
-      ]);
-      final versionResp = futures[0];
-      final userResp = futures[1];
-      setState(() {
-        _version = versionResp?.data?['version'] ?? '1.2.0';
-        _displayName = userResp?.data?['display_name'] ?? '';
-        _email = userResp?.data?['email'] ?? '';
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() {
-        _version = '1.2.0';
-        _loading = false;
-      });
-    }
+      final resp = await api.dio.get('/api/v1/version');
+      versionData = resp.data;
+    } catch (_) {}
+    try {
+      final resp = await api.dio.get('/api/v1/users/me');
+      userData = resp.data;
+    } catch (_) {}
+
+    setState(() {
+      _version = (versionData != null && versionData['version'] != null) ? versionData['version'].toString() : '1.2.0';
+      _displayName = (userData != null && userData['display_name'] != null) ? userData['display_name'].toString() : '';
+      _email = (userData != null && userData['email'] != null) ? userData['email'].toString() : '';
+      _loading = false;
+    });
   }
 
   void _showEditProfile(BuildContext context) {

@@ -170,8 +170,6 @@ class _SearchPageState extends State<SearchPage> {
                       icon: const Icon(Icons.download_rounded, size: 20, color: AppTheme.primary),
                       tooltip: 'Download',
                       onPressed: () {
-                        final api = getIt<ApiClient>();
-                        final url = '${api.dio.options.baseUrl}api/v1/files/${e['id']}/download';
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text('Download: ${e['name']}'),
                           backgroundColor: AppTheme.primary,

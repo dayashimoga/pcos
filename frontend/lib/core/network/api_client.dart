@@ -47,7 +47,7 @@ class ApiClient {
           }
         }
         // Retry on network errors and 5xx (up to 2 retries)
-        final retryCount = error.requestOptions.extra['_retryCount'] ?? 0;
+        final int retryCount = (error.requestOptions.extra['_retryCount'] as int?) ?? 0;
         if (retryCount < 2 &&
             (error.type == DioExceptionType.connectionTimeout ||
              error.type == DioExceptionType.connectionError ||

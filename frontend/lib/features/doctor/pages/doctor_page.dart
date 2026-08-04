@@ -85,7 +85,7 @@ class _DoctorPageState extends State<DoctorPage> {
 
     // 9. Notifications
     await _runCheck('Notifications', 'Notification delivery system', () async {
-      final resp = await api.dio.get('/api/v1/notifications');
+      await api.dio.get('/api/v1/notifications');
       return 'Service available';
     });
 
