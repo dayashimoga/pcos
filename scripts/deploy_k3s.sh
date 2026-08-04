@@ -28,20 +28,30 @@ echo "======================================================================"
 echo -e "${NC}"
 
 # ------------------------------------------------------------------------------
-# 1. K3s / Kubectl Verification & Automated Installation
+# 1. Kubernetes / K3s / Docker Desktop Verification & Automated Setup
 # ------------------------------------------------------------------------------
-log_info "Step 1: Checking Kubernetes / K3s environment..."
+log_info "Step 1: Checking Kubernetes / K3s / Docker Desktop environment..."
 
 if command -v kubectl >/dev/null 2>&1 && kubectl cluster-info >/dev/null 2>&1; then
-    log_success "Active Kubernetes cluster detected via kubectl."
+    CURRENT_CTX=$(kubectl config current-context 2>/dev/null || echo "default")
+    log_success "Active Kubernetes cluster detected via kubectl (context: $CURRENT_CTX)."
 elif [ -f /etc/rancher/k3s/k3s.yaml ] && command -v k3s >/dev/null 2>&1; then
     export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
     log_success "K3s installation found. KUBECONFIG set to /etc/rancher/k3s/k3s.yaml"
+elif command -v docker >/dev/null 2>&1 && docker info 2>/dev/null | grep -i "operating system" | grep -iq "docker desktop"; then
+    log_warn "Docker Desktop detected, but Kubernetes is not yet enabled in Docker Desktop settings."
+    log_info "To enable Kubernetes in Docker Desktop:"
+    log_info "  1. Open Docker Desktop -> Settings (gear icon) -> Kubernetes"
+    log_info "  2. Check 'Enable Kubernetes' -> Click 'Apply & restart'"
+    log_info "  3. Re-run: bash scripts/deploy_k3s.sh"
+    log_info ""
+    log_info "Alternatively, you can deploy immediately via Docker Compose:"
+    log_info "  docker compose up -d"
 else
     log_warn "K3s is not installed or kubectl is not connected to a cluster."
     if [ "$(id -u)" -ne 0 ] && ! command -v sudo >/dev/null 2>&1; then
-        log_error "K3s installation requires root privileges or sudo."
-        log_info "Skipping automatic K3s binary install; please run script with sudo or ensure kubectl cluster is available."
+        log_error "K3s installation requires root privileges or sudo on Linux."
+        log_info "Skipping automatic K3s binary install; please ensure a Kubernetes cluster or Docker Desktop is running."
     else
         log_info "Installing K3s lightweight Kubernetes cluster..."
         if command -v sudo >/dev/null 2>&1 && [ "$(id -u)" -ne 0 ]; then
