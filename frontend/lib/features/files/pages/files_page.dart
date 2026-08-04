@@ -312,7 +312,154 @@ class _FilesContentState extends State<_FilesContent> {
       case 'move':
         _showMoveDialog(context, entry);
         break;
+      case 'share_dialog':
+        _showShareDialog(context, entry);
+        break;
     }
+  }
+
+  void _showShareDialog(BuildContext context, Map<String, dynamic> entry) {
+    final passwordCtrl = TextEditingController();
+    bool usePassword = false;
+    bool useExpiry = false;
+    int expiryDays = 7;
+    int maxDownloads = 0;
+    String? shareUrl;
+    bool creating = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          backgroundColor: AppTheme.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.share_rounded, size: 20, color: AppTheme.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('Share File', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                    Text(entry['name'] ?? '', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted), overflow: TextOverflow.ellipsis),
+                  ])),
+                  IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => Navigator.pop(ctx)),
+                ]),
+                const Divider(color: AppTheme.border, height: 24),
+
+                if (shareUrl != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: AppTheme.background, borderRadius: BorderRadius.circular(10)),
+                    child: Row(children: [
+                      Expanded(child: Text(shareUrl!, style: const TextStyle(fontSize: 12, color: AppTheme.primary), overflow: TextOverflow.ellipsis)),
+                      IconButton(
+                        icon: const Icon(Icons.copy_rounded, size: 18, color: AppTheme.primary),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: shareUrl!));
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: const Text('Share link copied!'),
+                            backgroundColor: AppTheme.success,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ));
+                        },
+                      ),
+                    ]),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Done'),
+                  ),
+                ] else ...[
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Password protect', style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
+                    value: usePassword,
+                    onChanged: (v) => setDialogState(() => usePassword = v),
+                    activeColor: AppTheme.primary,
+                  ),
+                  if (usePassword)
+                    TextField(controller: passwordCtrl, obscureText: true,
+                      decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline, size: 18), isDense: true)),
+                  const SizedBox(height: 8),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Set expiry', style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
+                    value: useExpiry,
+                    onChanged: (v) => setDialogState(() => useExpiry = v),
+                    activeColor: AppTheme.primary,
+                  ),
+                  if (useExpiry)
+                    Row(children: [
+                      const Text('Expires in', style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                      const SizedBox(width: 8),
+                      DropdownButton<int>(
+                        value: expiryDays,
+                        dropdownColor: AppTheme.surface,
+                        style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+                        items: [1, 3, 7, 14, 30, 90].map((d) =>
+                          DropdownMenuItem(value: d, child: Text('$d days'))).toList(),
+                        onChanged: (v) => setDialogState(() => expiryDays = v!),
+                      ),
+                    ]),
+                  const SizedBox(height: 16),
+                  Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: creating ? null : () async {
+                        setDialogState(() => creating = true);
+                        try {
+                          final api = getIt<ApiClient>();
+                          final data = <String, dynamic>{
+                            'file_entry_id': entry['id'],
+                            'permission': 'download',
+                          };
+                          if (usePassword && passwordCtrl.text.isNotEmpty) {
+                            data['password'] = passwordCtrl.text;
+                          }
+                          if (useExpiry) {
+                            data['expires_at'] = DateTime.now().add(Duration(days: expiryDays)).toIso8601String();
+                          }
+                          if (maxDownloads > 0) {
+                            data['max_downloads'] = maxDownloads;
+                          }
+                          final resp = await api.dio.post('/api/v1/shares', data: data);
+                          final token = resp.data['token'] ?? resp.data['id'] ?? '';
+                          setDialogState(() {
+                            shareUrl = '${api.dio.options.baseUrl}s/$token';
+                            creating = false;
+                          });
+                        } catch (e) {
+                          setDialogState(() => creating = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed: $e'), backgroundColor: AppTheme.error),
+                            );
+                          }
+                        }
+                      },
+                      child: creating
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Create Share Link'),
+                    ),
+                  ]),
+                ],
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showFileInfo(BuildContext context, Map<String, dynamic> entry) {
@@ -660,8 +807,20 @@ class _FileGridCard extends StatelessWidget {
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.border)),
         child: Column(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: _iconColor().withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-              child: Icon(_icon(), size: 24, color: _iconColor())),
+            if (entry['entry_type'] == 'file' && (entry['mime_type'] ?? '').toString().startsWith('image/'))
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  '${getIt<ApiClient>().dio.options.baseUrl}api/v1/files/${entry['id']}/download',
+                  width: 44, height: 44, fit: BoxFit.cover,
+                  headers: {'Authorization': 'Bearer ${getIt<ApiClient>().dio.options.headers['Authorization']?.toString().replaceFirst('Bearer ', '') ?? ''}'},
+                  errorBuilder: (_, __, ___) => Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: _iconColor().withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                    child: Icon(_icon(), size: 24, color: _iconColor())),
+                ),
+              )
+            else
+              Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: _iconColor().withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                child: Icon(_icon(), size: 24, color: _iconColor())),
             PopupMenuButton<String>(onSelected: onAction, icon: const Icon(Icons.more_vert_rounded, size: 18, color: AppTheme.textMuted),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               color: AppTheme.surface,
@@ -670,6 +829,8 @@ class _FileGridCard extends StatelessWidget {
                   const PopupMenuItem(value: 'download', child: Row(children: [Icon(Icons.download_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Download')])),
                 if (entry['entry_type'] == 'file')
                   const PopupMenuItem(value: 'share', child: Row(children: [Icon(Icons.link_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Copy Link')])),
+                if (entry['entry_type'] == 'file')
+                  const PopupMenuItem(value: 'share_dialog', child: Row(children: [Icon(Icons.share_rounded, size: 16, color: AppTheme.primary), SizedBox(width: 8), Text('Share...', style: TextStyle(color: AppTheme.primary))])),
                 const PopupMenuItem(value: 'info', child: Row(children: [Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Info')])),
                 const PopupMenuItem(value: 'move', child: Row(children: [Icon(Icons.drive_file_move_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Move')])),
                 const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Rename')])),
@@ -732,6 +893,8 @@ class _FileList extends StatelessWidget {
                     const PopupMenuItem(value: 'download', child: Row(children: [Icon(Icons.download_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Download')])),
                   if (e['entry_type'] == 'file')
                     const PopupMenuItem(value: 'share', child: Row(children: [Icon(Icons.link_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Copy Link')])),
+                  if (e['entry_type'] == 'file')
+                    const PopupMenuItem(value: 'share_dialog', child: Row(children: [Icon(Icons.share_rounded, size: 16, color: AppTheme.primary), SizedBox(width: 8), Text('Share...', style: TextStyle(color: AppTheme.primary))])),
                   const PopupMenuItem(value: 'info', child: Row(children: [Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Info')])),
                   const PopupMenuItem(value: 'move', child: Row(children: [Icon(Icons.drive_file_move_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Move')])),
                   const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Rename')])),
