@@ -163,6 +163,13 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
           resources:
             requests:
               cpu: 250m
@@ -213,6 +220,12 @@ spec:
               path: /
               port: 80
             periodSeconds: 30
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 60
           resources:
             requests:
               cpu: 100m
@@ -310,3 +323,15 @@ data:
   POSTGRES_PASSWORD: Y2hhbmdlLW1l
   DATABASE_URL: cG9zdGdyZXNxbDovL3Bjb3M6Y2hhbmdlLW1lQHBvc3RncmVzOjU0MzIvcGNvcw==
   JWT_SECRET: Y2hhbmdlLW1lLXRvLWEtc2VjdXJlLXJhbmRvbS1zdHJpbmc=
+---
+# ─── Pod Disruption Budget ───────────────────────────
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-pdb
+  namespace: pcos
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: backend

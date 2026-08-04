@@ -122,6 +122,23 @@
 - [x] `frontend/windows/CMakeLists.txt`: Windows desktop CMake config
 - [x] `frontend/linux/CMakeLists.txt`: Linux desktop CMake config (GTK3)
 - [x] `frontend/macos/CMakeLists.txt`: macOS desktop CMake config
+### v1.2.0 — Production Hardening & UI Overhaul
+- [x] Consolidated CI: `ci.yml` + `certification.yml` → single `ci.yml` (6 jobs instead of ~15)
+- [x] Fixed Windows build: CMakeLists.txt patched for Visual Studio 17 2022
+- [x] Removed all `|| true` error suppression from workflows
+- [x] Added env var fallbacks (DATABASE_URL, JWT_SECRET) across all CI jobs
+- [x] Backend: config-rs `prefix_separator("_")` fix, JWT secret warning, `/api/v1/version`, email normalization
+- [x] Backend: WebDAV route collision fix, pool config logging
+- [x] Frontend: collapsible sidebar with animation + keyboard shortcuts (Ctrl+1-7)
+- [x] Frontend: Material 3 NavigationBar for mobile (5 items), Admin/Settings in app bar
+- [x] Frontend: files page skeleton loading, error retry, RefreshIndicator, responsive sliver grid
+- [x] Frontend: improved dialogs (icons, FilledButton, keyboard submit), hover effects
+- [x] Frontend: API client retry interceptor (2 retries, exponential backoff)
+- [x] Docker Compose: backend healthcheck (/health, 30s start period)
+- [x] K8s: liveness probes on backend + frontend, PodDisruptionBudget for backend
+- [x] Docs: PRODUCTION_READINESS.md, SECURITY_REPORT.md, TEST_REPORT.md, PERFORMANCE_REPORT.md
+- [x] Docs: CHANGELOG.md updated with full v1.2.0 entry
+
 ### v1.1.0 — Video/Audio Adaptive Streaming (Docker FFmpeg)
 - [x] `build/Dockerfile.transcoder`: Alpine + FFmpeg/ffprobe Docker image for transcoding
 - [x] `backend/crates/streaming/scripts/transcode.sh`: HLS adaptive bitrate (360p/720p/1080p master playlist), audio-only (HLS + MP3), thumbnail + sprite generation
@@ -146,7 +163,9 @@
 ### Nice-to-Have
 - [ ] Accessibility (a11y) audit + WCAG 2.1 AA compliance
 - [ ] Load/stress testing with k6 or similar
+- [ ] E2E browser tests (Playwright/Selenium)
+- [ ] Client-side E2EE key management (server-side AES-256-GCM implemented)
 
 ### Test Coverage
-- Current: 57 unit tests + 30+ API tests across 11 versions
+- Current: 57 unit tests + 30+ API tests across 12 versions
 - Target: 90%+ (enforced by qa/scripts/certify.sh)

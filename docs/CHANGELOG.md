@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Production Hardening
 
 #### CI/CD
+- Consolidated `ci.yml` + `certification.yml` into single `ci.yml` with 6 focused jobs (was ~15 across 2 files)
+- Deleted redundant `certification.yml`
 - Fixed Windows build: patch generated `CMakeLists.txt` to use `Visual Studio 17 2022` after `flutter create`
 - Removed all silent error suppression (`|| true`) from CI workflows; failures now properly surface
 - Added `DATABASE_URL` and `JWT_SECRET` direct env var exports alongside `PCOS_` prefixed vars in all test jobs
@@ -26,10 +28,18 @@ All notable changes to this project will be documented in this file.
 - Fixed Axum router collision between `/webdav/*path` and `/webdav/:name` routes
 
 #### Frontend
+- Consolidated CI from 3 workflows to 2 (ci.yml + native_apps.yml)
+- Overhauled shell layout: collapsible sidebar with animation, keyboard shortcuts (Ctrl+1-7), Material 3 NavigationBar for mobile
+- Overhauled files page: skeleton loading, error state with retry, RefreshIndicator, responsive sliver grid (2-6 columns), hover effects
+- Improved dialogs with icons, FilledButton, and keyboard submit
+- Added tooltips on collapsed sidebar and navigation rail icons
+- Mobile: 5-item bottom nav with Admin/Settings in app bar actions
 - Added retry interceptor with exponential backoff (2 retries for network errors and 5xx)
 
 #### Deployment
 - Added healthcheck to backend service in `docker-compose.yml` (curl /health, 30s start period)
+- Added liveness probes to K8s backend and frontend deployments
+- Added PodDisruptionBudget for backend (minAvailable: 1)
 - Removed incomplete tracked `frontend/windows/CMakeLists.txt` and `frontend/linux/CMakeLists.txt`
 
 #### Documentation
