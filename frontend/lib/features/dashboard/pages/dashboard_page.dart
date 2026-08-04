@@ -102,6 +102,15 @@ class _DashboardPageState extends State<DashboardPage> {
               _StatusRow(label: 'Server Status', value: 'Online', valueColor: AppTheme.success),
             ]),
           ),
+          const SizedBox(height: 32),
+
+          // Recent Files
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('Recent Files', style: Theme.of(context).textTheme.headlineMedium),
+            TextButton(onPressed: () => context.go('/files'), child: const Text('View all')),
+          ]),
+          const SizedBox(height: 12),
+          _RecentFilesWidget(),
         ]),
       ),
     );
@@ -156,4 +165,64 @@ class _ActionChip extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _RecentFilesWidget extends StatefulWidget {
+  @override
+  State<_RecentFilesWidget> createState() => _RecentFilesWidgetState();
+}
+
+class _RecentFilesWidgetState extends State<_RecentFilesWidget> {
+  List<Map<String, dynamic>> _files = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final api = getIt<ApiClient>();
+      final resp = await api.dio.get('/api/v1/files', queryParameters: {'limit': 5, 'sort': 'updated_at'});
+      setState(() {
+        _files = List<Map<String, dynamic>>.from(resp.data['entries'] ?? [])
+            .where((e) => e['entry_type'] == 'file')
+            .take(5)
+            .toList();
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return Container(
+        height: 80,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.border)),
+        child: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    if (_files.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.border)),
+        child: const Center(child: Text('No recent files', style: TextStyle(color: AppTheme.textMuted, fontSize: 13))),
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.border)),
+      child: Column(children: _files.map((f) => ListTile(
+        leading: Icon(Icons.insert_drive_file_rounded, size: 20, color: AppTheme.primary),
+        title: Text(f['name'] ?? '', style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary), overflow: TextOverflow.ellipsis),
+        subtitle: Text(formatFileSize(f['size_bytes'] ?? 0), style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+        dense: true,
+      )).toList()),
+    );
+  }
 }
