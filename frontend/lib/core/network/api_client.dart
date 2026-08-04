@@ -46,6 +46,19 @@ class ApiClient {
             }
           }
         }
+        // Retry on network errors and 5xx (up to 2 retries)
+        final retryCount = error.requestOptions.extra['_retryCount'] ?? 0;
+        if (retryCount < 2 &&
+            (error.type == DioExceptionType.connectionTimeout ||
+             error.type == DioExceptionType.connectionError ||
+             (error.response?.statusCode ?? 0) >= 500)) {
+          await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+          error.requestOptions.extra['_retryCount'] = retryCount + 1;
+          try {
+            final response = await dio.fetch(error.requestOptions);
+            return handler.resolve(response);
+          } catch (_) {}
+        }
         return handler.next(error);
       },
     ));

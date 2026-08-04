@@ -87,6 +87,7 @@ jobs:
   integration:
     name: Integration & API Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [build-and-test]
     services:
       postgres:
@@ -202,7 +203,9 @@ jobs:
           PCOS_SERVER__HOST: "0.0.0.0"
           PCOS_SERVER__PORT: "8080"
           PCOS_DATABASE__URL: "postgresql://pcos_test:test_password@localhost:5432/pcos_test"
+          DATABASE_URL: "postgresql://pcos_test:test_password@localhost:5432/pcos_test"
           PCOS_AUTH__JWT_SECRET: "ci-test-jwt-secret-minimum-32-characters-long"
+          JWT_SECRET: "ci-test-jwt-secret-minimum-32-characters-long"
           PCOS_REDIS__URL: "redis://localhost:6379"
           PCOS_STORAGE__BASE_PATH: "/tmp/pcos-test-storage"
           RUST_LOG: "pcos=info,sqlx=warn"

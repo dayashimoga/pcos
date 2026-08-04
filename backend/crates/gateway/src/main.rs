@@ -14,6 +14,13 @@ struct HealthResponse {
     uptime_secs: u64,
 }
 
+#[derive(Serialize)]
+struct VersionResponse {
+    version: String,
+    build_date: String,
+    rust_version: String,
+}
+
 static START_TIME: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
 
 #[tokio::main]
@@ -39,6 +46,11 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to load configuration: {e}"))?;
 
     tracing::info!(host = %config.server.host, port = %config.server.port, "Configuration loaded");
+    tracing::info!(
+        max_connections = config.database.max_connections,
+        min_connections = config.database.min_connections,
+        "Database pool configuration"
+    );
 
     // Ensure storage directory exists
     let storage_path = std::path::Path::new(&config.storage.base_path);
@@ -85,6 +97,7 @@ async fn main() -> anyhow::Result<()> {
         // Health check (no auth required)
         .route("/health", get(health_check))
         .route("/api/v1/health", get(health_check))
+        .route("/api/v1/version", get(version_info))
         // Service routes
         .merge(pcos_auth::router())
         .merge(pcos_user::router())
@@ -128,6 +141,15 @@ async fn health_check() -> Json<HealthResponse> {
         status: "healthy".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_secs: uptime,
+    })
+}
+
+/// Version info endpoint.
+async fn version_info() -> Json<VersionResponse> {
+    Json(VersionResponse {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        build_date: option_env!("BUILD_DATE").unwrap_or("dev").to_string(),
+        rust_version: option_env!("RUSTC_VERSION").unwrap_or("unknown").to_string(),
     })
 }
 

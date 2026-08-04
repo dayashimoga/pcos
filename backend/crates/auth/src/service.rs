@@ -15,8 +15,9 @@ pub async fn register(
     state: &AppState,
     req: RegisterRequest,
 ) -> AppResult<AuthResponse> {
-    // Validate inputs
-    pcos_common::auth::validation::validate_email(&req.email)?;
+    // Validate and normalize inputs
+    let email = req.email.trim().to_lowercase();
+    pcos_common::auth::validation::validate_email(&email)?;
     pcos_common::auth::validation::validate_password(&req.password)?;
 
     if req.display_name.trim().is_empty() || req.display_name.len() > 100 {
@@ -28,7 +29,7 @@ pub async fn register(
     // Check if email already exists
     let existing =
         sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)")
-            .bind(&req.email)
+            .bind(&email)
             .fetch_one(pool)
             .await
             .map_err(|e| AppError::Internal(format!("Database query failed: {e}")))?;
@@ -50,7 +51,7 @@ pub async fn register(
         "#,
     )
     .bind(Uuid::new_v4())
-    .bind(&req.email)
+    .bind(&email)
     .bind(&req.display_name)
     .bind(&password_hash)
     .fetch_one(pool)
@@ -81,10 +82,11 @@ pub async fn register(
 
 /// Authenticate a user and return tokens.
 pub async fn login(pool: &PgPool, state: &AppState, req: LoginRequest) -> AppResult<AuthResponse> {
-    // Find user by email
+    // Find user by email (normalize to lowercase)
+    let email = req.email.trim().to_lowercase();
     let user =
         sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1 AND is_active = true")
-            .bind(&req.email)
+            .bind(&email)
             .fetch_optional(pool)
             .await?
             .ok_or_else(|| AppError::Unauthorized("Invalid email or password".to_string()))?;

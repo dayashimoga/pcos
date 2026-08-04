@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-08-04
+
+### Production Hardening
+
+#### CI/CD
+- Fixed Windows build: patch generated `CMakeLists.txt` to use `Visual Studio 17 2022` after `flutter create`
+- Removed all silent error suppression (`|| true`) from CI workflows; failures now properly surface
+- Added `DATABASE_URL` and `JWT_SECRET` direct env var exports alongside `PCOS_` prefixed vars in all test jobs
+- Added `continue-on-error: true` for iOS/macOS builds (code signing requires Apple credentials)
+- Added `timeout-minutes: 15` to integration test job
+- Added `packages: write` permission to release Docker push job
+- Added `CARGO_INCREMENTAL: 0` to release builds for reproducibility
+- Installed `cargo-audit` with `--locked` flag for deterministic CI
+
+#### Backend
+- Added `.prefix_separator("_")` to config-rs environment parser — fixes `PCOS_DATABASE__URL` not being recognized
+- Added direct `DATABASE_URL` and `JWT_SECRET` env var fallbacks in `config.rs`
+- Added startup warning when default JWT secret is detected
+- Added `/api/v1/version` endpoint with build info
+- Added database pool configuration logging at startup
+- Normalized email to lowercase in register and login (prevents case-sensitive duplicates)
+- Fixed Axum router collision between `/webdav/*path` and `/webdav/:name` routes
+
+#### Frontend
+- Added retry interceptor with exponential backoff (2 retries for network errors and 5xx)
+
+#### Deployment
+- Added healthcheck to backend service in `docker-compose.yml` (curl /health, 30s start period)
+- Removed incomplete tracked `frontend/windows/CMakeLists.txt` and `frontend/linux/CMakeLists.txt`
+
+#### Documentation
+- Added `PRODUCTION_READINESS.md` — platform matrix, feature completion, deployment checklist
+- Added `SECURITY_REPORT.md` — auth controls, data protection, dependency scanning
+- Added `TEST_REPORT.md` — test infrastructure, coverage by module, known gaps
+- Added `PERFORMANCE_REPORT.md` — build times, optimizations, database tuning
+
+---
+
 ## [1.1.0] - 2026-08-03
 
 ### Added

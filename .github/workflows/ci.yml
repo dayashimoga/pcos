@@ -64,6 +64,7 @@ jobs:
         run: cargo test --manifest-path backend/Cargo.toml --all
         env:
           PCOS_DATABASE__URL: postgresql://pcos:pcos_secret@localhost:5432/pcos_test
+          DATABASE_URL: postgresql://pcos:pcos_secret@localhost:5432/pcos_test
           PCOS_AUTH__JWT_SECRET: ci-test-secret-that-is-long-enough-for-testing-purposes-64-chars!!
           SQLX_OFFLINE: "true"
 
@@ -73,9 +74,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-audit
+      - run: cargo install cargo-audit --locked
       - run: cargo generate-lockfile --manifest-path backend/Cargo.toml
-      - run: cargo audit --file backend/Cargo.lock || true
+      - run: cargo audit --file backend/Cargo.lock
+        continue-on-error: true
 
   agent-build:
     name: Agent Build
@@ -126,8 +128,8 @@ jobs:
       - working-directory: frontend
         run: |
           flutter pub get
-          dart analyze --no-fatal-warnings || true
-          dart format --set-exit-if-changed . || true
+          dart analyze --no-fatal-warnings
+          dart format --set-exit-if-changed .
 
   frontend-test:
     name: Frontend Tests

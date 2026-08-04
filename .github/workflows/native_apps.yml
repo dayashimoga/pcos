@@ -52,10 +52,11 @@ jobs:
 
       - name: Build iOS (no code signing)
         working-directory: frontend
+        continue-on-error: true
         run: |
           flutter create --platforms=ios .
           flutter pub get
-          flutter build ios --release --no-codesign 2>&1 || true
+          flutter build ios --release --no-codesign
 
       - name: Package IPA
         working-directory: frontend
@@ -92,6 +93,11 @@ jobs:
           flutter config --enable-windows-desktop
           if (Test-Path windows) { Remove-Item -Recurse -Force windows }
           flutter create --platforms=windows .
+          # Patch CMakeLists.txt to use Visual Studio 17 2022 (windows-latest has VS 2022)
+          $cmakeFile = 'windows/CMakeLists.txt'
+          if (Test-Path $cmakeFile) {
+            (Get-Content $cmakeFile) -replace 'Visual Studio 16 2019', 'Visual Studio 17 2022' | Set-Content $cmakeFile
+          }
           flutter pub get
           flutter build windows --release
         shell: pwsh
@@ -151,11 +157,12 @@ jobs:
 
       - name: Build macOS
         working-directory: frontend
+        continue-on-error: true
         run: |
           flutter config --enable-macos-desktop
           flutter create --platforms=macos .
           flutter pub get
-          flutter build macos --release 2>&1 || true
+          flutter build macos --release
 
       - name: Package DMG
         working-directory: frontend
