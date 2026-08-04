@@ -4,30 +4,60 @@ All notable changes to this project will be documented in this file.
 
 ## [1.5.0] - 2026-08-04
 
-### Advanced Features
+### Advanced Features & Production Readiness
 
-#### Global Search (Ctrl+K Command Palette)
-- Ctrl+K opens floating command palette overlay with page search
-- Filterable list of all app pages with instant navigation
-- Clickable search bar hint in desktop sidebar header
+#### Global Search & Command Palette (Ctrl+K)
+- Ctrl+K opens floating command palette overlay with instant page search and fuzzy filtering
+- Clickable "Search... ⌘K" bar in desktop sidebar header
+- Compact search icon button when sidebar is collapsed
 - Search icon added to mobile app bar
-- Shows keyboard shortcuts (ESC to close, Ctrl+K to open)
+- Keyboard shortcuts hints (ESC to close, Ctrl+K to open)
 
-#### Search Page Filters
+#### Search Page Filters & Enhancements
 - Filter chips: All / Files / Folders — re-queries API with type filter
 - Sort results: By Name (A→Z), By Size (largest first), or Relevance
 - Copy link button alongside download in search results
-- Improved empty state with suggestion text
+- Improved empty state with search suggestion text
 
-#### File Management
-- Move file/folder dialog — move items to any folder by target ID
-- Upload progress spinner snackbar when uploading
-- File Info dialog shows type, MIME, size, ID, created/modified dates + quick actions
-- Context menu now has 7 actions: Download, Copy Link, Info, Move, Rename, Delete
+#### File Management & Context Menu (8 Actions)
+- Context menu expanded to 8 actions: Download, Copy Link, Share..., Info, Move, Rename, Delete
+- Move file/folder dialog — move items to any target folder by ID
+- Upload progress spinner snackbar when starting uploads
+- File Info dialog displaying type, MIME, size, ID, created/modified dates, and quick actions
+- Image thumbnail previews inside grid cards for all `image/*` files with icon fallback
 
-#### Dashboard
-- Recent Files section showing 5 most recent files from API
-- "View all" link to files page
+#### File Sharing Dialog
+- Full sharing dialog powered by `POST /api/v1/shares` API
+- Password protection toggle with password input field
+- Expiry selector dropdown (1, 3, 7, 14, 30, 90 days)
+- Max download limit configuration option
+- Generates copyable share link (`http://.../s/<token>`) with instant feedback
+
+#### Media & File Previews
+- Unified File Preview Page (`/files` tap opens preview for any file)
+- **PDF Preview Panel**: Fullscreen viewer with toolbar, link copy, download, and open-in-new-tab
+- **Video Player Integration (HLS Ready)**: 16:9 player with transport controls, play/pause animation, seek slider, duration display, and volume/fullscreen controls
+- **Image Preview**: Fullscreen zoomable image viewer with smooth loading indicator
+- **Audio Player**: Audio controls with title and playback actions
+- **Text & Code Viewer**: Inline monospace text content viewer
+
+#### Photo Gallery with Timeline
+- New Photo Gallery page (`/gallery`) with dedicated route
+- Groups photos chronologically by month (e.g., "Aug 2026")
+- Responsive grid layout (5 columns on desktop, 3 columns on mobile)
+- Integrated tap-to-preview using the full-screen media preview page
+- Added "Gallery" item to sidebar navigation
+
+#### Deployment & Onboarding
+- **Setup Wizard (`/setup`)**: 3-step first-run flow (Server health check → Admin account creation → Completion redirect to login)
+- **Environment Validator ("PCOS Doctor" at `/doctor`)**: 10 diagnostic checks (Backend API, PostgreSQL DB, JWT Auth, Storage, Tantivy Search, Admin API, Sharing, Devices, Notifications, Trash) with visual status summary and re-run capability
+- **QR-Based Device Onboarding (`/devices/pair`)**: 6-digit OTP pairing code, animated QR code display, copy to clipboard, 5-minute expiration timer, and step-by-step connection guide
+- **One-Command Installer Script (`install.sh`)**: Bash script with prerequisite verification (Docker, Compose v1/v2, Git), secure `.env` auto-generation (`openssl rand`), Docker Compose container deployment, and health wait loop
+
+#### Dashboard & UX
+- Recent Files section displaying 5 most recent files fetched from API
+- "View all" direct link to files page
+- Added "Doctor" and "Gallery" items to sidebar navigation
 
 ---
 

@@ -148,7 +148,36 @@
 - [x] `backend/crates/streaming/src/lib.rs`: crate router with 5 routes
 - [x] `backend/crates/streaming/Cargo.toml`: workspace dependencies
 - [x] `backend/migrations/20240101000010_transcode_jobs.sql`: transcode_jobs table with indexes
-- [x] Docker Compose: transcoder service with `transcode` profile, transcode_data volume
+### v1.3.0 — UX Critical Fixes & Admin CRUD
+- [x] Test fixes: patched auth_bloc_test and file_bloc_test mock syntax
+- [x] Zero panic code: replaced all production `.unwrap()` calls with proper error handling
+- [x] Dynamic versioning: API version endpoint wired into Settings page footer
+- [x] Settings wiring: User display name edit and password change forms fully functional
+- [x] File context menu: added Download and Copy Link quick actions
+- [x] File sorting: added sort options (Name, Size, Type) with asc/desc toggle and folders-first rule
+- [x] Admin Portal CRUD: full user management (Create User dialog, Role update, Delete user with confirmation)
+- [x] Dashboard: Upload Files and Search quick actions
+
+### v1.4.0 — Feature Parity & Design System
+- [x] Theme system: full Material 3 Light theme added alongside Dark theme
+- [x] Live theme toggle: ValueNotifier-driven theme switcher in Settings page
+- [x] File Info dialog: displays complete metadata (MIME, size, ID, dates, quick actions)
+- [x] File Move dialog: move files and folders to any target folder ID
+- [x] Upload progress: visual spinner snackbar feedback during file uploads
+- [x] Search filters: filter chips (All/Files/Folders), sorting (Name/Size/Relevance), copy link action
+
+### v1.5.0 — Advanced Features & Deployment Readiness
+- [x] Global search command palette: Ctrl+K overlay with fuzzy page search & keyboard shortcuts
+- [x] File preview panel: unified preview for PDF (fullscreen+toolbar), Video (HLS-ready player), Image (zoom), Audio, and Text/Code
+- [x] Image thumbnails: inline image previews inside file grid cards
+- [x] Photo gallery timeline: `/gallery` page with photos grouped by month, responsive grid, tap-to-preview
+- [x] File sharing dialog: `POST /api/v1/shares` with password protection, expiry dropdown, download limits
+- [x] Context menu: 8 actions for files (Download, Copy Link, Share..., Info, Move, Rename, Delete)
+- [x] Setup wizard: `/setup` 3-step first-run flow (Server check, Admin account, Completion)
+- [x] PCOS Doctor: `/doctor` diagnostic suite with 10 automated component health checks
+- [x] QR-based device onboarding: `/devices/pair` page with 6-digit code, animated QR display, expiry timer
+- [x] One-command installer: `install.sh` bash script with prerequisite checks, auto .env generation, Docker Compose deployment
+- [x] Dashboard: Recent Files section with 5 most recent files from API
 
 ---
 
