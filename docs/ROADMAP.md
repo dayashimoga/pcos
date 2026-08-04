@@ -62,9 +62,9 @@
 - [x] One-command installer script — `curl | bash` with prerequisite checks, .env generation, Docker Compose
 
 ### Media
-- [ ] PDF preview panel
-- [ ] Video player integration (HLS)
-- [ ] Photo gallery view with timeline
+- [x] PDF preview panel — full-screen with toolbar, open-in-new-tab
+- [x] Video player integration (HLS) — transport controls, play/pause, seek, fullscreen
+- [x] Photo gallery view with timeline — grouped by month, responsive grid, tap-to-preview
 
 ---
 
@@ -78,7 +78,7 @@
 - [ ] Secure notes/wiki
 - [ ] Workflow automation engine
 - [ ] Plugin marketplace UI
-- [ ] QR-based device onboarding
+- [x] QR-based device onboarding — 6-digit pairing code, animated QR display, instructions
 
 ### Platform
 - [ ] Mobile camera auto-upload
