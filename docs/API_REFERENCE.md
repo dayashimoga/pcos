@@ -62,6 +62,8 @@ All authenticated endpoints require: `Authorization: Bearer <access_token>`
 | GET | /api/v1/files/:id/download | Yes | Download file (supports `Range` header for resume) |
 | GET | /api/v1/files/:id/preview | Yes | Preview file (inline content-disposition) |
 | PUT | /api/v1/files/:id/move | Yes | Move file |
+| PUT | /api/v1/files/:id/favorite | Yes | Toggle favorite star on file/folder |
+| POST | /api/v1/files/bulk-delete | Yes | Bulk move items to trash (`{ids: [...]}`) |
 | GET | /api/v1/files/:id/versions | Yes | List file versions |
 | GET | /api/v1/files/:fid/versions/:vid/download | Yes | Download specific version |
 | POST | /api/v1/files/:fid/versions/:vid/restore | Yes | Restore file to specific version |

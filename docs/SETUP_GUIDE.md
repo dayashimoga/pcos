@@ -28,6 +28,10 @@
 ### 3-Command Setup
 
 ```bash
+# Option A: One-Command Automated Installer
+curl -fsSL https://raw.githubusercontent.com/dayashimoga/pcos/main/install.sh | bash
+
+# Option B: Manual Setup
 # 1. Clone the repository
 git clone https://github.com/dayashimoga/pcos.git
 cd pcos
@@ -43,7 +47,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-**That's it!** Open `http://localhost:3000` in your browser.
+**That's it!** Open `http://localhost:3000` in your browser. On your first visit, you will be guided through the **3-step Setup Wizard** (`/setup`) to configure your admin account.
 
 ---
 
@@ -349,6 +353,32 @@ curl $SERVER/api/v1/streaming/stream/{job_id} -H "Authorization: Bearer $TOKEN"
 The Plugin SDK supports 8 lifecycle hooks:
 - BeforeUpload, AfterUpload, BeforeDownload, AfterDelete
 - OnSearch, OnShare, OnNotification, OnSchedule
+
+### 🩺 Diagnostic Tool ("PCOS Doctor")
+
+Access `/doctor` in the web UI for automated environment diagnostics:
+- Runs 10 automated component health checks (Database, Redis, NATS, Storage, Auth, Search, Backup, Email, WebPush, System)
+- Displays instant pass/fail status with resolution recommendations
+
+### 🔍 Duplicate File Finder
+
+Access `/duplicates` in the web UI to find and clean redundant files:
+- Scans all stored files and groups duplicates by matching file name and size
+- Shows potential disk space savings dashboard
+- One-click duplicate cleanup with "Keep" vs "Dup" indicators
+
+### 🛠️ REST API Explorer
+
+Access `/admin/api` in the web UI for interactive API testing:
+- Complete interactive catalog of 30+ endpoints grouped by module
+- Color-coded HTTP methods (GET, POST, PUT, DELETE)
+- One-click execution with formatted JSON responses and HTTP status badges
+
+### 📱 Device QR Pairing
+
+Access `/devices/pair` in the web UI to easily add mobile/desktop devices:
+- Generates secure 6-digit pairing code with animated QR code display
+- Expiry timer and auto-refresh for safe onboarding
 
 ### 🌐 Localization
 

@@ -254,12 +254,42 @@ The agent will:
 
 ---
 
-## Web UI
+## Advanced UI Features
+
+### ⚡ Global Search & Command Palette
+- Press **Ctrl + K** anywhere in the Web UI to bring up the instant command palette overlay.
+- Search pages, features, or jump directly to files.
+
+### 🖼️ Photo Gallery Timeline
+- Navigate to `/gallery` to view your media collection grouped by month in a responsive photo grid.
+- Tap any photo to launch the fullscreen zoomable preview.
+
+### ⭐ Favorites & Bulk File Actions
+- **Star Files**: Click the star icon on any file or folder to add it to your favorites. Favorites can also be toggled from the item context menu or via API: `PUT /api/v1/files/:id/favorite`.
+- **Bulk Selection**: Long-press any file or click the multi-select toolbar button (`Icons.checklist_rounded`) to enter selection mode. Select items to bulk delete or bulk download.
+
+### 🔍 Duplicate File Finder
+- Navigate to `/duplicates` to run an automated scan across all your files.
+- Identifies matching duplicates by name and file size, showing how much storage space can be reclaimed.
+- Review duplicate groups and click **Remove** to move individual duplicates to trash.
+
+### 🛠️ REST API Explorer
+- Navigate to `/admin/api` to browse and interactively test all 30+ platform REST endpoints directly inside the web interface.
+- View request parameters, send requests, and inspect real-time JSON responses with HTTP status codes.
+
+---
+
+## Web UI Pages
 Access the Flutter web interface at `http://localhost:3000` (or `http://localhost` via Caddy).
-- **Dashboard**: Storage stats, recent files, device status
-- **Files**: Upload, download, preview, create folders, drag-and-drop
-- **Search**: Full-text search with instant results
-- **Devices**: View connected devices and online status
-- **Trash**: Restore or permanently delete files
-- **Admin**: User management, role assignment, system stats (admin only)
-- **Settings**: Profile, password, MFA, sync, AI, appearance
+- **Setup Wizard (`/setup`)**: 3-step first-run installer check and admin setup
+- **Dashboard (`/dashboard`)**: Storage stats, recent files, quick action shortcuts, device status
+- **Files (`/files`)**: Upload, download, full preview, drag-and-drop, multi-select, favorites, folder creation
+- **Gallery (`/gallery`)**: Photo timeline layout grouped by month
+- **Search (`/search`)**: Full-text search with filter chips (All/Files/Folders) and sorting
+- **Duplicates (`/duplicates`)**: Scan and clean up redundant duplicate files
+- **Devices (`/devices`)**: View connected devices, heartbeats, and QR device pairing (`/devices/pair`)
+- **Trash (`/trash`)**: Restore or permanently delete soft-deleted files
+- **Admin (`/admin`)**: User management, role editing, quota limits, and API Explorer (`/admin/api`)
+- **PCOS Doctor (`/doctor`)**: Diagnostic suite with 10 automated component health checks
+- **Settings (`/settings`)**: Profile edit, password update, MFA setup, theme switcher (Light/Dark), system version
+
