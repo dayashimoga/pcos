@@ -6,6 +6,7 @@ import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../bloc/file_bloc.dart';
+import 'file_preview_page.dart';
 
 // Conditional import for web file picker
 import 'files_page_stub.dart'
@@ -270,6 +271,10 @@ class _FilesContentState extends State<_FilesContent> {
     if (entry['entry_type'] == 'folder') {
       _currentFolderId = entry['id'];
       context.read<FileBloc>().add(FilesLoadRequested(folderId: entry['id']));
+    } else {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (_) => FilePreviewPage(entry: entry),
+      ));
     }
   }
 

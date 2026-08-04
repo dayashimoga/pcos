@@ -6,8 +6,10 @@ import '../../features/admin/pages/admin_page.dart';
 import '../../features/dashboard/pages/dashboard_page.dart';
 import '../../features/dashboard/widgets/shell_layout.dart';
 import '../../features/devices/pages/devices_page.dart';
+import '../../features/devices/pages/device_onboarding_page.dart';
 import '../../features/doctor/pages/doctor_page.dart';
 import '../../features/files/pages/files_page.dart';
+import '../../features/gallery/pages/gallery_page.dart';
 import '../../features/search/pages/search_page.dart';
 import '../../features/settings/pages/settings_page.dart';
 import '../../features/setup/pages/setup_wizard_page.dart';
@@ -20,7 +22,6 @@ class AppRouter {
 
   /// Check if user is authenticated (has token in storage).
   static bool _isAuthenticated() {
-    // Token check via shared state — in production, use secure storage
     return _authToken != null && _authToken!.isNotEmpty;
   }
 
@@ -33,8 +34,9 @@ class AppRouter {
     redirect: (context, state) {
       final isAuth = _isAuthenticated();
       final isAuthPage = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+      final isSetup = state.matchedLocation == '/setup';
 
-      if (!isAuth && !isAuthPage) return '/login';
+      if (!isAuth && !isAuthPage && !isSetup) return '/login';
       if (isAuth && isAuthPage) return '/dashboard';
       return null;
     },
@@ -51,8 +53,10 @@ class AppRouter {
         routes: [
           GoRoute(path: '/dashboard', builder: (_, __) => const DashboardPage()),
           GoRoute(path: '/files', builder: (_, __) => const FilesPage()),
+          GoRoute(path: '/gallery', builder: (_, __) => const GalleryPage()),
           GoRoute(path: '/search', builder: (_, __) => const SearchPage()),
           GoRoute(path: '/devices', builder: (_, __) => const DevicesPage()),
+          GoRoute(path: '/devices/pair', builder: (_, __) => const DeviceOnboardingPage()),
           GoRoute(path: '/trash', builder: (_, __) => const TrashPage()),
           GoRoute(path: '/admin', builder: (_, __) => const AdminPage()),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
