@@ -1,60 +1,64 @@
 # PCOS Development Roadmap
 
-## v1.3.0 — UX Critical Fixes (Current Sprint)
+## v1.3.0 — UX Critical Fixes ✅
 
-### Must Fix (UX Blockers)
 - [x] Fix broken test syntax (auth_bloc_test, file_bloc_test)
 - [x] Eliminate production `.unwrap()` calls
-- [ ] Wire settings page callbacks (profile, password, version)
-- [ ] Add file download action to context menu
-- [ ] Add file sharing UI (create/copy share link)
-- [ ] Fix hardcoded version string → read from API
-- [ ] Add sort options (name, date, size, type)
-
-### Should Fix (Quality)
-- [ ] Add download action to search results (actual file save)
-- [ ] Remove `formatFileSize` duplication
-- [ ] Add upload progress indicator
+- [x] Wire settings page callbacks (profile, password, version)
+- [x] Add file download action to context menu
+- [x] Add file copy link action to context menu
+- [x] Fix hardcoded version string → read from API
+- [x] Add sort options (name, size, type)
+- [x] Admin: Create User dialog
+- [x] Admin: Delete User with confirmation
+- [x] Dashboard: Upload Files + Search quick actions
 
 ---
 
-## v1.4.0 — Feature Parity with Nextcloud
+## v1.4.0 — Feature Parity ✅
 
 ### File Management
-- [ ] Bulk file selection with toolbar
-- [ ] Drag-and-drop upload (web)
-- [ ] File info/details side panel
-- [ ] Favorites (star files)
-- [ ] Recent files view
-- [ ] Move/Copy files between folders
-- [ ] File sharing dialog (password, expiry, link copy)
+- [x] File Info dialog (type, MIME, size, ID, dates, quick actions)
+- [x] Move files between folders (dialog + API)
+- [x] Context menu: 7 actions (Download, Copy Link, Info, Move, Rename, Delete) for files
+- [x] Upload progress indicator (spinner snackbar)
+- [x] Sort: folders always first, Name/Size/Type with asc/desc toggle
+
+### Search
+- [x] Filter chips: All / Files / Folders (re-queries API)
+- [x] Sort results: By Name, By Size, or Relevance
+- [x] Copy link button in search results
+
+### Dashboard
+- [x] Recent Files section (fetches 5 most recent from API)
+- [x] "View all" link to files page
+
+### Settings & Theme
+- [x] Light theme (full Material 3 light theme data)
+- [x] Dark/Light toggle in Settings (persisted via ValueNotifier)
 
 ### Admin
-- [ ] Create user from admin panel
-- [ ] Delete user from admin panel
-- [ ] System health monitoring card
-- [ ] Storage breakdown per user
-
-### Settings
-- [ ] Light/dark theme toggle (persist preference)
-- [ ] Backup schedule configuration UI
-- [ ] Sync folder configuration UI
+- [x] Full user CRUD: create, read, update role, delete
 
 ---
 
-## v1.5.0 — Advanced Features
+## v1.5.0 — Advanced Features (Next)
 
 ### Search & AI
-- [ ] Global search in app bar (Ctrl+K)
-- [ ] Search filters (type, date, size)
+- [ ] Global search in app bar (Ctrl+K command palette)
 - [ ] AI document Q&A ("Ask My Files")
 - [ ] Duplicate file finder
+
+### File Management
+- [ ] Drag-and-drop upload (web)
+- [ ] Bulk file selection with toolbar
+- [ ] Favorites (star files)
+- [ ] File sharing dialog (password, expiry, download limits)
 
 ### Deployment
 - [ ] Setup wizard (first-run configuration)
 - [ ] Environment validator ("PCOS Doctor")
 - [ ] One-command installer script
-- [ ] Auto-update mechanism
 
 ### Media
 - [ ] Image thumbnail previews in file grid
@@ -103,3 +107,5 @@
 | v1.0.0 | Native Apps | 6-platform Flutter builds |
 | v1.1.0 | Streaming | HLS adaptive video/audio |
 | v1.2.0 | Hardening | CI consolidation, UI overhaul, production fixes |
+| v1.3.0 | UX Fixes | Settings wired, file actions, sort, admin CRUD |
+| v1.4.0 | Feature Parity | File info/move, search filters, theme toggle, recent files |
