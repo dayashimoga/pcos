@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
-import '../pages/file_preview_page.dart';
+import '../../files/pages/file_preview_page.dart';
 
 /// Photo Gallery — timeline view of all images in the user's cloud.
 class GalleryPage extends StatefulWidget {

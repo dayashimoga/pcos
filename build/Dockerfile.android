@@ -14,10 +14,10 @@ COPY . .
 RUN flutter create --platforms=android .
 
 # Build APK (universal)
-RUN flutter build apk --release --no-tree-shake-icons 2>&1 || true
+RUN flutter build apk --release --no-tree-shake-icons
 
 # Build AAB (Play Store)
-RUN flutter build appbundle --release --no-tree-shake-icons 2>&1 || true
+RUN flutter build appbundle --release --no-tree-shake-icons
 
 # Output stage — just the artifacts
 FROM alpine:3.20
