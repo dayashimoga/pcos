@@ -306,9 +306,85 @@ class _FilesContentState extends State<_FilesContent> {
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ));
+      case 'info':
+        _showFileInfo(context, entry);
         break;
     }
   }
+
+  void _showFileInfo(BuildContext context, Map<String, dynamic> entry) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Icon(
+                    entry['entry_type'] == 'folder' ? Icons.folder_rounded : Icons.insert_drive_file_rounded,
+                    size: 24,
+                    color: entry['entry_type'] == 'folder' ? const Color(0xFFFFC107) : AppTheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(child: Text(entry['name'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary), overflow: TextOverflow.ellipsis)),
+                IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(context)),
+              ]),
+              const Divider(color: AppTheme.border, height: 28),
+              _infoRow('Type', entry['entry_type'] == 'folder' ? 'Folder' : (entry['mime_type'] ?? 'File')),
+              if (entry['entry_type'] == 'file')
+                _infoRow('Size', formatFileSize(entry['size_bytes'] ?? 0)),
+              _infoRow('ID', entry['id'] ?? ''),
+              if (entry['created_at'] != null)
+                _infoRow('Created', entry['created_at'].toString()),
+              if (entry['updated_at'] != null)
+                _infoRow('Modified', entry['updated_at'].toString()),
+              const SizedBox(height: 16),
+              if (entry['entry_type'] == 'file')
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _handleAction(context, entry, 'download');
+                      },
+                      icon: const Icon(Icons.download_rounded, size: 16),
+                      label: const Text('Download'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _handleAction(context, entry, 'share');
+                      },
+                      icon: const Icon(Icons.link_rounded, size: 16),
+                      label: const Text('Copy Link'),
+                    ),
+                  ),
+                ]),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(children: [
+      SizedBox(width: 80, child: Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.w500))),
+      Expanded(child: Text(value, style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary), overflow: TextOverflow.ellipsis)),
+    ]),
+  );
 
   void _handleUpload(BuildContext context) {
     platform.pickAndUploadFiles(context, _currentFolderId);
@@ -526,6 +602,7 @@ class _FileGridCard extends StatelessWidget {
                   const PopupMenuItem(value: 'download', child: Row(children: [Icon(Icons.download_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Download')])),
                 if (entry['entry_type'] == 'file')
                   const PopupMenuItem(value: 'share', child: Row(children: [Icon(Icons.link_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Copy Link')])),
+                const PopupMenuItem(value: 'info', child: Row(children: [Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Info')])),
                 const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Rename')])),
                 const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 16, color: AppTheme.error), SizedBox(width: 8), Text('Move to Trash', style: TextStyle(color: AppTheme.error))])),
               ]),
@@ -586,6 +663,7 @@ class _FileList extends StatelessWidget {
                     const PopupMenuItem(value: 'download', child: Row(children: [Icon(Icons.download_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Download')])),
                   if (e['entry_type'] == 'file')
                     const PopupMenuItem(value: 'share', child: Row(children: [Icon(Icons.link_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Copy Link')])),
+                  const PopupMenuItem(value: 'info', child: Row(children: [Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Info')])),
                   const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Rename')])),
                   const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 16, color: AppTheme.error), SizedBox(width: 8), Text('Move to Trash', style: TextStyle(color: AppTheme.error))])),
                 ]),

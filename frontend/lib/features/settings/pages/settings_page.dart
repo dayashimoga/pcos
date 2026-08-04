@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../main.dart' show themeNotifier;
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -257,8 +258,16 @@ class _SettingsPageState extends State<SettingsPage> {
           _SettingsTile(
             icon: Icons.dark_mode_rounded,
             title: 'Dark Mode',
-            subtitle: 'Always on',
-            trailing: Switch(value: true, onChanged: (_) {}, activeColor: AppTheme.primary),
+            subtitle: themeNotifier.value == ThemeMode.dark ? 'On' : 'Off',
+            trailing: Switch(
+              value: themeNotifier.value == ThemeMode.dark,
+              onChanged: (v) {
+                setState(() {
+                  themeNotifier.value = v ? ThemeMode.dark : ThemeMode.light;
+                });
+              },
+              activeColor: AppTheme.primary,
+            ),
           ),
           _SettingsTile(icon: Icons.view_module_rounded, title: 'Default View', subtitle: 'Grid view for file browser', onTap: () {}),
         ]),
