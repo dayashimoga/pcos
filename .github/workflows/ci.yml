@@ -11,34 +11,9 @@ env:
   FLUTTER_VERSION: "3.24.0"
 
 jobs:
-  # ─── Backend Checks ──────────────────────────────────────
-  backend-format:
-    name: Backend Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-      - run: cargo fmt --manifest-path backend/Cargo.toml --all --check
-
-  backend-lint:
-    name: Backend Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: backend
-      - run: cargo clippy --manifest-path backend/Cargo.toml --all-targets -- -D warnings
-        env:
-          SQLX_OFFLINE: "true"
-
-  backend-test:
-    name: Backend Tests
+  # ─── Backend ────────────────────────────────────────────
+  backend:
+    name: Backend (format, lint, test, build)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -47,77 +22,68 @@ jobs:
           POSTGRES_USER: pcos
           POSTGRES_PASSWORD: pcos_secret
           POSTGRES_DB: pcos_test
-        ports:
-          - 5432:5432
+        ports: ["5432:5432"]
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: backend
-      - name: Run tests
-        run: cargo test --manifest-path backend/Cargo.toml --all
+          workspaces: backend -> target
+
+      - name: Format check
+        run: cargo fmt --manifest-path backend/Cargo.toml --all --check
+
+      - name: Clippy lint
+        run: cargo clippy --manifest-path backend/Cargo.toml --all-targets -- -D warnings
+        env:
+          SQLX_OFFLINE: "true"
+
+      - name: Unit & integration tests
+        run: cargo test --manifest-path backend/Cargo.toml --all --no-fail-fast
         env:
           PCOS_DATABASE__URL: postgresql://pcos:pcos_secret@localhost:5432/pcos_test
           DATABASE_URL: postgresql://pcos:pcos_secret@localhost:5432/pcos_test
           PCOS_AUTH__JWT_SECRET: ci-test-secret-that-is-long-enough-for-testing-purposes-64-chars!!
           SQLX_OFFLINE: "true"
 
-  backend-security:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-audit --locked
-      - run: cargo generate-lockfile --manifest-path backend/Cargo.toml
-      - run: cargo audit --file backend/Cargo.lock
-        continue-on-error: true
-
-  agent-build:
-    name: Agent Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: agent
-      - run: cargo build --manifest-path agent/Cargo.toml --release
-      - run: cargo test --manifest-path agent/Cargo.toml --all
-      - name: Upload Agent Binary Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pcos-agent-release
-          path: agent/target/release/pcos-agent
-
-  backend-build:
-    name: Backend Build & Artifact
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: backend
-      - name: Build backend release binary
+      - name: Build release binary
         run: cargo build --manifest-path backend/Cargo.toml --release --bin pcos-server
         env:
           SQLX_OFFLINE: "true"
-      - name: Upload Backend Server Artifact
+
+      - name: Upload backend binary
         uses: actions/upload-artifact@v4
         with:
-          name: pcos-backend-server-release
+          name: pcos-backend-server
           path: backend/target/release/pcos-server
 
-  # ─── Frontend Checks ────────────────────────────────────
-  frontend-analyze:
-    name: Frontend Analyze
+  # ─── Agent ──────────────────────────────────────────────
+  agent:
+    name: Agent (build, test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: agent -> target
+
+      - run: cargo build --manifest-path agent/Cargo.toml --release
+      - run: cargo test --manifest-path agent/Cargo.toml --all
+
+      - name: Upload agent binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: pcos-agent
+          path: agent/target/release/pcos-agent
+
+  # ─── Frontend ───────────────────────────────────────────
+  frontend:
+    name: Frontend (analyze, test, build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -125,79 +91,187 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
-      - working-directory: frontend
+
+      - name: Analyze & format
+        working-directory: frontend
         run: |
           flutter pub get
           dart analyze --no-fatal-warnings
           dart format --set-exit-if-changed .
 
-  frontend-test:
-    name: Frontend Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-      - working-directory: frontend
-        run: |
-          flutter pub get
-          flutter test --coverage
+      - name: Run tests
+        working-directory: frontend
+        run: flutter test --coverage
 
-  frontend-build:
-    name: Frontend Web Build & Artifact
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-      - working-directory: frontend
-        run: |
-          flutter pub get
-          flutter build web --release
-      - name: Upload Frontend Web Artifact
+      - name: Build web
+        working-directory: frontend
+        run: flutter build web --release
+
+      - name: Upload web build
         uses: actions/upload-artifact@v4
         with:
-          name: pcos-frontend-web-release
+          name: pcos-frontend-web
           path: frontend/build/web/
 
-  # ─── Docker Build ────────────────────────────────────────
-  docker-build:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: [backend-format, backend-lint, backend-test, backend-build, frontend-analyze, frontend-test, frontend-build, agent-build]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build backend image
-        run: docker build -t pcos-backend:ci ./backend
-      - name: Build frontend image
-        run: docker build -t pcos-frontend:ci ./frontend
-      - name: Build agent image
-        run: docker build -t pcos-agent:ci ./agent
-
-  # ─── SBOM & License Scan ─────────────────────────────────
-  sbom:
-    name: SBOM & License Check
+  # ─── Security ───────────────────────────────────────────
+  security:
+    name: Security & License Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+
       - name: Install cargo-deny
-        run: cargo install cargo-deny
-      - name: Check licenses & advisories
+        run: cargo install cargo-deny --locked
+
+      - name: Audit dependencies
         run: cargo deny --manifest-path backend/Cargo.toml check licenses advisories
         continue-on-error: true
 
-  # ─── Compose Validation ──────────────────────────────────
-  compose-validate:
-    name: Docker Compose Validate
+      - name: Cargo audit
+        run: |
+          cargo install cargo-audit --locked
+          cargo generate-lockfile --manifest-path backend/Cargo.toml
+          cargo audit --file backend/Cargo.lock
+        continue-on-error: true
+
+  # ─── Docker ─────────────────────────────────────────────
+  docker:
+    name: Docker Build & Compose Validation
     runs-on: ubuntu-latest
+    needs: [backend, agent, frontend]
     steps:
       - uses: actions/checkout@v4
-      - name: Validate production compose
-        run: docker compose config -q
-      - name: Validate dev compose
-        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml config -q
+
+      - name: Validate compose files
+        run: |
+          docker compose config -q
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config -q
+
+      - name: Build backend image
+        run: docker build -t pcos-backend:ci ./backend
+
+      - name: Build frontend image
+        run: docker build -t pcos-frontend:ci ./frontend
+
+      - name: Build agent image
+        run: docker build -t pcos-agent:ci ./agent
+
+  # ─── Integration Tests ─────────────────────────────────
+  integration:
+    name: API Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [backend]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pcos_test
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: pcos_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend -> target
+
+      - name: Build backend
+        run: cargo build --release
+        working-directory: backend
+        env:
+          SQLX_OFFLINE: true
+
+      - name: Start backend & run API tests
+        run: |
+          mkdir -p /tmp/pcos-test-storage
+
+          export PCOS_SERVER__HOST="0.0.0.0"
+          export PCOS_SERVER__PORT="8080"
+          export PCOS_DATABASE__URL="postgresql://pcos_test:test_password@localhost:5432/pcos_test"
+          export DATABASE_URL="postgresql://pcos_test:test_password@localhost:5432/pcos_test"
+          export PCOS_AUTH__JWT_SECRET="ci-test-jwt-secret-minimum-32-characters-long"
+          export JWT_SECRET="ci-test-jwt-secret-minimum-32-characters-long"
+          export PCOS_REDIS__URL="redis://localhost:6379"
+          export PCOS_STORAGE__BASE_PATH="/tmp/pcos-test-storage"
+          export RUST_LOG="pcos=info,sqlx=warn"
+
+          # Wait for PostgreSQL
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U pcos_test > /dev/null 2>&1; then
+              echo "✓ PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL ($i/30)..."
+            sleep 1
+          done
+
+          # Start server
+          nohup ./target/release/pcos-server > /tmp/server.log 2>&1 &
+
+          # Wait for server
+          HEALTHY=false
+          for i in {1..30}; do
+            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+              echo "✓ Backend server is healthy"
+              HEALTHY=true
+              break
+            fi
+            echo "Waiting for backend ($i/30)..."
+            sleep 1
+          done
+
+          if [ "$HEALTHY" = "false" ]; then
+            echo "❌ Backend server failed to start"
+            cat /tmp/server.log || true
+            exit 1
+          fi
+
+          # Health + Version
+          curl -s http://localhost:8080/health | jq .
+          curl -s http://localhost:8080/api/v1/version | jq .
+
+          # Register
+          REGISTER=$(curl -s -X POST http://localhost:8080/api/v1/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"email":"ci@pcos.test","password":"CiP@ss123!","display_name":"CI User"}')
+          echo "Register: $REGISTER"
+
+          TOKEN=$(echo "$REGISTER" | jq -r '.tokens.access_token // .token // empty')
+
+          if [ -z "$TOKEN" ]; then
+            LOGIN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+              -H "Content-Type: application/json" \
+              -d '{"email":"ci@pcos.test","password":"CiP@ss123!"}')
+            TOKEN=$(echo "$LOGIN" | jq -r '.tokens.access_token // .token // empty')
+          fi
+
+          if [ -n "$TOKEN" ]; then
+            echo "✓ Auth successful"
+            curl -sf http://localhost:8080/api/v1/files -H "Authorization: Bearer $TOKEN" | jq .
+            curl -sf http://localhost:8080/api/v1/notifications -H "Authorization: Bearer $TOKEN" | jq .
+            echo "✓ API smoke tests passed"
+          else
+            echo "✗ Auth failed"
+            cat /tmp/server.log
+            exit 1
+          fi
+        working-directory: backend
+        env:
+          PCOS_DATABASE__URL: "postgresql://pcos_test:test_password@localhost:5432/pcos_test"
+          DATABASE_URL: "postgresql://pcos_test:test_password@localhost:5432/pcos_test"
+          PCOS_AUTH__JWT_SECRET: "ci-test-jwt-secret-minimum-32-characters-long"
+          JWT_SECRET: "ci-test-jwt-secret-minimum-32-characters-long"
+          PCOS_REDIS__URL: "redis://localhost:6379"
+          PCOS_STORAGE__BASE_PATH: "/tmp/pcos-test-storage"
+          RUST_LOG: "pcos=info,sqlx=warn"
