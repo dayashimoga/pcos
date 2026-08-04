@@ -22,6 +22,29 @@ The stack automatically:
 - Starts all 13 services
 - Exposes HTTPS via Caddy (auto-cert with Let's Encrypt when domain configured)
 
+---
+
+## Automated K3s Deployment
+
+Deploy PCOS securely to K3s with a single automated script:
+
+```bash
+# Automated K3s installation, secure secret generation, rollout validation, and NodePort exposure
+bash scripts/deploy_k3s.sh
+# Or entrypoint script:
+bash install_k3s.sh
+```
+
+### What `scripts/deploy_k3s.sh` does:
+1. **Installs K3s** automatically if no active Kubernetes cluster is detected.
+2. **Generates secure random credentials** (`POSTGRES_PASSWORD`, `JWT_SECRET`, `DATABASE_URL`) and applies Kubernetes Secrets in namespace `pcos`.
+3. **Deploys workloads**: PostgreSQL StatefulSet, Redis, Backend (Axum), Frontend (Flutter), and Storage PVC.
+4. **Exposes endpoints via NodePort**: Frontend on `30080`, Backend on `30808`.
+5. **Validates deployment health**: Waits for pod rollout status and health probes.
+6. **Prints total test framework coverage metrics**: Complete quality gate summary across all 36 features and 12 modules.
+
+---
+
 ### Services Available
 
 | Service | URL | Notes |
