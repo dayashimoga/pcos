@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb; // ignore: unused_import
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/di/service_locator.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../bloc/file_bloc.dart';
 
@@ -221,6 +223,36 @@ class _FilesContentState extends State<_FilesContent> {
     switch (action) {
       case 'rename': _showRenameDialog(context, entry); break;
       case 'delete': context.read<FileBloc>().add(FileDeleteRequested(entry['id'])); break;
+      case 'download':
+        final api = getIt<ApiClient>();
+        final url = '${api.dio.options.baseUrl}api/v1/files/${entry['id']}/download';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Row(children: [
+            const Icon(Icons.download_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Download: ${entry['name']}')),
+          ]),
+          backgroundColor: AppTheme.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          action: SnackBarAction(label: 'Open', textColor: Colors.white, onPressed: () {}),
+        ));
+        break;
+      case 'share':
+        final api = getIt<ApiClient>();
+        final url = '${api.dio.options.baseUrl}api/v1/files/${entry['id']}/download';
+        Clipboard.setData(ClipboardData(text: url));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Row(children: [
+            Icon(Icons.link_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text('Link copied to clipboard'),
+          ]),
+          backgroundColor: AppTheme.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+        break;
     }
   }
 
@@ -436,6 +468,10 @@ class _FileGridCard extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               color: AppTheme.surface,
               itemBuilder: (_) => [
+                if (entry['entry_type'] == 'file')
+                  const PopupMenuItem(value: 'download', child: Row(children: [Icon(Icons.download_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Download')])),
+                if (entry['entry_type'] == 'file')
+                  const PopupMenuItem(value: 'share', child: Row(children: [Icon(Icons.link_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Copy Link')])),
                 const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Rename')])),
                 const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 16, color: AppTheme.error), SizedBox(width: 8), Text('Move to Trash', style: TextStyle(color: AppTheme.error))])),
               ]),
@@ -492,6 +528,10 @@ class _FileList extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 color: AppTheme.surface,
                 itemBuilder: (_) => [
+                  if (e['entry_type'] == 'file')
+                    const PopupMenuItem(value: 'download', child: Row(children: [Icon(Icons.download_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Download')])),
+                  if (e['entry_type'] == 'file')
+                    const PopupMenuItem(value: 'share', child: Row(children: [Icon(Icons.link_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Copy Link')])),
                   const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 16, color: AppTheme.textMuted), SizedBox(width: 8), Text('Rename')])),
                   const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 16, color: AppTheme.error), SizedBox(width: 8), Text('Move to Trash', style: TextStyle(color: AppTheme.error))])),
                 ]),

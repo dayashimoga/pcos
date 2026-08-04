@@ -1,77 +1,96 @@
-# PCOS Gap Analysis Report
+# PCOS Gap Analysis — Comparison with Production Cloud Platforms
 
-**Date**: 2026-08-04  
-**Version**: 1.2.0  
-**Methodology**: Automated codebase scan (grep for stubs, TODOs, unwraps, placeholders, mock/fake/dummy patterns) + manual review of all modules
+**Date**: 2026-08-04 | **Version**: 1.2.0  
+**Benchmark**: Nextcloud, Synology DSM, Google Drive, Dropbox, CasaOS, Immich
 
 ---
 
 ## Executive Summary
 
-The PCOS codebase is **substantially production-ready** with 90%+ of claimed features fully implemented, integrated, and functional. Key findings:
-
-- **Zero** TODO/FIXME/HACK comments in backend or frontend
-- **Zero** stub/mock/fake/dummy/placeholder patterns in source code (excluding test code)
-- **2 broken test files** (Dart syntax errors) — **FIXED**
-- **11 production-path `.unwrap()` calls** — **FIXED** (replaced with `.expect()` or safe defaults)
-- **2 features require external dependencies** (LDAP, SMB) — documented as optional
-- **1 feature library-only** (OIDC has no HTTP routes) — documented
+PCOS has a **comprehensive backend** with 75+ API endpoints, 12+ crates, and strong architectural foundations. The primary gaps are in **frontend interactivity** (settings callbacks are no-ops, download doesn't save files), **test compilation** (fixed this sprint), and **deployment simplification**. The backend is significantly more complete than the frontend suggests.
 
 ---
 
-## Findings by Category
+## 🔴 High Priority — UX Blockers
 
-### 🔴 Critical Issues (All Fixed)
+### 1. Settings Page Callbacks Are No-Ops
+**Gap**: Profile edit, password change, sync settings, storage view, backup settings, AI config — all have `onTap: () {}` (empty callbacks). Users click and nothing happens.  
+**Benchmark**: Every cloud platform has working settings pages.  
+**Fix**: Wire each settings tile to actual API calls or sub-pages.
 
-| Issue | Files | Fix Applied |
-|-------|-------|-------------|
-| Broken test map literal syntax | `auth_bloc_test.dart`, `file_bloc_test.dart` | Added explicit `<String, dynamic>{}` type annotations |
-| Production unwrap in WebSocket handler | `sync_engine/handlers.rs:51` | `.unwrap_or_default()` |
-| Production unwrap in SMB bridge | `smb_bridge.rs:60` | `.map(\|s\| s.len()).unwrap_or(0)` |
-| Production unwraps in WebDAV handlers | `webdav.rs:60,77,154` | `.expect("valid N response")` |
-| Production unwraps in S3 compat | `s3_compat.rs:40,88,114,118` | `.expect("valid S3 response")` |
-| Production unwrap in MFA | `mfa.rs:104` | `.expect("system clock is after UNIX epoch")` |
+### 2. File Download Doesn't Save Files  
+**Gap**: Search page shows a download URL in a SnackBar instead of actually downloading the file. Files page has no download action at all.  
+**Benchmark**: Google Drive, Dropbox — one-click download.  
+**Fix**: Add download action to file context menu; use `url_launcher` or `html.AnchorElement` for web.
 
-### 🟡 Documented Limitations
+### 3. Version String Hardcoded to `v0.2.0`
+**Gap**: Settings page shows `PCOS v0.2.0` but we're at v1.2.0.  
+**Fix**: Read from `/api/v1/version` endpoint.
 
-| Feature | Status | Detail |
-|---------|--------|--------|
-| LDAP/AD authentication | Optional | Returns clear error: "requires `ldap3` crate". Config default `enabled: false`. |
-| SMB/CIFS bridge | Optional | Logs: "protocol stub — integrate with Samba for production". No TCP listener. |
-| OIDC HTTP routes | Library only | `discover()`, `exchange_code()`, `fetch_user_info()` implemented with reqwest. No `/api/v1/auth/oidc/*` handler routes. |
-| E2EE client-side | Library only | Server-side AES-256-GCM encrypt/decrypt implemented. Client key management requires Flutter integration. |
-| SQLx offline cache | CI workaround | `.sqlx/` not populated; CI uses `SQLX_OFFLINE=true` with sqlx-data.json |
-
-### ✅ Clean Areas (No Issues Found)
-
-- **Backend crates**: auth, file_metadata, common, sync_engine, notifications, jobs, backups, analytics, search, ai, sharing, streaming, devices, users, gateway
-- **Frontend features**: auth, dashboard, files, search, devices, trash, admin, settings
-- **Agent modules**: file watcher, heartbeat, delta sync, LAN discovery
-- **CI/CD**: All workflows properly configured with env vars, timeouts, permissions
-- **Docker**: All Dockerfiles use multi-stage builds, non-root users
-- **Kubernetes**: Liveness + readiness probes, resource limits, PDB
-- **Helm**: Configurable values for all deployment parameters
+### 4. Switches in Settings Are Decorative
+**Gap**: Dark mode, auto-tagging, smart search switches have `onChanged: (_) {}` — they toggle visually but don't persist.  
+**Benchmark**: All platforms persist settings.
 
 ---
 
-## Code Quality Metrics
+## 🟡 Medium Priority — Feature Gaps vs Competitors
 
-| Metric | Result |
-|--------|--------|
-| TODO/FIXME/HACK comments | 0 |
-| Stub/mock/placeholder in production code | 0 |
-| Production `.unwrap()` calls (after fix) | 0 |
-| Test `.unwrap()` calls (acceptable) | ~30 |
-| Dead code / unused imports | 0 (clippy clean) |
-| Duplicate implementations | 0 |
-| Hardcoded secrets | 0 (all via env vars) |
+### 5. No File Download Action in Files Page
+**Gap**: Grid/list context menu only has Rename and Delete. No Download, Share, Move, Copy, or Info.  
+**Benchmark**: Nextcloud has Download, Rename, Move, Copy, Delete, Details, Share, Favorite, Tags.
+
+### 6. No Drag-and-Drop Upload
+**Gap**: Upload only works via file picker dialog.  
+**Benchmark**: Google Drive, Dropbox, Nextcloud — all support drag-and-drop.
+
+### 7. No File/Folder Sharing UI
+**Gap**: Backend has full sharing API (password, expiry, download limits) but frontend has no sharing UI.  
+**Benchmark**: Core feature of every cloud platform.
+
+### 8. No Favorites/Recent Files
+**Gap**: No way to star/favorite files or see recent activity.  
+**Benchmark**: Google Drive has Starred, Recent, Shared with me.
+
+### 9. No Upload Progress Indicator
+**Gap**: File uploads happen with no visual feedback.  
+**Benchmark**: All platforms show progress bar, speed, ETA.
+
+### 10. Admin Page Has No User Create/Delete
+**Gap**: Admin page lists users and can edit roles but can't create or delete users.  
+**Benchmark**: All admin panels have full user CRUD.
 
 ---
 
-## Recommendations
+## 🟢 Lower Priority — Polish & Features
 
-1. **Add `ldap3` crate** when LDAP support is needed — module structure is ready
-2. **Wire OIDC HTTP routes** when SSO is required — library functions are production-ready
-3. **Populate `.sqlx/` cache** from a running PostgreSQL to eliminate `SQLX_OFFLINE` workaround
-4. **Add E2E browser tests** (Playwright) for critical user flows
-5. **Add load testing** (k6) to validate performance under concurrent users
+| # | Gap | Benchmark |
+|---|-----|-----------|
+| 11 | No light theme option | Most platforms offer both |
+| 12 | No file info/details panel | Nextcloud, Google Drive |
+| 13 | No bulk selection | All file managers |
+| 14 | No sort options (name, date, size, type) | All file managers |
+| 15 | No global search in app bar | Nextcloud, Google Drive |
+| 16 | `formatFileSize` duplicated in 2 files | Code quality |
+| 17 | No onboarding/setup wizard | CasaOS, Synology |
+| 18 | No backup schedule UI | Synology, TrueNAS |
+
+---
+
+## ✅ Areas Where PCOS Matches or Exceeds Competitors
+
+| Feature | PCOS | Nextcloud | Google Drive |
+|---------|------|-----------|-------------|
+| Self-hosted, no cloud dependency | ✅ | ✅ | ❌ |
+| WebDAV + S3 compatibility | ✅ | ✅ (WebDAV) | ❌ |
+| Adaptive video streaming (HLS) | ✅ | ❌ | ❌ |
+| Delta sync (agent) | ✅ | ❌ | ❌ |
+| LAN/P2P discovery | ✅ | ❌ | ❌ |
+| AI auto-tagging (Ollama) | ✅ | ❌ | ✅ (cloud) |
+| OCR + full-text search | ✅ | ✅ | ✅ |
+| E2EE (server-side) | ✅ | ✅ | ❌ |
+| Web Push notifications | ✅ | ✅ | ✅ |
+| Plugin system | ✅ | ✅ | ❌ |
+| i18n (10 locales) | ✅ | ✅ | ✅ |
+| 6-platform native apps | ✅ | ✅ | ✅ |
+| Kubernetes + Helm | ✅ | ✅ | N/A |
+| Prometheus/Grafana | ✅ | Community | N/A |

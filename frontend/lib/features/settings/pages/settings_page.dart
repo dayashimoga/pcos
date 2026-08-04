@@ -5,8 +5,192 @@ import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  String _version = '...';
+  String _displayName = '';
+  String _email = '';
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final api = getIt<ApiClient>();
+      final futures = await Future.wait([
+        api.dio.get('/api/v1/version').catchError((_) => null),
+        api.dio.get('/api/v1/users/me').catchError((_) => null),
+      ]);
+      final versionResp = futures[0];
+      final userResp = futures[1];
+      setState(() {
+        _version = versionResp?.data?['version'] ?? '1.2.0';
+        _displayName = userResp?.data?['display_name'] ?? '';
+        _email = userResp?.data?['email'] ?? '';
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() {
+        _version = '1.2.0';
+        _loading = false;
+      });
+    }
+  }
+
+  void _showEditProfile(BuildContext context) {
+    final nameCtrl = TextEditingController(text: _displayName);
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.person_rounded, size: 20, color: AppTheme.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Edit Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                ]),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Display Name', prefixIcon: Icon(Icons.badge_outlined, size: 20)),
+                  autofocus: true,
+                ),
+                const SizedBox(height: 12),
+                Text('Email: $_email', style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                const SizedBox(height: 24),
+                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () async {
+                      try {
+                        final api = getIt<ApiClient>();
+                        await api.dio.put('/api/v1/users/me', data: {'display_name': nameCtrl.text.trim()});
+                        setState(() => _displayName = nameCtrl.text.trim());
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Profile updated'), backgroundColor: AppTheme.success),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed: $e'), backgroundColor: AppTheme.error),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Save'),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showChangePassword(BuildContext context) {
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppTheme.warning.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warning),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Change Password', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                ]),
+                const SizedBox(height: 20),
+                TextField(controller: currentCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Current Password', prefixIcon: Icon(Icons.lock_outline, size: 20))),
+                const SizedBox(height: 12),
+                TextField(controller: newCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'New Password', prefixIcon: Icon(Icons.lock_reset, size: 20))),
+                const SizedBox(height: 12),
+                TextField(controller: confirmCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm Password', prefixIcon: Icon(Icons.lock_reset, size: 20))),
+                const SizedBox(height: 24),
+                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () async {
+                      if (newCtrl.text != confirmCtrl.text) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Passwords do not match'), backgroundColor: AppTheme.error),
+                        );
+                        return;
+                      }
+                      try {
+                        final api = getIt<ApiClient>();
+                        await api.dio.put('/api/v1/users/me/password', data: {
+                          'current_password': currentCtrl.text,
+                          'new_password': newCtrl.text,
+                        });
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Password changed'), backgroundColor: AppTheme.success),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed: $e'), backgroundColor: AppTheme.error),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Change Password'),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,11 +203,29 @@ class SettingsPage extends StatelessWidget {
         const SizedBox(height: 32),
 
         _SettingsSection(title: 'Account', children: [
-          _SettingsTile(icon: Icons.person_rounded, title: 'Profile', subtitle: 'Edit your display name and email', onTap: () {}),
-          _SettingsTile(icon: Icons.lock_rounded, title: 'Change Password', subtitle: 'Update your password', onTap: () {}),
-          _SettingsTile(icon: Icons.security_rounded, title: 'Two-Factor Authentication', subtitle: 'Add an extra layer of security',
-            onTap: () => showDialog(context: context, builder: (_) => Dialog(
-              child: SizedBox(width: 500, height: 500, child: const _MfaDialogContent())))),
+          _SettingsTile(
+            icon: Icons.person_rounded,
+            title: 'Profile',
+            subtitle: _loading ? 'Loading...' : (_displayName.isNotEmpty ? _displayName : 'Edit your display name'),
+            onTap: () => _showEditProfile(context),
+          ),
+          _SettingsTile(
+            icon: Icons.lock_rounded,
+            title: 'Change Password',
+            subtitle: 'Update your password',
+            onTap: () => _showChangePassword(context),
+          ),
+          _SettingsTile(
+            icon: Icons.security_rounded,
+            title: 'Two-Factor Authentication',
+            subtitle: 'Add an extra layer of security',
+            onTap: () => showDialog(
+              context: context,
+              builder: (_) => const Dialog(
+                child: SizedBox(width: 500, height: 500, child: _MfaDialogContent()),
+              ),
+            ),
+          ),
         ]),
         const SizedBox(height: 24),
 
@@ -36,19 +238,34 @@ class SettingsPage extends StatelessWidget {
 
         _SettingsSection(title: 'AI & Intelligence', children: [
           _SettingsTile(icon: Icons.auto_awesome_rounded, title: 'AI Provider', subtitle: 'Configure local Ollama or API provider', onTap: () {}),
-          _SettingsTile(icon: Icons.label_rounded, title: 'Auto-Tagging', subtitle: 'Enable automatic file tagging', trailing: Switch(value: true, onChanged: (_) {}, activeColor: AppTheme.primary)),
-          _SettingsTile(icon: Icons.find_in_page_rounded, title: 'Smart Search', subtitle: 'Use AI for natural language search', trailing: Switch(value: true, onChanged: (_) {}, activeColor: AppTheme.primary)),
+          _SettingsTile(
+            icon: Icons.label_rounded,
+            title: 'Auto-Tagging',
+            subtitle: 'Enable automatic file tagging',
+            trailing: Switch(value: true, onChanged: (_) {}, activeColor: AppTheme.primary),
+          ),
+          _SettingsTile(
+            icon: Icons.find_in_page_rounded,
+            title: 'Smart Search',
+            subtitle: 'Use AI for natural language search',
+            trailing: Switch(value: true, onChanged: (_) {}, activeColor: AppTheme.primary),
+          ),
         ]),
         const SizedBox(height: 24),
 
         _SettingsSection(title: 'Appearance', children: [
-          _SettingsTile(icon: Icons.dark_mode_rounded, title: 'Dark Mode', subtitle: 'Always on', trailing: Switch(value: true, onChanged: (_) {}, activeColor: AppTheme.primary)),
+          _SettingsTile(
+            icon: Icons.dark_mode_rounded,
+            title: 'Dark Mode',
+            subtitle: 'Always on',
+            trailing: Switch(value: true, onChanged: (_) {}, activeColor: AppTheme.primary),
+          ),
           _SettingsTile(icon: Icons.view_module_rounded, title: 'Default View', subtitle: 'Grid view for file browser', onTap: () {}),
         ]),
         const SizedBox(height: 24),
 
         _SettingsSection(title: 'About', children: [
-          _SettingsTile(icon: Icons.info_rounded, title: 'Version', subtitle: 'PCOS v0.2.0'),
+          _SettingsTile(icon: Icons.info_rounded, title: 'Version', subtitle: 'PCOS v$_version'),
           _SettingsTile(icon: Icons.code_rounded, title: 'Source Code', subtitle: 'github.com/dayashimoga/pcos', onTap: () {}),
         ]),
       ]),
@@ -62,29 +279,39 @@ class _SettingsSection extends StatelessWidget {
   const _SettingsSection({required this.title, required this.children});
 
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 0.5)),
-    const SizedBox(height: 12),
-    Container(
-      decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.border)),
-      child: Column(children: [
-        for (int i = 0; i < children.length; i++) ...[
-          children[i],
-          if (i < children.length - 1) const Divider(height: 1, color: AppTheme.border, indent: 56),
-        ],
-      ]),
-    ),
-  ]);
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 0.5)),
+      const SizedBox(height: 12),
+      Container(
+        decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.border)),
+        child: Column(children: [
+          for (int i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i < children.length - 1) const Divider(height: 1, color: AppTheme.border, indent: 56),
+          ],
+        ]),
+      ),
+    ],
+  );
 }
 
 class _SettingsTile extends StatelessWidget {
-  final IconData icon; final String title; final String subtitle; final VoidCallback? onTap; final Widget? trailing;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final Widget? trailing;
   const _SettingsTile({required this.icon, required this.title, required this.subtitle, this.onTap, this.trailing});
 
   @override
   Widget build(BuildContext context) => ListTile(
-    leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-      child: Icon(icon, color: AppTheme.primary, size: 20)),
+    leading: Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+      child: Icon(icon, color: AppTheme.primary, size: 20),
+    ),
     title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
     subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
     trailing: trailing ?? (onTap != null ? const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted) : null),
@@ -136,22 +363,40 @@ class _InlineMfaContentState extends State<_InlineMfaContent> {
     try {
       final api = getIt<ApiClient>();
       final resp = await api.dio.get('/api/v1/auth/mfa/status');
-      setState(() { _enabled = resp.data['mfa_enabled'] == true; _loading = false; });
-    } catch (_) { setState(() => _loading = false); }
+      setState(() {
+        _enabled = resp.data['mfa_enabled'] == true;
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(_enabled ? Icons.verified_user_rounded : Icons.shield_outlined,
-        color: _enabled ? const Color(0xFF4CAF50) : AppTheme.textMuted, size: 48),
+      Icon(
+        _enabled ? Icons.verified_user_rounded : Icons.shield_outlined,
+        color: _enabled ? const Color(0xFF4CAF50) : AppTheme.textMuted,
+        size: 48,
+      ),
       const SizedBox(height: 16),
-      Text(_enabled ? 'MFA is enabled' : 'MFA is not enabled',
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _enabled ? const Color(0xFF4CAF50) : AppTheme.textPrimary)),
+      Text(
+        _enabled ? 'MFA is enabled' : 'MFA is not enabled',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: _enabled ? const Color(0xFF4CAF50) : AppTheme.textPrimary,
+        ),
+      ),
       const SizedBox(height: 8),
-      Text(_enabled ? 'Your account is protected.' : 'Enable MFA in the Security settings for enhanced protection.',
-        style: const TextStyle(color: AppTheme.textMuted)),
+      Text(
+        _enabled
+            ? 'Your account is protected.'
+            : 'Enable MFA in the Security settings for enhanced protection.',
+        style: const TextStyle(color: AppTheme.textMuted),
+      ),
     ]);
   }
 }
