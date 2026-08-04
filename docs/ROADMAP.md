@@ -50,9 +50,9 @@
 - [ ] Duplicate file finder
 
 ### File Management
-- [ ] Drag-and-drop upload (web)
-- [ ] Bulk file selection with toolbar
-- [ ] Favorites (star files)
+- [x] Drag-and-drop upload (web) — visual drop overlay with upload feedback
+- [x] Bulk file selection with toolbar — long-press/toolbar to multi-select, bulk delete/download, select all
+- [x] Favorites (star files) — star toggle on grid/list, favorite action in context menu
 - [x] File sharing dialog (password, expiry, download limits)
 - [x] Image thumbnail previews in file grid (for image/* MIME types)
 
