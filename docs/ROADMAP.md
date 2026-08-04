@@ -42,10 +42,10 @@
 
 ---
 
-## v1.5.0 — Advanced Features (Next)
+## v1.5.0 — Advanced Features ✅
 
 ### Search & AI
-- [ ] Global search in app bar (Ctrl+K command palette)
+- [x] Global search in app bar (Ctrl+K command palette)
 - [ ] AI document Q&A ("Ask My Files")
 - [ ] Duplicate file finder
 
@@ -53,7 +53,8 @@
 - [ ] Drag-and-drop upload (web)
 - [ ] Bulk file selection with toolbar
 - [ ] Favorites (star files)
-- [ ] File sharing dialog (password, expiry, download limits)
+- [x] File sharing dialog (password, expiry, download limits)
+- [x] Image thumbnail previews in file grid (for image/* MIME types)
 
 ### Deployment
 - [ ] Setup wizard (first-run configuration)
@@ -61,7 +62,6 @@
 - [ ] One-command installer script
 
 ### Media
-- [ ] Image thumbnail previews in file grid
 - [ ] PDF preview panel
 - [ ] Video player integration (HLS)
 - [ ] Photo gallery view with timeline
