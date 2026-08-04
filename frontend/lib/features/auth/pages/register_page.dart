@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/di/service_locator.dart';
 import '../../../core/theme/app_theme.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -13,6 +14,7 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage>
     with SingleTickerProviderStateMixin {
+  late final AuthBloc _authBloc;
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
@@ -27,6 +29,7 @@ class _RegisterPageState extends State<RegisterPage>
   @override
   void initState() {
     super.initState();
+    _authBloc = getIt<AuthBloc>();
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -48,12 +51,26 @@ class _RegisterPageState extends State<RegisterPage>
     _nameController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
+    _authBloc.close();
     super.dispose();
+  }
+
+  void _onSubmit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      _authBloc.add(
+        AuthRegisterRequested(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          displayName: _nameController.text.trim(),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
+      bloc: _authBloc,
       listener: (context, state) {
         if (state is AuthAuthenticated) {
           context.go('/dashboard');
@@ -81,15 +98,15 @@ class _RegisterPageState extends State<RegisterPage>
                 child: SlideTransition(
                   position: _slideAnimation,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
+                    constraints: const BoxConstraints(maxWidth: 440),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildHeader(),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 32),
                         _buildFormCard(),
                         const SizedBox(height: 24),
-                        _buildLoginLink(),
+                        _buildFooter(),
                       ],
                     ),
                   ),
@@ -106,43 +123,59 @@ class _RegisterPageState extends State<RegisterPage>
     return Column(
       children: [
         Container(
-          width: 72,
-          height: 72,
+          width: 64,
+          height: 64,
           decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: const LinearGradient(
+              colors: [AppTheme.primary, AppTheme.accent],
+            ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                  color: AppTheme.primary.withOpacity(0.4),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8)),
+                color: AppTheme.primary.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
             ],
           ),
           child: const Icon(Icons.person_add_rounded,
-              size: 36, color: Colors.white),
+              size: 34, color: Colors.white),
         ),
-        const SizedBox(height: 24),
-        Text('Create Account',
-            style: Theme.of(context).textTheme.displayMedium),
-        const SizedBox(height: 8),
-        Text('Set up your Personal Cloud',
-            style: Theme.of(context).textTheme.bodyLarge),
+        const SizedBox(height: 16),
+        const Text(
+          'Create Account',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Join PCOS and own your cloud data',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.white.withOpacity(0.6),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildFormCard() {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: AppTheme.surface.withOpacity(0.6),
+        color: AppTheme.surface.withOpacity(0.8),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 40,
-              offset: const Offset(0, 16))
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+          ),
         ],
       ),
       child: Form(
@@ -154,28 +187,34 @@ class _RegisterPageState extends State<RegisterPage>
               key: const Key('register_name_field'),
               controller: _nameController,
               decoration: const InputDecoration(
-                  labelText: 'Display name',
-                  prefixIcon: Icon(Icons.person_outline, size: 20)),
-              validator: (v) => (v == null || v.length < 2)
-                  ? 'Name must be at least 2 characters'
-                  : null,
+                labelText: 'Display Name',
+                prefixIcon: Icon(Icons.person_outline, size: 20),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Name is required';
+                }
+                return null;
+              },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             TextFormField(
               key: const Key('register_email_field'),
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
-                  labelText: 'Email address',
-                  prefixIcon: Icon(Icons.email_outlined, size: 20)),
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Email is required';
-                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v))
+                labelText: 'Email Address',
+                prefixIcon: Icon(Icons.email_outlined, size: 20),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Email is required';
+                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                   return 'Enter a valid email';
+                }
                 return null;
               },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             TextFormField(
               key: const Key('register_password_field'),
               controller: _passwordController,
@@ -193,20 +232,30 @@ class _RegisterPageState extends State<RegisterPage>
                       setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
-              validator: (v) {
-                if (v == null || v.length < 8)
-                  return 'Password must be at least 8 characters';
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Password is required';
+                }
+                if (value.length < 8) {
+                  return 'Must be at least 8 characters';
+                }
+                if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                  return 'Must contain uppercase letter';
+                }
+                if (!RegExp(r'[0-9]').hasMatch(value)) {
+                  return 'Must contain a number';
+                }
                 return null;
               },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             TextFormField(
               key: const Key('register_confirm_field'),
               controller: _confirmController,
               obscureText: _obscureConfirm,
               decoration: InputDecoration(
-                labelText: 'Confirm password',
-                prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                labelText: 'Confirm Password',
+                prefixIcon: const Icon(Icons.lock_reset_outlined, size: 20),
                 suffixIcon: IconButton(
                   icon: Icon(
                       _obscureConfirm
@@ -217,15 +266,20 @@ class _RegisterPageState extends State<RegisterPage>
                       setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
               ),
-              validator: (v) => v != _passwordController.text
-                  ? 'Passwords do not match'
-                  : null,
+              validator: (value) {
+                if (value != _passwordController.text) {
+                  return 'Passwords do not match';
+                }
+                return null;
+              },
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             BlocBuilder<AuthBloc, AuthState>(
+              bloc: _authBloc,
               builder: (context, state) {
                 final isLoading = state is AuthLoading;
-                return SizedBox(
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
                   height: 52,
                   child: ElevatedButton(
                     key: const Key('register_submit_button'),
@@ -240,7 +294,8 @@ class _RegisterPageState extends State<RegisterPage>
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
+                                strokeWidth: 2, color: Colors.white),
+                          )
                         : const Text('Create Account',
                             style: TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.w600)),
@@ -254,30 +309,26 @@ class _RegisterPageState extends State<RegisterPage>
     );
   }
 
-  Widget _buildLoginLink() {
+  Widget _buildFooter() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('Already have an account? ',
-            style: Theme.of(context).textTheme.bodyMedium),
+        Text(
+          'Already have an account?',
+          style: TextStyle(color: Colors.white.withOpacity(0.6)),
+        ),
         TextButton(
-          key: const Key('register_login_link'),
+          key: const Key('login_link'),
           onPressed: () => context.go('/login'),
-          child: const Text('Sign in',
-              style: TextStyle(
-                  color: AppTheme.primary, fontWeight: FontWeight.w600)),
+          child: const Text(
+            'Sign In',
+            style: TextStyle(
+              color: AppTheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ],
     );
-  }
-
-  void _onSubmit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      context.read<AuthBloc>().add(AuthRegisterRequested(
-            email: _emailController.text.trim(),
-            displayName: _nameController.text.trim(),
-            password: _passwordController.text,
-          ));
-    }
   }
 }

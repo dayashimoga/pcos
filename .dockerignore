@@ -1,0 +1,15 @@
+.git
+.github
+.idea
+.vscode
+target/
+build/
+.dart_tool/
+.pub-cache/
+.pub/
+ephemeral/
+frontend/windows/flutter/ephemeral/
+frontend/linux/flutter/ephemeral/
+frontend/macos/Flutter/ephemeral/
+frontend/ios/Flutter/ephemeral/
+*.log
