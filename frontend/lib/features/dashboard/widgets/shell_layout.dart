@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 
-/// Responsive shell layout with sidebar (desktop), compact rail (tablet), and drawer (mobile).
+/// Responsive shell layout: full sidebar (desktop ≥1100), compact rail (tablet ≥700), bottom nav (mobile).
 class ShellLayout extends StatelessWidget {
   final Widget child;
   const ShellLayout({super.key, required this.child});
@@ -16,6 +17,162 @@ class ShellLayout extends StatelessWidget {
   }
 }
 
+void _showQuickSearch(BuildContext context) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black54,
+    builder: (ctx) => const _QuickSearchOverlay(),
+  );
+}
+
+class _QuickSearchOverlay extends StatefulWidget {
+  const _QuickSearchOverlay();
+  @override
+  State<_QuickSearchOverlay> createState() => _QuickSearchOverlayState();
+}
+
+class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
+  final _ctrl = TextEditingController();
+  final _focusNode = FocusNode();
+
+  static const _pages = [
+    ('Dashboard', Icons.dashboard_rounded, '/dashboard'),
+    ('Files', Icons.folder_rounded, '/files'),
+    ('Search', Icons.search_rounded, '/search'),
+    ('Devices', Icons.devices_rounded, '/devices'),
+    ('Trash', Icons.delete_rounded, '/trash'),
+    ('Admin', Icons.admin_panel_settings_rounded, '/admin'),
+    ('Settings', Icons.settings_rounded, '/settings'),
+  ];
+
+  List<(String, IconData, String)> get _filtered {
+    final q = _ctrl.text.toLowerCase();
+    if (q.isEmpty) return _pages;
+    return _pages.where((p) => p.$1.toLowerCase().contains(q)).toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _focusNode.requestFocus());
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: const Alignment(0, -0.3),
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 480,
+          constraints: const BoxConstraints(maxHeight: 400),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.border),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8))
+            ],
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: TextField(
+                controller: _ctrl,
+                focusNode: _focusNode,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  hintText: 'Search pages, actions...',
+                  prefixIcon: Icon(Icons.search_rounded,
+                      color: AppTheme.textMuted, size: 20),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                ),
+                style:
+                    const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
+              ),
+            ),
+            const Divider(color: AppTheme.border, height: 1),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.all(8),
+                children: _filtered
+                    .map((p) => ListTile(
+                          leading:
+                              Icon(p.$2, size: 20, color: AppTheme.primary),
+                          title: Text(p.$1,
+                              style: const TextStyle(
+                                  fontSize: 14, color: AppTheme.textPrimary)),
+                          trailing: Text('Go',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.textMuted.withOpacity(0.6))),
+                          dense: true,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          hoverColor: AppTheme.primary.withOpacity(0.08),
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go(p.$3);
+                          },
+                        ))
+                    .toList(),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: AppTheme.border))),
+              child: Row(children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: AppTheme.surfaceLight,
+                      borderRadius: BorderRadius.circular(4)),
+                  child: const Text('ESC',
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.textMuted,
+                          fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 6),
+                const Text('to close',
+                    style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                const Spacer(),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: AppTheme.surfaceLight,
+                      borderRadius: BorderRadius.circular(4)),
+                  child: const Text('Ctrl+K',
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.textMuted,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class _NavItem {
   final String label;
   final IconData icon;
@@ -25,12 +182,26 @@ class _NavItem {
 }
 
 const _navItems = [
-  _NavItem('Dashboard', Icons.dashboard_outlined, Icons.dashboard_rounded, '/dashboard'),
+  _NavItem('Dashboard', Icons.dashboard_outlined, Icons.dashboard_rounded,
+      '/dashboard'),
   _NavItem('Files', Icons.folder_outlined, Icons.folder_rounded, '/files'),
-  _NavItem('Devices', Icons.devices_outlined, Icons.devices_rounded, '/devices'),
-  _NavItem('Trash', Icons.delete_outline_rounded, Icons.delete_rounded, '/trash'),
-  _NavItem('Settings', Icons.settings_outlined, Icons.settings_rounded, '/settings'),
+  _NavItem('Gallery', Icons.photo_library_outlined, Icons.photo_library_rounded,
+      '/gallery'),
+  _NavItem('Search', Icons.search_outlined, Icons.search_rounded, '/search'),
+  _NavItem(
+      'Devices', Icons.devices_outlined, Icons.devices_rounded, '/devices'),
+  _NavItem(
+      'Trash', Icons.delete_outline_rounded, Icons.delete_rounded, '/trash'),
+  _NavItem('Admin', Icons.admin_panel_settings_outlined,
+      Icons.admin_panel_settings_rounded, '/admin'),
+  _NavItem('Doctor', Icons.health_and_safety_outlined,
+      Icons.health_and_safety_rounded, '/doctor'),
+  _NavItem(
+      'Settings', Icons.settings_outlined, Icons.settings_rounded, '/settings'),
 ];
+
+// Mobile only shows first 5 items in bottom nav
+const _mobileNavItems = 5;
 
 int _currentIndex(BuildContext context) {
   final location = GoRouterState.of(context).matchedLocation;
@@ -41,101 +212,285 @@ int _currentIndex(BuildContext context) {
 }
 
 // ─── Desktop (full sidebar) ─────────────────────────────
-class _DesktopShell extends StatelessWidget {
+class _DesktopShell extends StatefulWidget {
   final Widget child;
   const _DesktopShell({required this.child});
+  @override
+  State<_DesktopShell> createState() => _DesktopShellState();
+}
+
+class _DesktopShellState extends State<_DesktopShell> {
+  bool _collapsed = false;
 
   @override
   Widget build(BuildContext context) {
     final idx = _currentIndex(context);
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: Row(children: [
-        // Sidebar
-        Container(
-          width: 240,
-          decoration: const BoxDecoration(
-            color: AppTheme.surface,
-            border: Border(right: BorderSide(color: AppTheme.border)),
-          ),
-          child: Column(children: [
-            // Logo
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: Row(children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [AppTheme.primary, AppTheme.secondary]),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.cloud_rounded, color: Colors.white, size: 22),
-                ),
-                const SizedBox(width: 12),
-                const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('PCOS', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: 1)),
-                  Text('Personal Cloud OS', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-                ]),
-              ]),
-            ),
-            const Divider(color: AppTheme.border, height: 1),
-            const SizedBox(height: 8),
+    final sidebarWidth = _collapsed ? 72.0 : 240.0;
 
-            // Nav items
-            ...List.generate(_navItems.length, (i) {
-              final item = _navItems[i];
-              final isActive = idx == i;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                child: Material(
-                  color: isActive ? AppTheme.primary.withOpacity(0.12) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  child: InkWell(
-                    onTap: () => context.go(item.path),
-                    borderRadius: BorderRadius.circular(10),
+    return CallbackShortcuts(
+      bindings: {
+        for (int i = 0; i < _navItems.length; i++)
+          SingleActivator(
+              LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i),
+              control: true): () => context.go(_navItems[i].path),
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () =>
+            _showQuickSearch(context),
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          backgroundColor: AppTheme.background,
+          body: Row(children: [
+            // Sidebar
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              width: sidebarWidth,
+              decoration: const BoxDecoration(
+                color: AppTheme.surface,
+                border: Border(right: BorderSide(color: AppTheme.border)),
+              ),
+              child: Column(children: [
+                // Logo + collapse toggle
+                Container(
+                  padding: EdgeInsets.all(_collapsed ? 12 : 20),
+                  child: Row(children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.cloud_rounded,
+                          color: Colors.white, size: 22),
+                    ),
+                    if (!_collapsed) ...[
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('PCOS',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.textPrimary,
+                                      letterSpacing: 1)),
+                              Text('Personal Cloud OS',
+                                  style: TextStyle(
+                                      fontSize: 10, color: AppTheme.textMuted)),
+                            ]),
+                      ),
+                    ],
+                  ]),
+                ),
+                const Divider(color: AppTheme.border, height: 1),
+                // Search bar hint
+                if (!_collapsed)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _showQuickSearch(context),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: AppTheme.background,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppTheme.border),
+                          ),
+                          child: Row(children: [
+                            const Icon(Icons.search_rounded,
+                                size: 16, color: AppTheme.textMuted),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                                child: Text('Search...',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppTheme.textMuted))),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                  color: AppTheme.surfaceLight,
+                                  borderRadius: BorderRadius.circular(4)),
+                              child: const Text('⌘K',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppTheme.textMuted,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: IconButton(
+                      onPressed: () => _showQuickSearch(context),
+                      icon: const Icon(Icons.search_rounded,
+                          size: 20, color: AppTheme.textMuted),
+                      tooltip: 'Search (Ctrl+K)',
+                    ),
+                  ),
+                const SizedBox(height: 4),
+
+                // Nav items
+                ...List.generate(_navItems.length, (i) {
+                  final item = _navItems[i];
+                  final isActive = idx == i;
+                  return Tooltip(
+                    message: _collapsed ? item.label : '',
+                    waitDuration: const Duration(milliseconds: 400),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                      child: Row(children: [
-                        Icon(isActive ? item.activeIcon : item.icon, size: 20, color: isActive ? AppTheme.primary : AppTheme.textMuted),
-                        const SizedBox(width: 12),
-                        Text(item.label, style: TextStyle(fontSize: 14, fontWeight: isActive ? FontWeight.w600 : FontWeight.w400, color: isActive ? AppTheme.primary : AppTheme.textSecondary)),
-                      ]),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: _collapsed ? 8 : 12, vertical: 2),
+                      child: Material(
+                        color: isActive
+                            ? AppTheme.primary.withOpacity(0.12)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        child: InkWell(
+                          onTap: () => context.go(item.path),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: _collapsed ? 0 : 14, vertical: 11),
+                            child: Row(
+                              mainAxisAlignment: _collapsed
+                                  ? MainAxisAlignment.center
+                                  : MainAxisAlignment.start,
+                              children: [
+                                Icon(isActive ? item.activeIcon : item.icon,
+                                    size: 20,
+                                    color: isActive
+                                        ? AppTheme.primary
+                                        : AppTheme.textMuted),
+                                if (!_collapsed) ...[
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(item.label,
+                                        style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: isActive
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                            color: isActive
+                                                ? AppTheme.primary
+                                                : AppTheme.textSecondary),
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                  if (isActive)
+                                    Container(
+                                        width: 4,
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                            color: AppTheme.primary,
+                                            borderRadius:
+                                                BorderRadius.circular(2))),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+
+                const Spacer(),
+
+                // Collapse toggle
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    child: InkWell(
+                      onTap: () => setState(() => _collapsed = !_collapsed),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.all(11),
+                        child: Row(
+                          mainAxisAlignment: _collapsed
+                              ? MainAxisAlignment.center
+                              : MainAxisAlignment.start,
+                          children: [
+                            Icon(
+                                _collapsed
+                                    ? Icons.chevron_right_rounded
+                                    : Icons.chevron_left_rounded,
+                                size: 20,
+                                color: AppTheme.textMuted),
+                            if (!_collapsed) ...[
+                              const SizedBox(width: 12),
+                              const Text('Collapse',
+                                  style: TextStyle(
+                                      fontSize: 13, color: AppTheme.textMuted)),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              );
-            }),
 
-            const Spacer(),
-            // Storage indicator
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: AppTheme.background, borderRadius: BorderRadius.circular(12)),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Row(children: [
-                  Icon(Icons.cloud_done_rounded, size: 16, color: AppTheme.primary),
-                  SizedBox(width: 6),
-                  Text('Storage', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-                ]),
+                // Storage indicator
+                if (!_collapsed)
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                        color: AppTheme.background,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(children: [
+                            Icon(Icons.cloud_done_rounded,
+                                size: 16, color: AppTheme.primary),
+                            SizedBox(width: 6),
+                            Text('Storage',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textPrimary)),
+                          ]),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: const LinearProgressIndicator(
+                                value: 0.0,
+                                minHeight: 6,
+                                backgroundColor: AppTheme.border,
+                                color: AppTheme.primary),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text('Unlimited',
+                              style: TextStyle(
+                                  fontSize: 11, color: AppTheme.textMuted)),
+                        ]),
+                  ),
                 const SizedBox(height: 8),
-                ClipRRect(borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(value: 0.0, minHeight: 6, backgroundColor: AppTheme.border, color: AppTheme.primary)),
-                const SizedBox(height: 6),
-                const Text('Unlimited', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
               ]),
             ),
-            const SizedBox(height: 8),
+            // Content
+            Expanded(child: widget.child),
           ]),
         ),
-        // Content
-        Expanded(child: child),
-      ]),
+      ),
     );
   }
 }
 
-// ─── Tablet (compact rail) ──────────────────────────────
+// ─── Tablet (compact rail with tooltips) ─────────────────
 class _TabletShell extends StatelessWidget {
   final Widget child;
   const _TabletShell({required this.child});
@@ -151,19 +506,29 @@ class _TabletShell extends StatelessWidget {
           backgroundColor: AppTheme.surface,
           indicatorColor: AppTheme.primary.withOpacity(0.15),
           onDestinationSelected: (i) => context.go(_navItems[i].path),
+          labelType: NavigationRailLabelType.all,
           leading: Padding(
             padding: const EdgeInsets.only(bottom: 12, top: 8),
             child: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.primary, AppTheme.secondary]), borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.cloud_rounded, color: Colors.white, size: 20),
+              decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.cloud_rounded,
+                  color: Colors.white, size: 20),
             ),
           ),
-          destinations: _navItems.map((item) => NavigationRailDestination(
-            icon: Icon(item.icon, color: AppTheme.textMuted),
-            selectedIcon: Icon(item.activeIcon, color: AppTheme.primary),
-            label: Text(item.label),
-          )).toList(),
+          destinations: _navItems
+              .map((item) => NavigationRailDestination(
+                    icon: Tooltip(
+                        message: item.label,
+                        child: Icon(item.icon, color: AppTheme.textMuted)),
+                    selectedIcon:
+                        Icon(item.activeIcon, color: AppTheme.primary),
+                    label:
+                        Text(item.label, style: const TextStyle(fontSize: 10)),
+                  ))
+              .toList(),
         ),
         const VerticalDivider(thickness: 1, width: 1, color: AppTheme.border),
         Expanded(child: child),
@@ -172,7 +537,7 @@ class _TabletShell extends StatelessWidget {
   }
 }
 
-// ─── Mobile (bottom nav + drawer) ──────────────────────
+// ─── Mobile (bottom nav, only 5 items) ───────────────────
 class _MobileShell extends StatelessWidget {
   final Widget child;
   const _MobileShell({required this.child});
@@ -180,31 +545,71 @@ class _MobileShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final idx = _currentIndex(context);
+    final mobileIdx = idx < _mobileNavItems ? idx : 0;
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: AppTheme.surface,
         elevation: 0,
         title: Row(children: [
-          Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppTheme.primary, AppTheme.secondary]), borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.cloud_rounded, color: Colors.white, size: 16)),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(8)),
+            child:
+                const Icon(Icons.cloud_rounded, color: Colors.white, size: 16),
+          ),
           const SizedBox(width: 8),
-          const Text('PCOS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+          const Text('PCOS',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary)),
         ]),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search_rounded,
+                size: 22, color: AppTheme.textMuted),
+            onPressed: () => _showQuickSearch(context),
+            tooltip: 'Search',
+          ),
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings_outlined,
+                size: 22, color: AppTheme.textMuted),
+            onPressed: () => context.go('/admin'),
+            tooltip: 'Admin',
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined,
+                size: 22, color: AppTheme.textMuted),
+            onPressed: () => context.go('/settings'),
+            tooltip: 'Settings',
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: child,
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppTheme.border))),
-        child: BottomNavigationBar(
-          currentIndex: idx < 5 ? idx : 0,
+        decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppTheme.border))),
+        child: NavigationBar(
+          selectedIndex: mobileIdx,
           backgroundColor: AppTheme.surface,
-          selectedItemColor: AppTheme.primary,
-          unselectedItemColor: AppTheme.textMuted,
-          type: BottomNavigationBarType.fixed,
-          selectedFontSize: 11,
-          unselectedFontSize: 11,
-          onTap: (i) => context.go(_navItems[i].path),
-          items: _navItems.map((item) => BottomNavigationBarItem(icon: Icon(item.icon), activeIcon: Icon(item.activeIcon), label: item.label)).toList(),
+          indicatorColor: AppTheme.primary.withOpacity(0.15),
+          onDestinationSelected: (i) => context.go(_navItems[i].path),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          height: 64,
+          destinations: List.generate(
+              _mobileNavItems,
+              (i) => NavigationDestination(
+                    icon: Icon(_navItems[i].icon,
+                        color: AppTheme.textMuted, size: 22),
+                    selectedIcon: Icon(_navItems[i].activeIcon,
+                        color: AppTheme.primary, size: 22),
+                    label: _navItems[i].label,
+                  )),
         ),
       ),
     );

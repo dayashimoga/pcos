@@ -1,8 +1,11 @@
 pub mod handlers;
-pub mod service;
 pub mod provider;
+pub mod service;
 
-use axum::{routing::{get, post}, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use pcos_common::AppState;
 
 pub fn router() -> Router<AppState> {

@@ -4,7 +4,6 @@ use pcos_common::AppState;
 use serde::Serialize;
 use std::time::Duration;
 use tower_http::cors::CorsLayer;
-use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -13,6 +12,13 @@ struct HealthResponse {
     status: String,
     version: String,
     uptime_secs: u64,
+}
+
+#[derive(Serialize)]
+struct VersionResponse {
+    version: String,
+    build_date: String,
+    rust_version: String,
 }
 
 static START_TIME: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
@@ -40,6 +46,11 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to load configuration: {e}"))?;
 
     tracing::info!(host = %config.server.host, port = %config.server.port, "Configuration loaded");
+    tracing::info!(
+        max_connections = config.database.max_connections,
+        min_connections = config.database.min_connections,
+        "Database pool configuration"
+    );
 
     // Ensure storage directory exists
     let storage_path = std::path::Path::new(&config.storage.base_path);
@@ -54,8 +65,26 @@ async fn main() -> anyhow::Result<()> {
     // Run migrations
     db.run_migrations().await?;
 
+    // Initialize Tantivy search index
+    let search_index_path = format!("{}/search_index", config.storage.base_path);
+    let search_index = match pcos_search::index::SearchIndex::open(&search_index_path) {
+        Ok(idx) => {
+            tracing::info!(path = %search_index_path, "Tantivy search index initialized");
+            Some(std::sync::Arc::new(idx) as std::sync::Arc<dyn std::any::Any + Send + Sync>)
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to initialize search index, falling back to DB search");
+            None
+        }
+    };
+
     // Build application state
     let state = AppState::new(db.clone(), config.clone());
+    let state = if let Some(idx) = search_index {
+        state.with_search_index(idx)
+    } else {
+        state
+    };
 
     // Build CORS layer — configurable origins
     let cors = build_cors_layer();
@@ -68,6 +97,7 @@ async fn main() -> anyhow::Result<()> {
         // Health check (no auth required)
         .route("/health", get(health_check))
         .route("/api/v1/health", get(health_check))
+        .route("/api/v1/version", get(version_info))
         // Service routes
         .merge(pcos_auth::router())
         .merge(pcos_user::router())
@@ -114,6 +144,17 @@ async fn health_check() -> Json<HealthResponse> {
     })
 }
 
+/// Version info endpoint.
+async fn version_info() -> Json<VersionResponse> {
+    Json(VersionResponse {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        build_date: option_env!("BUILD_DATE").unwrap_or("dev").to_string(),
+        rust_version: option_env!("RUSTC_VERSION")
+            .unwrap_or("unknown")
+            .to_string(),
+    })
+}
+
 /// Build CORS layer from environment or defaults.
 fn build_cors_layer() -> CorsLayer {
     let origins = std::env::var("PCOS_CORS_ORIGINS").unwrap_or_default();
@@ -122,18 +163,31 @@ fn build_cors_layer() -> CorsLayer {
         // Development mode — allow all
         CorsLayer::new()
             .allow_origin(tower_http::cors::Any)
-            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH])
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::PATCH,
+            ])
             .allow_headers(tower_http::cors::Any)
             .max_age(Duration::from_secs(3600))
     } else {
         // Production mode — restrict origins
-        let allowed: Vec<_> = origins.split(',')
+        let allowed: Vec<_> = origins
+            .split(',')
             .filter_map(|s| s.trim().parse().ok())
             .collect();
 
         CorsLayer::new()
             .allow_origin(allowed)
-            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH])
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::PATCH,
+            ])
             .allow_headers(tower_http::cors::Any)
             .allow_credentials(true)
             .max_age(Duration::from_secs(3600))
@@ -149,12 +203,18 @@ fn spawn_background_tasks(state: AppState) {
             let mut interval = tokio::time::interval(Duration::from_secs(3600));
             loop {
                 interval.tick().await;
-                match sqlx::query("DELETE FROM refresh_tokens WHERE expires_at < NOW() OR revoked = true")
-                    .execute(&pool).await
+                match sqlx::query(
+                    "DELETE FROM refresh_tokens WHERE expires_at < NOW() OR revoked = true",
+                )
+                .execute(&pool)
+                .await
                 {
                     Ok(r) => {
                         if r.rows_affected() > 0 {
-                            tracing::info!(count = r.rows_affected(), "Cleaned expired refresh tokens");
+                            tracing::info!(
+                                count = r.rows_affected(),
+                                "Cleaned expired refresh tokens"
+                            );
                         }
                     }
                     Err(e) => tracing::error!(error = %e, "Failed to clean expired tokens"),

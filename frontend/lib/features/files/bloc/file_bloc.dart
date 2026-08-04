@@ -20,7 +20,8 @@ class FileUploadRequested extends FileEvent {
   final String filename;
   final List<int> bytes;
   final String? parentId;
-  const FileUploadRequested({required this.filename, required this.bytes, this.parentId});
+  const FileUploadRequested(
+      {required this.filename, required this.bytes, this.parentId});
   @override
   List<Object?> get props => [filename, parentId];
 }
@@ -78,15 +79,24 @@ abstract class FileState extends Equatable {
   List<Object?> get props => [];
 }
 
-class FileInitial extends FileState { const FileInitial(); }
-class FileLoading extends FileState { const FileLoading(); }
+class FileInitial extends FileState {
+  const FileInitial();
+}
+
+class FileLoading extends FileState {
+  const FileLoading();
+}
 
 class FileLoaded extends FileState {
   final List<Map<String, dynamic>> entries;
   final List<Map<String, dynamic>> breadcrumb;
   final String? currentFolderId;
   final int total;
-  const FileLoaded({required this.entries, required this.breadcrumb, this.currentFolderId, required this.total});
+  const FileLoaded(
+      {required this.entries,
+      required this.breadcrumb,
+      this.currentFolderId,
+      required this.total});
   @override
   List<Object?> get props => [entries, currentFolderId, total];
 }
@@ -128,7 +138,8 @@ class FileBloc extends Bloc<FileEvent, FileState> {
     on<TrashEmptyRequested>(_onEmptyTrash);
   }
 
-  Future<void> _onLoad(FilesLoadRequested event, Emitter<FileState> emit) async {
+  Future<void> _onLoad(
+      FilesLoadRequested event, Emitter<FileState> emit) async {
     emit(const FileLoading());
     try {
       final result = event.folderId != null
@@ -140,67 +151,93 @@ class FileBloc extends Bloc<FileEvent, FileState> {
         currentFolderId: event.folderId,
         total: result['total'] ?? 0,
       ));
-    } catch (e) { emit(FileError(e.toString())); }
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
   }
 
-  Future<void> _onUpload(FileUploadRequested event, Emitter<FileState> emit) async {
+  Future<void> _onUpload(
+      FileUploadRequested event, Emitter<FileState> emit) async {
     try {
-      await fileRepository.uploadFile(event.filename, event.bytes, event.parentId);
+      await fileRepository.uploadFile(
+          event.filename, event.bytes, event.parentId);
       emit(const FileActionSuccess('File uploaded successfully'));
       add(FilesLoadRequested(folderId: event.parentId));
-    } catch (e) { emit(FileError(e.toString())); }
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
   }
 
-  Future<void> _onCreateFolder(FolderCreateRequested event, Emitter<FileState> emit) async {
+  Future<void> _onCreateFolder(
+      FolderCreateRequested event, Emitter<FileState> emit) async {
     try {
       await fileRepository.createFolder(event.name, event.parentId);
       emit(const FileActionSuccess('Folder created'));
       add(FilesLoadRequested(folderId: event.parentId));
-    } catch (e) { emit(FileError(e.toString())); }
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
   }
 
-  Future<void> _onDelete(FileDeleteRequested event, Emitter<FileState> emit) async {
+  Future<void> _onDelete(
+      FileDeleteRequested event, Emitter<FileState> emit) async {
     try {
       await fileRepository.deleteItem(event.itemId);
       emit(const FileActionSuccess('Moved to trash'));
-    } catch (e) { emit(FileError(e.toString())); }
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
   }
 
-  Future<void> _onRename(FileRenameRequested event, Emitter<FileState> emit) async {
+  Future<void> _onRename(
+      FileRenameRequested event, Emitter<FileState> emit) async {
     try {
       await fileRepository.renameItem(event.itemId, event.newName);
       emit(const FileActionSuccess('Renamed'));
-    } catch (e) { emit(FileError(e.toString())); }
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
   }
 
   Future<void> _onMove(FileMoveRequested event, Emitter<FileState> emit) async {
     try {
       await fileRepository.moveItem(event.itemId, event.targetFolderId);
       emit(const FileActionSuccess('Moved'));
-    } catch (e) { emit(FileError(e.toString())); }
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
   }
 
-  Future<void> _onLoadTrash(TrashLoadRequested event, Emitter<FileState> emit) async {
+  Future<void> _onLoadTrash(
+      TrashLoadRequested event, Emitter<FileState> emit) async {
     emit(const FileLoading());
     try {
       final result = await fileRepository.listTrash();
       emit(TrashLoaded(entries: List<Map<String, dynamic>>.from(result)));
-    } catch (e) { emit(FileError(e.toString())); }
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
   }
 
-  Future<void> _onRestore(TrashRestoreRequested event, Emitter<FileState> emit) async {
+  Future<void> _onRestore(
+      TrashRestoreRequested event, Emitter<FileState> emit) async {
     try {
       await fileRepository.restoreFromTrash(event.itemId);
       emit(const FileActionSuccess('Restored'));
       add(const TrashLoadRequested());
-    } catch (e) { emit(FileError(e.toString())); }
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
   }
 
-  Future<void> _onEmptyTrash(TrashEmptyRequested event, Emitter<FileState> emit) async {
+  Future<void> _onEmptyTrash(
+      TrashEmptyRequested event, Emitter<FileState> emit) async {
     try {
       await fileRepository.emptyTrash();
       emit(const FileActionSuccess('Trash emptied'));
       add(const TrashLoadRequested());
-    } catch (e) { emit(FileError(e.toString())); }
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
   }
 }

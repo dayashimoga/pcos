@@ -1,0 +1,69 @@
+# PCOS Helm Values
+# Override these for your deployment: helm install pcos ./k8s/helm/pcos -f custom-values.yaml
+
+replicaCount:
+  backend: 2
+  frontend: 2
+
+image:
+  backend:
+    repository: ghcr.io/dayashimoga/pcos/backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  frontend:
+    repository: ghcr.io/dayashimoga/pcos/frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+postgresql:
+  enabled: true
+  image: postgres:16-alpine
+  storage: 20Gi
+  user: pcos
+  database: pcos
+
+redis:
+  enabled: true
+  image: redis:7-alpine
+  maxmemory: 256mb
+
+ingress:
+  enabled: true
+  host: pcos.example.com
+  tls: true
+  clusterIssuer: letsencrypt-prod
+  maxBodySize: 10g
+
+storage:
+  size: 100Gi
+  accessMode: ReadWriteMany
+
+resources:
+  backend:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  frontend:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+env:
+  RUST_LOG: "pcos=info,tower_http=info,sqlx=warn"
+  PCOS_STORAGE__BASE_PATH: "/data/pcos/storage"
+  PCOS_STORAGE__MAX_UPLOAD_SIZE_MB: "10240"
+  PCOS_REDIS__URL: "redis://redis:6379"
+
+secrets:
+  jwtSecret: "CHANGE-ME"
+  postgresPassword: "CHANGE-ME"
+
+monitoring:
+  prometheus: true
+  grafana: true

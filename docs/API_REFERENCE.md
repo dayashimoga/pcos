@@ -21,6 +21,10 @@ All authenticated endpoints require: `Authorization: Bearer <access_token>`
 | POST | /api/v1/auth/login | No | Login (email, password) → tokens |
 | POST | /api/v1/auth/refresh | No | Refresh (refresh_token) → new token pair |
 | POST | /api/v1/auth/logout | No | Logout (refresh_token) → revoke |
+| POST | /api/v1/auth/mfa/setup | Yes | Generate TOTP secret + provisioning URI |
+| POST | /api/v1/auth/mfa/verify | Yes | Verify TOTP code → enable MFA |
+| POST | /api/v1/auth/mfa/disable | Yes | Disable MFA (requires valid TOTP code) |
+| GET | /api/v1/auth/mfa/status | Yes | Check MFA enabled/verified status |
 
 **Password rules**: 8-128 chars, 1+ uppercase, 1+ lowercase, 1+ digit
 
@@ -55,8 +59,14 @@ All authenticated endpoints require: `Authorization: Bearer <access_token>`
 | GET | /api/v1/files/:id | Yes | Get file metadata |
 | PUT | /api/v1/files/:id | Yes | Update (rename) |
 | DELETE | /api/v1/files/:id | Yes | Trash file |
-| GET | /api/v1/files/:id/download | Yes | Download file |
+| GET | /api/v1/files/:id/download | Yes | Download file (supports `Range` header for resume) |
+| GET | /api/v1/files/:id/preview | Yes | Preview file (inline content-disposition) |
 | PUT | /api/v1/files/:id/move | Yes | Move file |
+| GET | /api/v1/files/:id/versions | Yes | List file versions |
+| GET | /api/v1/files/:fid/versions/:vid/download | Yes | Download specific version |
+| POST | /api/v1/files/:fid/versions/:vid/restore | Yes | Restore file to specific version |
+
+> **Note**: Download endpoint supports `Range: bytes=START-END` headers for resumable downloads. Returns `206 Partial Content` with `Content-Range` header when Range is specified.
 
 ## Folders
 | Method | Path | Auth | Description |
@@ -169,3 +179,66 @@ All authenticated endpoints require: `Authorization: Bearer <access_token>`
 | GET | /api/v1/admin/metrics | No | Prometheus metrics |
 
 **Total: 55+ endpoints**
+
+---
+
+## Admin (RBAC)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/v1/admin/users | Admin | List all users |
+| PUT | /api/v1/admin/users/role | Admin | Update user role (admin/user/viewer) |
+| PUT | /api/v1/admin/users/quota | Admin | Update storage quota |
+| GET | /api/v1/admin/system | Admin | System-wide statistics |
+
+**Total: 70+ endpoints**
+
+---
+
+## WebDAV (Compatibility Layer)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| PROPFIND | /webdav | Yes | List root directory (XML) |
+| PROPFIND | /webdav/*path | Yes | List directory contents |
+| MKCOL | /webdav/:name | Yes | Create folder |
+| DELETE | /webdav/*path | Yes | Delete file/folder (trash) |
+| MOVE | /webdav/*path | Yes | Rename/move (Destination header) |
+| OPTIONS | /webdav | No | Advertise DAV capabilities |
+
+---
+
+## S3-Compatible Gateway
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /s3 | Yes | ListBuckets (XML) |
+| GET | /s3/pcos-files | Yes | ListObjectsV2 (XML, prefix/max-keys) |
+| HEAD | /s3/pcos-files/:key | Yes | HeadObject (size, type, modified) |
+| DELETE | /s3/pcos-files/:key | Yes | DeleteObject (trash) |
+
+> Compatible with aws-cli, rclone, s3cmd.
+
+---
+
+## OCR / Text Extraction
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /api/v1/search/extract/:id | Yes | Extract text from file (OCR/PDF/plaintext) + index to Tantivy |
+
+---
+
+## Web Push Notifications
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /api/v1/push/subscribe | Yes | Register browser push subscription |
+| POST | /api/v1/push/unsubscribe | Yes | Remove push subscription |
+| GET | /api/v1/push/subscriptions | Yes | List push subscriptions |
+| POST | /api/v1/push/send | Yes | Send push notification to all subscribed browsers |
+
+---
+
+## Backup (Extended)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/v1/backups/:id/verify | Yes | Verify backup integrity (manifest + file check) |
+| POST | /api/v1/backups/retention | Yes | Enforce retention policy (delete old backups) |
+
+**Total: 90+ endpoints**

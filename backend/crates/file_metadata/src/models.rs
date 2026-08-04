@@ -24,7 +24,11 @@ pub struct FileEntry {
 /// Request to create a folder.
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateFolderRequest {
-    #[validate(length(min = 1, max = 255, message = "Folder name is required (max 255 chars)"))]
+    #[validate(length(
+        min = 1,
+        max = 255,
+        message = "Folder name is required (max 255 chars)"
+    ))]
     pub name: String,
     pub parent_id: Option<Uuid>,
 }

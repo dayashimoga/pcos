@@ -1,0 +1,59 @@
+{
+  "test_users": [
+    {
+      "email": "admin@pcos.test",
+      "password": "AdminP@ss123!",
+      "display_name": "Test Admin",
+      "role": "admin"
+    },
+    {
+      "email": "user@pcos.test",
+      "password": "UserP@ss456!",
+      "display_name": "Test User",
+      "role": "user"
+    },
+    {
+      "email": "viewer@pcos.test",
+      "password": "ViewerP@ss789!",
+      "display_name": "Test Viewer",
+      "role": "viewer"
+    }
+  ],
+  "test_files": [
+    { "name": "document.txt", "content": "Hello PCOS test content", "mime": "text/plain", "size_bytes": 23 },
+    { "name": "image.png", "content_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "mime": "image/png", "size_bytes": 68 },
+    { "name": "data.json", "content": "{\"key\":\"value\",\"count\":42}", "mime": "application/json", "size_bytes": 26 },
+    { "name": "notes.md", "content": "# Test Notes\n\nThis is a test markdown file.", "mime": "text/markdown", "size_bytes": 43 }
+  ],
+  "test_folders": [
+    { "name": "Documents" },
+    { "name": "Photos" },
+    { "name": "Projects" },
+    { "name": "Documents/Work" }
+  ],
+  "test_shares": [
+    { "file_index": 0, "password": "share123", "expires_hours": 24, "max_downloads": 5 },
+    { "file_index": 1, "password": null, "expires_hours": 168, "max_downloads": null }
+  ],
+  "test_devices": [
+    { "name": "Test Laptop", "device_type": "desktop", "os": "linux" },
+    { "name": "Test Phone", "device_type": "mobile", "os": "android" }
+  ],
+  "chaos_scenarios": [
+    { "name": "db_restart", "action": "docker restart postgres", "recovery_timeout_secs": 30 },
+    { "name": "redis_outage", "action": "docker stop redis && sleep 10 && docker start redis", "recovery_timeout_secs": 20 },
+    { "name": "nats_crash", "action": "docker kill nats && sleep 5 && docker start nats", "recovery_timeout_secs": 15 },
+    { "name": "backend_restart", "action": "docker restart backend", "recovery_timeout_secs": 30 },
+    { "name": "network_partition", "action": "docker network disconnect pcos-test backend && sleep 5 && docker network connect pcos-test backend", "recovery_timeout_secs": 20 }
+  ],
+  "performance_thresholds": {
+    "api_p50_latency_ms": 50,
+    "api_p95_latency_ms": 200,
+    "api_p99_latency_ms": 500,
+    "upload_throughput_mbps": 50,
+    "download_throughput_mbps": 100,
+    "concurrent_users": 100,
+    "max_memory_mb": 512,
+    "max_cpu_percent": 80
+  }
+}

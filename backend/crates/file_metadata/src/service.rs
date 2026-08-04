@@ -5,7 +5,11 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 /// Create a new folder.
-pub async fn create_folder(pool: &PgPool, user_id: Uuid, req: CreateFolderRequest) -> AppResult<FileEntryResponse> {
+pub async fn create_folder(
+    pool: &PgPool,
+    user_id: Uuid,
+    req: CreateFolderRequest,
+) -> AppResult<FileEntryResponse> {
     // Verify parent exists and belongs to user if specified
     if let Some(parent_id) = req.parent_id {
         verify_ownership(pool, user_id, parent_id).await?;
@@ -20,7 +24,10 @@ pub async fn create_folder(pool: &PgPool, user_id: Uuid, req: CreateFolderReques
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if exists {
-        return Err(AppError::Conflict(format!("An item named '{}' already exists here", req.name)));
+        return Err(AppError::Conflict(format!(
+            "An item named '{}' already exists here",
+            req.name
+        )));
     }
 
     let entry = sqlx::query_as::<_, FileEntry>(
@@ -43,12 +50,19 @@ pub async fn list_root(pool: &PgPool, user_id: Uuid) -> AppResult<FileListRespon
     Ok(FileListResponse {
         total: entries.len() as i64,
         entries: entries.into_iter().map(Into::into).collect(),
-        path: vec![BreadcrumbItem { id: None, name: "Root".to_string() }],
+        path: vec![BreadcrumbItem {
+            id: None,
+            name: "Root".to_string(),
+        }],
     })
 }
 
 /// List entries inside a folder.
-pub async fn list_folder(pool: &PgPool, user_id: Uuid, folder_id: Uuid) -> AppResult<FileListResponse> {
+pub async fn list_folder(
+    pool: &PgPool,
+    user_id: Uuid,
+    folder_id: Uuid,
+) -> AppResult<FileListResponse> {
     verify_ownership(pool, user_id, folder_id).await?;
 
     let entries = sqlx::query_as::<_, FileEntry>(
@@ -80,7 +94,9 @@ pub async fn upload_file(
     }
 
     let file_id = Uuid::new_v4();
-    let (storage_path, hash) = storage.store_file(user_id, file_id, data).await
+    let (storage_path, hash) = storage
+        .store_file(user_id, file_id, data)
+        .await
         .map_err(|e| AppError::Internal(format!("Storage write failed: {e}")))?;
 
     let entry = sqlx::query_as::<_, FileEntry>(
@@ -103,10 +119,16 @@ pub async fn store_chunk(
     chunk_index: i32,
     data: &[u8],
 ) -> AppResult<ChunkUploadResponse> {
-    storage.store_chunk(user_id, upload_id, chunk_index, data).await
+    storage
+        .store_chunk(user_id, upload_id, chunk_index, data)
+        .await
         .map_err(|e| AppError::Internal(format!("Chunk storage failed: {e}")))?;
 
-    Ok(ChunkUploadResponse { upload_id, chunk_index, received: true })
+    Ok(ChunkUploadResponse {
+        upload_id,
+        chunk_index,
+        received: true,
+    })
 }
 
 /// Complete a chunked upload by assembling chunks.
@@ -121,10 +143,14 @@ pub async fn complete_chunked_upload(
     }
 
     let file_id = Uuid::new_v4();
-    let (storage_path, hash, actual_size) = storage.assemble_chunks(user_id, req.upload_id, file_id, req.total_chunks).await
+    let (storage_path, hash, actual_size) = storage
+        .assemble_chunks(user_id, req.upload_id, file_id, req.total_chunks)
+        .await
         .map_err(|e| AppError::Internal(format!("Chunk assembly failed: {e}")))?;
 
-    let mime = mime_guess::from_path(&req.filename).first_or_octet_stream().to_string();
+    let mime = mime_guess::from_path(&req.filename)
+        .first_or_octet_stream()
+        .to_string();
 
     let entry = sqlx::query_as::<_, FileEntry>(
         r#"INSERT INTO file_entries (id, user_id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, storage_path, is_trashed, created_at, updated_at)
@@ -139,28 +165,46 @@ pub async fn complete_chunked_upload(
 }
 
 /// Get file metadata.
-pub async fn get_file_meta(pool: &PgPool, user_id: Uuid, file_id: Uuid) -> AppResult<FileEntryResponse> {
+pub async fn get_file_meta(
+    pool: &PgPool,
+    user_id: Uuid,
+    file_id: Uuid,
+) -> AppResult<FileEntryResponse> {
     let entry = verify_ownership(pool, user_id, file_id).await?;
     Ok(entry.into())
 }
 
 /// Download file data.
-pub async fn download_file(pool: &PgPool, storage: &StorageEngine, user_id: Uuid, file_id: Uuid) -> AppResult<(FileEntry, Vec<u8>)> {
+pub async fn download_file(
+    pool: &PgPool,
+    storage: &StorageEngine,
+    user_id: Uuid,
+    file_id: Uuid,
+) -> AppResult<(FileEntry, Vec<u8>)> {
     let entry = verify_ownership(pool, user_id, file_id).await?;
     if entry.entry_type != "file" {
         return Err(AppError::Validation("Cannot download a folder".to_string()));
     }
-    let path = entry.storage_path.as_ref()
+    let path = entry
+        .storage_path
+        .as_ref()
         .ok_or_else(|| AppError::Internal("File has no storage path".to_string()))?;
 
-    let data = storage.read_file(path).await
+    let data = storage
+        .read_file(path)
+        .await
         .map_err(|e| AppError::Internal(format!("File read failed: {e}")))?;
 
     Ok((entry, data))
 }
 
 /// Rename a file or folder.
-pub async fn rename_item(pool: &PgPool, user_id: Uuid, item_id: Uuid, req: RenameRequest) -> AppResult<FileEntryResponse> {
+pub async fn rename_item(
+    pool: &PgPool,
+    user_id: Uuid,
+    item_id: Uuid,
+    req: RenameRequest,
+) -> AppResult<FileEntryResponse> {
     let entry = verify_ownership(pool, user_id, item_id).await?;
 
     // Check duplicate name in same parent
@@ -172,20 +216,30 @@ pub async fn rename_item(pool: &PgPool, user_id: Uuid, item_id: Uuid, req: Renam
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if exists {
-        return Err(AppError::Conflict(format!("An item named '{}' already exists", req.name)));
+        return Err(AppError::Conflict(format!(
+            "An item named '{}' already exists",
+            req.name
+        )));
     }
 
     let updated = sqlx::query_as::<_, FileEntry>(
-        "UPDATE file_entries SET name = $1, updated_at = NOW() WHERE id = $2 RETURNING *"
+        "UPDATE file_entries SET name = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
     )
-    .bind(&req.name).bind(item_id)
-    .fetch_one(pool).await?;
+    .bind(&req.name)
+    .bind(item_id)
+    .fetch_one(pool)
+    .await?;
 
     Ok(updated.into())
 }
 
 /// Move a file or folder to another folder.
-pub async fn move_item(pool: &PgPool, user_id: Uuid, item_id: Uuid, req: MoveRequest) -> AppResult<FileEntryResponse> {
+pub async fn move_item(
+    pool: &PgPool,
+    user_id: Uuid,
+    item_id: Uuid,
+    req: MoveRequest,
+) -> AppResult<FileEntryResponse> {
     verify_ownership(pool, user_id, item_id).await?;
 
     if let Some(target_id) = req.target_folder_id {
@@ -195,15 +249,19 @@ pub async fn move_item(pool: &PgPool, user_id: Uuid, item_id: Uuid, req: MoveReq
         }
         // Prevent moving a folder into itself or its descendants
         if item_id == target_id {
-            return Err(AppError::Validation("Cannot move a folder into itself".to_string()));
+            return Err(AppError::Validation(
+                "Cannot move a folder into itself".to_string(),
+            ));
         }
     }
 
     let updated = sqlx::query_as::<_, FileEntry>(
-        "UPDATE file_entries SET parent_id = $1, updated_at = NOW() WHERE id = $2 RETURNING *"
+        "UPDATE file_entries SET parent_id = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
     )
-    .bind(req.target_folder_id).bind(item_id)
-    .fetch_one(pool).await?;
+    .bind(req.target_folder_id)
+    .bind(item_id)
+    .fetch_one(pool)
+    .await?;
 
     Ok(updated.into())
 }
@@ -220,10 +278,12 @@ pub async fn delete_item(pool: &PgPool, user_id: Uuid, item_id: Uuid) -> AppResu
             SELECT fe.id FROM file_entries fe JOIN descendants d ON fe.parent_id = d.id
         )
         UPDATE file_entries SET is_trashed = true, trashed_at = NOW(), updated_at = NOW()
-        WHERE id IN (SELECT id FROM descendants)"#
+        WHERE id IN (SELECT id FROM descendants)"#,
     )
-    .bind(item_id).bind(user_id)
-    .execute(pool).await?;
+    .bind(item_id)
+    .bind(user_id)
+    .execute(pool)
+    .await?;
 
     Ok(())
 }
@@ -239,7 +299,11 @@ pub async fn list_trash(pool: &PgPool, user_id: Uuid) -> AppResult<Vec<FileEntry
 }
 
 /// Restore an item from trash.
-pub async fn restore_from_trash(pool: &PgPool, user_id: Uuid, item_id: Uuid) -> AppResult<FileEntryResponse> {
+pub async fn restore_from_trash(
+    pool: &PgPool,
+    user_id: Uuid,
+    item_id: Uuid,
+) -> AppResult<FileEntryResponse> {
     let entry = verify_ownership(pool, user_id, item_id).await?;
     if !entry.is_trashed {
         return Err(AppError::Validation("Item is not in trash".to_string()));
@@ -253,22 +317,33 @@ pub async fn restore_from_trash(pool: &PgPool, user_id: Uuid, item_id: Uuid) -> 
             SELECT fe.id FROM file_entries fe JOIN descendants d ON fe.parent_id = d.id
         )
         UPDATE file_entries SET is_trashed = false, trashed_at = NULL, updated_at = NOW()
-        WHERE id IN (SELECT id FROM descendants)"#
+        WHERE id IN (SELECT id FROM descendants)"#,
     )
-    .bind(item_id).bind(user_id)
-    .execute(pool).await?;
+    .bind(item_id)
+    .bind(user_id)
+    .execute(pool)
+    .await?;
 
     let restored = sqlx::query_as::<_, FileEntry>("SELECT * FROM file_entries WHERE id = $1")
-        .bind(item_id).fetch_one(pool).await?;
+        .bind(item_id)
+        .fetch_one(pool)
+        .await?;
 
     Ok(restored.into())
 }
 
 /// Permanently delete an item from trash.
-pub async fn permanent_delete(pool: &PgPool, storage: &StorageEngine, user_id: Uuid, item_id: Uuid) -> AppResult<()> {
+pub async fn permanent_delete(
+    pool: &PgPool,
+    storage: &StorageEngine,
+    user_id: Uuid,
+    item_id: Uuid,
+) -> AppResult<()> {
     let entry = verify_ownership(pool, user_id, item_id).await?;
     if !entry.is_trashed {
-        return Err(AppError::Validation("Item must be in trash to permanently delete".to_string()));
+        return Err(AppError::Validation(
+            "Item must be in trash to permanently delete".to_string(),
+        ));
     }
 
     // Get all file storage paths for this item and descendants
@@ -297,10 +372,12 @@ pub async fn permanent_delete(pool: &PgPool, storage: &StorageEngine, user_id: U
             UNION ALL
             SELECT fe.id FROM file_entries fe JOIN descendants d ON fe.parent_id = d.id
         )
-        DELETE FROM file_entries WHERE id IN (SELECT id FROM descendants)"#
+        DELETE FROM file_entries WHERE id IN (SELECT id FROM descendants)"#,
     )
-    .bind(item_id).bind(user_id)
-    .execute(pool).await?;
+    .bind(item_id)
+    .bind(user_id)
+    .execute(pool)
+    .await?;
 
     Ok(())
 }
@@ -319,7 +396,9 @@ pub async fn empty_trash(pool: &PgPool, storage: &StorageEngine, user_id: Uuid) 
     }
 
     let result = sqlx::query("DELETE FROM file_entries WHERE user_id = $1 AND is_trashed = true")
-        .bind(user_id).execute(pool).await?;
+        .bind(user_id)
+        .execute(pool)
+        .await?;
 
     Ok(result.rows_affected() as i64)
 }
@@ -339,8 +418,12 @@ pub async fn storage_stats(pool: &PgPool, user_id: Uuid) -> AppResult<StorageSta
     ).bind(user_id).fetch_one(pool).await.unwrap_or((None,));
 
     let (trashed,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM file_entries WHERE user_id = $1 AND is_trashed = true"
-    ).bind(user_id).fetch_one(pool).await.unwrap_or((0,));
+        "SELECT COUNT(*) FROM file_entries WHERE user_id = $1 AND is_trashed = true",
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or((0,));
 
     Ok(StorageStatsResponse {
         total_files,
@@ -353,25 +436,41 @@ pub async fn storage_stats(pool: &PgPool, user_id: Uuid) -> AppResult<StorageSta
 /// Verify the item exists and belongs to the user.
 async fn verify_ownership(pool: &PgPool, user_id: Uuid, item_id: Uuid) -> AppResult<FileEntry> {
     sqlx::query_as::<_, FileEntry>("SELECT * FROM file_entries WHERE id = $1 AND user_id = $2")
-        .bind(item_id).bind(user_id)
-        .fetch_optional(pool).await?
+        .bind(item_id)
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?
         .ok_or_else(|| AppError::NotFound("Item not found".to_string()))
 }
 
 /// Build breadcrumb path from root to the given folder.
-async fn build_breadcrumb(pool: &PgPool, user_id: Uuid, folder_id: Option<Uuid>) -> AppResult<Vec<BreadcrumbItem>> {
-    let mut path = vec![BreadcrumbItem { id: None, name: "Root".to_string() }];
+async fn build_breadcrumb(
+    pool: &PgPool,
+    user_id: Uuid,
+    folder_id: Option<Uuid>,
+) -> AppResult<Vec<BreadcrumbItem>> {
+    let mut path = vec![BreadcrumbItem {
+        id: None,
+        name: "Root".to_string(),
+    }];
 
     let mut current_id = folder_id;
     let mut ancestors = Vec::new();
 
     while let Some(cid) = current_id {
-        let entry = sqlx::query_as::<_, FileEntry>("SELECT * FROM file_entries WHERE id = $1 AND user_id = $2")
-            .bind(cid).bind(user_id)
-            .fetch_optional(pool).await?;
+        let entry = sqlx::query_as::<_, FileEntry>(
+            "SELECT * FROM file_entries WHERE id = $1 AND user_id = $2",
+        )
+        .bind(cid)
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?;
 
         if let Some(e) = entry {
-            ancestors.push(BreadcrumbItem { id: Some(e.id), name: e.name });
+            ancestors.push(BreadcrumbItem {
+                id: Some(e.id),
+                name: e.name,
+            });
             current_id = e.parent_id;
         } else {
             break;

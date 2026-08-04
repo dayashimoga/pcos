@@ -1,3 +1,4 @@
+// ignore: unused_import
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
@@ -16,7 +17,8 @@ class FileRepository {
     return r.data;
   }
 
-  Future<Map<String, dynamic>> uploadFile(String filename, List<int> bytes, String? parentId) async {
+  Future<Map<String, dynamic>> uploadFile(
+      String filename, List<int> bytes, String? parentId) async {
     final formData = FormData.fromMap({
       'file': MultipartFile.fromBytes(bytes, filename: filename),
       if (parentId != null) 'parent_id': parentId,
@@ -25,7 +27,8 @@ class FileRepository {
     return r.data;
   }
 
-  Future<Map<String, dynamic>> createFolder(String name, String? parentId) async {
+  Future<Map<String, dynamic>> createFolder(
+      String name, String? parentId) async {
     final r = await apiClient.dio.post('/api/v1/folders', data: {
       'name': name,
       if (parentId != null) 'parent_id': parentId,
@@ -42,7 +45,8 @@ class FileRepository {
   }
 
   Future<void> moveItem(String itemId, String? targetFolderId) async {
-    await apiClient.dio.put('/api/v1/files/$itemId/move', data: {'target_folder_id': targetFolderId});
+    await apiClient.dio.put('/api/v1/files/$itemId/move',
+        data: {'target_folder_id': targetFolderId});
   }
 
   Future<List<dynamic>> listTrash() async {
@@ -64,7 +68,8 @@ class FileRepository {
   }
 
   Future<Map<String, dynamic>> search(String query) async {
-    final r = await apiClient.dio.get('/api/v1/search', queryParameters: {'q': query});
+    final r = await apiClient.dio
+        .get('/api/v1/search', queryParameters: {'q': query});
     return r.data;
   }
 

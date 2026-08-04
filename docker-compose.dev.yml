@@ -1,4 +1,7 @@
-# Development overrides - hot reload, debug ports, verbose logging
+# ─── PCOS Development Docker Compose ─────────────────────
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Features: hot reload, debug logging, exposed ports, source mounts
+
 services:
   backend:
     build:
@@ -35,6 +38,14 @@ services:
     ports:
       - "4222:4222"
       - "8222:8222"
+
+  prometheus:
+    ports:
+      - "9090:9090"
+
+  grafana:
+    ports:
+      - "3001:3000"
 
 volumes:
   cargo_cache:

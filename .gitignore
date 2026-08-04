@@ -1,40 +1,64 @@
-# ─── Build artifacts ─────────────────────────────────────
-/target/
-backend/target/
-agent/target/
+# ─── OS / IDE ────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.iml
 
-# ─── Dependencies ────────────────────────────────────────
+# ─── Rust ────────────────────────────────────────────────
+target/
+**/*.rs.bk
+
+# ─── Flutter / Dart ──────────────────────────────────────
 frontend/.dart_tool/
 frontend/.packages
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
 frontend/build/
+frontend/.pub-cache/
+frontend/pubspec.lock
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/Flutter.podspec
+frontend/ios/Flutter/Flutter.framework
+frontend/ios/Flutter/App.framework
+frontend/windows/flutter/ephemeral/
+frontend/linux/flutter/ephemeral/
 
-# ─── Environment files ──────────────────────────────────
+# ─── Agent ───────────────────────────────────────────────
+agent/target/
+
+# ─── Docker ──────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── Environment ─────────────────────────────────────────
 .env
 *.env.local
 backend/.env
 
-# ─── IDE ─────────────────────────────────────────────────
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# ─── OS ──────────────────────────────────────────────────
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# ─── Docker volumes ─────────────────────────────────────
-postgres_data/
-redis_data/
-nats_data/
-ollama_data/
+# ─── Data / Storage ──────────────────────────────────────
+/data/
+*.db
+*.sqlite
+*.sqlite3
 
 # ─── Logs ────────────────────────────────────────────────
 *.log
 logs/
 
-# ─── Coverage ───────────────────────────────────────────
-frontend/coverage/
-lcov.info
+# ─── Coverage / Testing ─────────────────────────────────
+coverage/
+*.lcov
+htmlcov/
+tarpaulin-report.html
+
+# ─── Build artifacts ────────────────────────────────────
+*.exe
+*.dll
+*.so
+*.dylib

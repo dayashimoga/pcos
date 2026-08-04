@@ -1,0 +1,93 @@
+# PCOS Test Environment — Full Stack
+# Usage: docker compose -f qa/docker-compose.test.yml up -d --wait
+# Tears down: docker compose -f qa/docker-compose.test.yml down -v
+
+version: "3.9"
+
+networks:
+  pcos-test:
+    driver: bridge
+
+volumes:
+  test_pg_data:
+  test_redis_data:
+  test_file_storage:
+
+services:
+  # ─── Database ──────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pcos_test
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: pcos_test
+    ports: ["15432:5432"]
+    volumes: [test_pg_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pcos_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    networks: [pcos-test]
+
+  redis:
+    image: redis:7-alpine
+    ports: ["16379:6379"]
+    volumes: [test_redis_data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 10
+    networks: [pcos-test]
+
+  nats:
+    image: nats:2-alpine
+    ports: ["14222:4222"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/healthz || exit 1"]
+      interval: 5s
+      retries: 5
+    networks: [pcos-test]
+
+  # ─── Backend ───────────────────────────────────
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      PCOS_SERVER__HOST: "0.0.0.0"
+      PCOS_SERVER__PORT: "8080"
+      PCOS_DATABASE__URL: "postgresql://pcos_test:test_password@postgres:5432/pcos_test"
+      PCOS_AUTH__JWT_SECRET: "test-jwt-secret-do-not-use-in-production-minimum-32-chars"
+      PCOS_REDIS__URL: "redis://redis:6379"
+      PCOS_STORAGE__BASE_PATH: "/data/pcos/storage"
+      PCOS_NATS__URL: "nats://nats:4222"
+      RUST_LOG: "pcos=debug,tower_http=debug,sqlx=warn"
+      PCOS_STORAGE__MAX_UPLOAD_SIZE_MB: "100"
+    ports: ["18080:8080"]
+    volumes: [test_file_storage:/data/pcos/storage]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [pcos-test]
+
+  # ─── Test Runner ───────────────────────────────
+  test-runner:
+    image: curlimages/curl:latest
+    depends_on:
+      backend: { condition: service_healthy }
+    entrypoint: ["sh", "-c", "echo 'Test environment ready. Run tests externally.' && sleep infinity"]
+    networks: [pcos-test]
+
+  # ─── Monitoring (for observability tests) ──────
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["19090:9090"]
+    networks: [pcos-test]

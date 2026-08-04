@@ -31,7 +31,14 @@ pub async fn find_duplicates(pool: &PgPool, user_id: Uuid) -> AppResult<Vec<Dupl
             hash,
             count,
             total_wasted_bytes: total_size - files.first().map(|f| f.2).unwrap_or(0),
-            files: files.into_iter().map(|(id, name, size)| DuplicateFile { id, name, size_bytes: size }).collect(),
+            files: files
+                .into_iter()
+                .map(|(id, name, size)| DuplicateFile {
+                    id,
+                    name,
+                    size_bytes: size,
+                })
+                .collect(),
         });
     }
 
@@ -39,12 +46,20 @@ pub async fn find_duplicates(pool: &PgPool, user_id: Uuid) -> AppResult<Vec<Dupl
 }
 
 /// Auto-tag a file using AI.
-pub async fn auto_tag(provider: &AiProvider, filename: &str, mime_type: &str) -> AppResult<Vec<String>> {
+pub async fn auto_tag(
+    provider: &AiProvider,
+    filename: &str,
+    mime_type: &str,
+) -> AppResult<Vec<String>> {
     provider.suggest_tags(filename, mime_type).await
 }
 
 /// Classify a file into a category.
-pub async fn classify_file(provider: &AiProvider, filename: &str, mime_type: &str) -> AppResult<String> {
+pub async fn classify_file(
+    provider: &AiProvider,
+    filename: &str,
+    mime_type: &str,
+) -> AppResult<String> {
     let prompt = format!(
         "Classify the file '{}' (type: {}) into ONE of these categories: Document, Image, Video, Audio, Archive, Code, Spreadsheet, Presentation, Other. Respond with only the category name.",
         filename, mime_type

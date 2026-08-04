@@ -1,0 +1,26 @@
+# Flutter Android APK/AAB Builder
+# Usage: docker build -f build/Dockerfile.android -t pcos-android ../frontend
+# Extract: docker cp $(docker create pcos-android):/app/build/app/outputs/ ./artifacts/android/
+FROM ghcr.io/cirruslabs/flutter:3.24.0 AS builder
+
+# Accept Android SDK licenses
+RUN yes | flutter doctor --android-licenses 2>/dev/null || true
+
+WORKDIR /app
+COPY pubspec.yaml pubspec.loc[k] ./
+RUN flutter pub get
+
+COPY . .
+RUN flutter create --platforms=android .
+
+# Build APK (universal)
+RUN flutter build apk --release --no-tree-shake-icons
+
+# Build AAB (Play Store)
+RUN flutter build appbundle --release --no-tree-shake-icons
+
+# Output stage — just the artifacts
+FROM alpine:3.20
+COPY --from=builder /app/build/app/outputs/flutter-apk/ /artifacts/apk/
+COPY --from=builder /app/build/app/outputs/bundle/ /artifacts/aab/
+CMD ["ls", "-la", "/artifacts/"]

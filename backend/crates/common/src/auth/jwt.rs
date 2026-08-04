@@ -93,7 +93,8 @@ mod tests {
 
     fn test_config() -> AuthConfig {
         AuthConfig {
-            jwt_secret: "test-secret-key-that-is-long-enough-for-hmac-sha256-algorithm!!".to_string(),
+            jwt_secret: "test-secret-key-that-is-long-enough-for-hmac-sha256-algorithm!!"
+                .to_string(),
             access_token_expiry_secs: 900,
             refresh_token_expiry_secs: 604800,
         }

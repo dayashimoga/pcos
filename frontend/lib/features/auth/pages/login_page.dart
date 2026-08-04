@@ -11,7 +11,8 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -30,7 +31,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeOut),
     );
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
     );
     _animController.forward();
@@ -164,7 +166,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Email is required';
-                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Enter a valid email';
+                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
+                  return 'Enter a valid email';
                 return null;
               },
             ),
@@ -179,13 +182,20 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                 labelText: 'Password',
                 prefixIcon: const Icon(Icons.lock_outline, size: 20),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 20),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) return 'Password is required';
-                if (value.length < 8) return 'Password must be at least 8 characters';
+                if (value == null || value.isEmpty)
+                  return 'Password is required';
+                if (value.length < 8)
+                  return 'Password must be at least 8 characters';
                 return null;
               },
             ),
@@ -203,15 +213,19 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                     onPressed: isLoading ? null : _onSubmit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                     child: isLoading
                         ? const SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        : const Text('Sign In',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                 );
               },
@@ -226,11 +240,14 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Don't have an account? ", style: Theme.of(context).textTheme.bodyMedium),
+        Text("Don't have an account? ",
+            style: Theme.of(context).textTheme.bodyMedium),
         TextButton(
           key: const Key('login_register_link'),
           onPressed: () => context.go('/register'),
-          child: const Text('Create one', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+          child: const Text('Create one',
+              style: TextStyle(
+                  color: AppTheme.primary, fontWeight: FontWeight.w600)),
         ),
       ],
     );
@@ -239,9 +256,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   void _onSubmit() {
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(AuthLoginRequested(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      ));
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          ));
     }
   }
 }
