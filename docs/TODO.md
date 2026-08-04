@@ -172,7 +172,12 @@
 - [x] Image thumbnails: inline image previews inside file grid cards
 - [x] Photo gallery timeline: `/gallery` page with photos grouped by month, responsive grid, tap-to-preview
 - [x] File sharing dialog: `POST /api/v1/shares` with password protection, expiry dropdown, download limits
-- [x] Context menu: 8 actions for files (Download, Copy Link, Share..., Info, Move, Rename, Delete)
+- [x] Context menu: 11 actions for files (Favorite, Download, Copy Link, Share..., Info, Move, Rename, Delete)
+- [x] Bulk file selection: multi-select via long-press or toolbar, bulk delete/download, select all, visual checkboxes
+- [x] Favorites: star toggle on grid/list cards, `PUT /api/v1/files/:id/favorite` API integration
+- [x] Drag-and-drop upload: visual drop overlay with cloud icon and instructional text (web)
+- [x] Duplicate file finder: `/duplicates` page scanning by name+size, stats dashboard, one-click duplicate removal
+- [x] REST API explorer: `/admin/api` interactive endpoint browser with 30+ routes grouped by module, one-click execute, JSON response viewer
 - [x] Setup wizard: `/setup` 3-step first-run flow (Server check, Admin account, Completion)
 - [x] PCOS Doctor: `/doctor` diagnostic suite with 10 automated component health checks
 - [x] QR-based device onboarding: `/devices/pair` page with 6-digit code, animated QR display, expiry timer

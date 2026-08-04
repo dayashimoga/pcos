@@ -44,6 +44,21 @@ All notable changes to this project will be documented in this file.
 - Overlay appears when files are dragged over the files area
 - Files uploaded to the current folder on drop
 
+#### Duplicate File Finder (`/duplicates`)
+- Full-page scan interface with scan/re-scan button
+- Groups duplicates by matching file name + size
+- Stats dashboard: files scanned, duplicates found, savable space
+- Per-group display with "Keep" vs "Dup" badges
+- One-click delete to remove individual duplicates
+
+#### REST API Explorer (`/admin/api`)
+- Interactive endpoint browser listing 30+ PCOS API routes
+- Endpoints grouped by module: Auth, Users, Files, Search, Shares, Devices, Trash, Notifications, Admin, Analytics, Storage, System
+- Color-coded HTTP method badges (GET/POST/PUT/DELETE)
+- One-click execute with live JSON response display
+- Status code badge with copy-to-clipboard support
+- Two-column layout on desktop, stacked on mobile
+
 #### File Sharing Dialog
 - Full sharing dialog powered by `POST /api/v1/shares` API
 - Password protection toggle with password input field

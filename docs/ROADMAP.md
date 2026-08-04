@@ -47,7 +47,7 @@
 ### Search & AI
 - [x] Global search in app bar (Ctrl+K command palette)
 - [ ] AI document Q&A ("Ask My Files")
-- [ ] Duplicate file finder
+- [x] Duplicate file finder — scan by name+size, stats dashboard, one-click delete duplicates
 
 ### File Management
 - [x] Drag-and-drop upload (web) — visual drop overlay with upload feedback
@@ -85,7 +85,7 @@
 - [ ] Share extensions (Android/iOS)
 - [ ] System tray integration (Windows/macOS/Linux)
 - [ ] Offline-first with sync queue
-- [ ] REST API explorer UI
+- [x] REST API explorer UI — interactive endpoint browser with 30+ routes, one-click execute, JSON response viewer
 - [ ] GraphQL gateway (optional)
 - [ ] Public SDK for extensions
 
