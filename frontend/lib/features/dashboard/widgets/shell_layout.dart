@@ -54,7 +54,8 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _focusNode.requestFocus());
   }
 
   @override
@@ -77,7 +78,12 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
             color: AppTheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppTheme.border),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 24, offset: const Offset(0, 8))],
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8))
+            ],
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Padding(
@@ -88,11 +94,13 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
                   hintText: 'Search pages, actions...',
-                  prefixIcon: Icon(Icons.search_rounded, color: AppTheme.textMuted, size: 20),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      color: AppTheme.textMuted, size: 20),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 14),
                 ),
-                style: const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
+                style:
+                    const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
               ),
             ),
             const Divider(color: AppTheme.border, height: 1),
@@ -100,36 +108,61 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
               child: ListView(
                 shrinkWrap: true,
                 padding: const EdgeInsets.all(8),
-                children: _filtered.map((p) => ListTile(
-                  leading: Icon(p.$2, size: 20, color: AppTheme.primary),
-                  title: Text(p.$1, style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
-                  trailing: Text('Go', style: TextStyle(fontSize: 11, color: AppTheme.textMuted.withOpacity(0.6))),
-                  dense: true,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  hoverColor: AppTheme.primary.withOpacity(0.08),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.go(p.$3);
-                  },
-                )).toList(),
+                children: _filtered
+                    .map((p) => ListTile(
+                          leading:
+                              Icon(p.$2, size: 20, color: AppTheme.primary),
+                          title: Text(p.$1,
+                              style: const TextStyle(
+                                  fontSize: 14, color: AppTheme.textPrimary)),
+                          trailing: Text('Go',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.textMuted.withOpacity(0.6))),
+                          dense: true,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          hoverColor: AppTheme.primary.withOpacity(0.08),
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go(p.$3);
+                          },
+                        ))
+                    .toList(),
               ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppTheme.border))),
+              decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: AppTheme.border))),
               child: Row(children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: AppTheme.surfaceLight, borderRadius: BorderRadius.circular(4)),
-                  child: const Text('ESC', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: AppTheme.surfaceLight,
+                      borderRadius: BorderRadius.circular(4)),
+                  child: const Text('ESC',
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.textMuted,
+                          fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 6),
-                const Text('to close', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                const Text('to close',
+                    style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: AppTheme.surfaceLight, borderRadius: BorderRadius.circular(4)),
-                  child: const Text('Ctrl+K', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: AppTheme.surfaceLight,
+                      borderRadius: BorderRadius.circular(4)),
+                  child: const Text('Ctrl+K',
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.textMuted,
+                          fontWeight: FontWeight.w600)),
                 ),
               ]),
             ),
@@ -149,15 +182,22 @@ class _NavItem {
 }
 
 const _navItems = [
-  _NavItem('Dashboard', Icons.dashboard_outlined, Icons.dashboard_rounded, '/dashboard'),
+  _NavItem('Dashboard', Icons.dashboard_outlined, Icons.dashboard_rounded,
+      '/dashboard'),
   _NavItem('Files', Icons.folder_outlined, Icons.folder_rounded, '/files'),
-  _NavItem('Gallery', Icons.photo_library_outlined, Icons.photo_library_rounded, '/gallery'),
+  _NavItem('Gallery', Icons.photo_library_outlined, Icons.photo_library_rounded,
+      '/gallery'),
   _NavItem('Search', Icons.search_outlined, Icons.search_rounded, '/search'),
-  _NavItem('Devices', Icons.devices_outlined, Icons.devices_rounded, '/devices'),
-  _NavItem('Trash', Icons.delete_outline_rounded, Icons.delete_rounded, '/trash'),
-  _NavItem('Admin', Icons.admin_panel_settings_outlined, Icons.admin_panel_settings_rounded, '/admin'),
-  _NavItem('Doctor', Icons.health_and_safety_outlined, Icons.health_and_safety_rounded, '/doctor'),
-  _NavItem('Settings', Icons.settings_outlined, Icons.settings_rounded, '/settings'),
+  _NavItem(
+      'Devices', Icons.devices_outlined, Icons.devices_rounded, '/devices'),
+  _NavItem(
+      'Trash', Icons.delete_outline_rounded, Icons.delete_rounded, '/trash'),
+  _NavItem('Admin', Icons.admin_panel_settings_outlined,
+      Icons.admin_panel_settings_rounded, '/admin'),
+  _NavItem('Doctor', Icons.health_and_safety_outlined,
+      Icons.health_and_safety_rounded, '/doctor'),
+  _NavItem(
+      'Settings', Icons.settings_outlined, Icons.settings_rounded, '/settings'),
 ];
 
 // Mobile only shows first 5 items in bottom nav
@@ -190,10 +230,11 @@ class _DesktopShellState extends State<_DesktopShell> {
     return CallbackShortcuts(
       bindings: {
         for (int i = 0; i < _navItems.length; i++)
-          SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), control: true):
-              () => context.go(_navItems[i].path),
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true):
-            () => _showQuickSearch(context),
+          SingleActivator(
+              LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i),
+              control: true): () => context.go(_navItems[i].path),
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () =>
+            _showQuickSearch(context),
       },
       child: Focus(
         autofocus: true,
@@ -220,15 +261,25 @@ class _DesktopShellState extends State<_DesktopShell> {
                         gradient: AppTheme.primaryGradient,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.cloud_rounded, color: Colors.white, size: 22),
+                      child: const Icon(Icons.cloud_rounded,
+                          color: Colors.white, size: 22),
                     ),
                     if (!_collapsed) ...[
                       const SizedBox(width: 12),
                       const Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('PCOS', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: 1)),
-                          Text('Personal Cloud OS', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-                        ]),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('PCOS',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.textPrimary,
+                                      letterSpacing: 1)),
+                              Text('Personal Cloud OS',
+                                  style: TextStyle(
+                                      fontSize: 10, color: AppTheme.textMuted)),
+                            ]),
                       ),
                     ],
                   ]),
@@ -244,20 +295,33 @@ class _DesktopShellState extends State<_DesktopShell> {
                         onTap: () => _showQuickSearch(context),
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 9),
                           decoration: BoxDecoration(
                             color: AppTheme.background,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: AppTheme.border),
                           ),
                           child: Row(children: [
-                            const Icon(Icons.search_rounded, size: 16, color: AppTheme.textMuted),
+                            const Icon(Icons.search_rounded,
+                                size: 16, color: AppTheme.textMuted),
                             const SizedBox(width: 8),
-                            const Expanded(child: Text('Search...', style: TextStyle(fontSize: 13, color: AppTheme.textMuted))),
+                            const Expanded(
+                                child: Text('Search...',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppTheme.textMuted))),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                              decoration: BoxDecoration(color: AppTheme.surfaceLight, borderRadius: BorderRadius.circular(4)),
-                              child: const Text('⌘K', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                  color: AppTheme.surfaceLight,
+                                  borderRadius: BorderRadius.circular(4)),
+                              child: const Text('⌘K',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppTheme.textMuted,
+                                      fontWeight: FontWeight.w600)),
                             ),
                           ]),
                         ),
@@ -266,10 +330,12 @@ class _DesktopShellState extends State<_DesktopShell> {
                   )
                 else
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     child: IconButton(
                       onPressed: () => _showQuickSearch(context),
-                      icon: const Icon(Icons.search_rounded, size: 20, color: AppTheme.textMuted),
+                      icon: const Icon(Icons.search_rounded,
+                          size: 20, color: AppTheme.textMuted),
                       tooltip: 'Search (Ctrl+K)',
                     ),
                   ),
@@ -283,26 +349,51 @@ class _DesktopShellState extends State<_DesktopShell> {
                     message: _collapsed ? item.label : '',
                     waitDuration: const Duration(milliseconds: 400),
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: _collapsed ? 8 : 12, vertical: 2),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: _collapsed ? 8 : 12, vertical: 2),
                       child: Material(
-                        color: isActive ? AppTheme.primary.withOpacity(0.12) : Colors.transparent,
+                        color: isActive
+                            ? AppTheme.primary.withOpacity(0.12)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
                         child: InkWell(
                           onTap: () => context.go(item.path),
                           borderRadius: BorderRadius.circular(10),
                           child: Padding(
-                            padding: EdgeInsets.symmetric(horizontal: _collapsed ? 0 : 14, vertical: 11),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: _collapsed ? 0 : 14, vertical: 11),
                             child: Row(
-                              mainAxisAlignment: _collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+                              mainAxisAlignment: _collapsed
+                                  ? MainAxisAlignment.center
+                                  : MainAxisAlignment.start,
                               children: [
-                                Icon(isActive ? item.activeIcon : item.icon, size: 20, color: isActive ? AppTheme.primary : AppTheme.textMuted),
+                                Icon(isActive ? item.activeIcon : item.icon,
+                                    size: 20,
+                                    color: isActive
+                                        ? AppTheme.primary
+                                        : AppTheme.textMuted),
                                 if (!_collapsed) ...[
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: Text(item.label, style: TextStyle(fontSize: 14, fontWeight: isActive ? FontWeight.w600 : FontWeight.w400, color: isActive ? AppTheme.primary : AppTheme.textSecondary), overflow: TextOverflow.ellipsis),
+                                    child: Text(item.label,
+                                        style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: isActive
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                            color: isActive
+                                                ? AppTheme.primary
+                                                : AppTheme.textSecondary),
+                                        overflow: TextOverflow.ellipsis),
                                   ),
                                   if (isActive)
-                                    Container(width: 4, height: 4, decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(2))),
+                                    Container(
+                                        width: 4,
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                            color: AppTheme.primary,
+                                            borderRadius:
+                                                BorderRadius.circular(2))),
                                 ],
                               ],
                             ),
@@ -317,7 +408,8 @@ class _DesktopShellState extends State<_DesktopShell> {
 
                 // Collapse toggle
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   child: Material(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
@@ -327,12 +419,21 @@ class _DesktopShellState extends State<_DesktopShell> {
                       child: Padding(
                         padding: const EdgeInsets.all(11),
                         child: Row(
-                          mainAxisAlignment: _collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+                          mainAxisAlignment: _collapsed
+                              ? MainAxisAlignment.center
+                              : MainAxisAlignment.start,
                           children: [
-                            Icon(_collapsed ? Icons.chevron_right_rounded : Icons.chevron_left_rounded, size: 20, color: AppTheme.textMuted),
+                            Icon(
+                                _collapsed
+                                    ? Icons.chevron_right_rounded
+                                    : Icons.chevron_left_rounded,
+                                size: 20,
+                                color: AppTheme.textMuted),
                             if (!_collapsed) ...[
                               const SizedBox(width: 12),
-                              const Text('Collapse', style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                              const Text('Collapse',
+                                  style: TextStyle(
+                                      fontSize: 13, color: AppTheme.textMuted)),
                             ],
                           ],
                         ),
@@ -346,21 +447,36 @@ class _DesktopShellState extends State<_DesktopShell> {
                   Container(
                     margin: const EdgeInsets.all(16),
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: AppTheme.background, borderRadius: BorderRadius.circular(12)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Row(children: [
-                        Icon(Icons.cloud_done_rounded, size: 16, color: AppTheme.primary),
-                        SizedBox(width: 6),
-                        Text('Storage', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-                      ]),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: const LinearProgressIndicator(value: 0.0, minHeight: 6, backgroundColor: AppTheme.border, color: AppTheme.primary),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text('Unlimited', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-                    ]),
+                    decoration: BoxDecoration(
+                        color: AppTheme.background,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(children: [
+                            Icon(Icons.cloud_done_rounded,
+                                size: 16, color: AppTheme.primary),
+                            SizedBox(width: 6),
+                            Text('Storage',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textPrimary)),
+                          ]),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: const LinearProgressIndicator(
+                                value: 0.0,
+                                minHeight: 6,
+                                backgroundColor: AppTheme.border,
+                                color: AppTheme.primary),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text('Unlimited',
+                              style: TextStyle(
+                                  fontSize: 11, color: AppTheme.textMuted)),
+                        ]),
                   ),
                 const SizedBox(height: 8),
               ]),
@@ -395,15 +511,24 @@ class _TabletShell extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 12, top: 8),
             child: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.cloud_rounded, color: Colors.white, size: 20),
+              decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.cloud_rounded,
+                  color: Colors.white, size: 20),
             ),
           ),
-          destinations: _navItems.map((item) => NavigationRailDestination(
-            icon: Tooltip(message: item.label, child: Icon(item.icon, color: AppTheme.textMuted)),
-            selectedIcon: Icon(item.activeIcon, color: AppTheme.primary),
-            label: Text(item.label, style: const TextStyle(fontSize: 10)),
-          )).toList(),
+          destinations: _navItems
+              .map((item) => NavigationRailDestination(
+                    icon: Tooltip(
+                        message: item.label,
+                        child: Icon(item.icon, color: AppTheme.textMuted)),
+                    selectedIcon:
+                        Icon(item.activeIcon, color: AppTheme.primary),
+                    label:
+                        Text(item.label, style: const TextStyle(fontSize: 10)),
+                  ))
+              .toList(),
         ),
         const VerticalDivider(thickness: 1, width: 1, color: AppTheme.border),
         Expanded(child: child),
@@ -430,25 +555,35 @@ class _MobileShell extends StatelessWidget {
         title: Row(children: [
           Container(
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.cloud_rounded, color: Colors.white, size: 16),
+            decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(8)),
+            child:
+                const Icon(Icons.cloud_rounded, color: Colors.white, size: 16),
           ),
           const SizedBox(width: 8),
-          const Text('PCOS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+          const Text('PCOS',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary)),
         ]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search_rounded, size: 22, color: AppTheme.textMuted),
+            icon: const Icon(Icons.search_rounded,
+                size: 22, color: AppTheme.textMuted),
             onPressed: () => _showQuickSearch(context),
             tooltip: 'Search',
           ),
           IconButton(
-            icon: const Icon(Icons.admin_panel_settings_outlined, size: 22, color: AppTheme.textMuted),
+            icon: const Icon(Icons.admin_panel_settings_outlined,
+                size: 22, color: AppTheme.textMuted),
             onPressed: () => context.go('/admin'),
             tooltip: 'Admin',
           ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined, size: 22, color: AppTheme.textMuted),
+            icon: const Icon(Icons.settings_outlined,
+                size: 22, color: AppTheme.textMuted),
             onPressed: () => context.go('/settings'),
             tooltip: 'Settings',
           ),
@@ -457,7 +592,8 @@ class _MobileShell extends StatelessWidget {
       ),
       body: child,
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppTheme.border))),
+        decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppTheme.border))),
         child: NavigationBar(
           selectedIndex: mobileIdx,
           backgroundColor: AppTheme.surface,
@@ -465,11 +601,15 @@ class _MobileShell extends StatelessWidget {
           onDestinationSelected: (i) => context.go(_navItems[i].path),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           height: 64,
-          destinations: List.generate(_mobileNavItems, (i) => NavigationDestination(
-            icon: Icon(_navItems[i].icon, color: AppTheme.textMuted, size: 22),
-            selectedIcon: Icon(_navItems[i].activeIcon, color: AppTheme.primary, size: 22),
-            label: _navItems[i].label,
-          )),
+          destinations: List.generate(
+              _mobileNavItems,
+              (i) => NavigationDestination(
+                    icon: Icon(_navItems[i].icon,
+                        color: AppTheme.textMuted, size: 22),
+                    selectedIcon: Icon(_navItems[i].activeIcon,
+                        color: AppTheme.primary, size: 22),
+                    label: _navItems[i].label,
+                  )),
         ),
       ),
     );

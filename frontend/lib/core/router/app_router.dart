@@ -33,7 +33,8 @@ class AppRouter {
     initialLocation: '/login',
     redirect: (context, state) {
       final isAuth = _isAuthenticated();
-      final isAuthPage = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+      final isAuthPage = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register';
       final isSetup = state.matchedLocation == '/setup';
 
       if (!isAuth && !isAuthPage && !isSetup) return '/login';
@@ -51,12 +52,15 @@ class AppRouter {
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => ShellLayout(child: child),
         routes: [
-          GoRoute(path: '/dashboard', builder: (_, __) => const DashboardPage()),
+          GoRoute(
+              path: '/dashboard', builder: (_, __) => const DashboardPage()),
           GoRoute(path: '/files', builder: (_, __) => const FilesPage()),
           GoRoute(path: '/gallery', builder: (_, __) => const GalleryPage()),
           GoRoute(path: '/search', builder: (_, __) => const SearchPage()),
           GoRoute(path: '/devices', builder: (_, __) => const DevicesPage()),
-          GoRoute(path: '/devices/pair', builder: (_, __) => const DeviceOnboardingPage()),
+          GoRoute(
+              path: '/devices/pair',
+              builder: (_, __) => const DeviceOnboardingPage()),
           GoRoute(path: '/trash', builder: (_, __) => const TrashPage()),
           GoRoute(path: '/admin', builder: (_, __) => const AdminPage()),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),

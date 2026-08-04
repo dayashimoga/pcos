@@ -39,9 +39,15 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (_) {}
 
     setState(() {
-      _version = (versionData != null && versionData['version'] != null) ? versionData['version'].toString() : '1.2.0';
-      _displayName = (userData != null && userData['display_name'] != null) ? userData['display_name'].toString() : '';
-      _email = (userData != null && userData['email'] != null) ? userData['email'].toString() : '';
+      _version = (versionData != null && versionData['version'] != null)
+          ? versionData['version'].toString()
+          : '1.2.0';
+      _displayName = (userData != null && userData['display_name'] != null)
+          ? userData['display_name'].toString()
+          : '';
+      _email = (userData != null && userData['email'] != null)
+          ? userData['email'].toString()
+          : '';
       _loading = false;
     });
   }
@@ -68,39 +74,55 @@ class _SettingsPageState extends State<SettingsPage> {
                       color: AppTheme.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.person_rounded, size: 20, color: AppTheme.primary),
+                    child: const Icon(Icons.person_rounded,
+                        size: 20, color: AppTheme.primary),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Edit Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                  const Text('Edit Profile',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary)),
                 ]),
                 const SizedBox(height: 20),
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Display Name', prefixIcon: Icon(Icons.badge_outlined, size: 20)),
+                  decoration: const InputDecoration(
+                      labelText: 'Display Name',
+                      prefixIcon: Icon(Icons.badge_outlined, size: 20)),
                   autofocus: true,
                 ),
                 const SizedBox(height: 12),
-                Text('Email: $_email', style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                Text('Email: $_email',
+                    style: const TextStyle(
+                        fontSize: 13, color: AppTheme.textMuted)),
                 const SizedBox(height: 24),
                 Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel')),
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: () async {
                       try {
                         final api = getIt<ApiClient>();
-                        await api.dio.put('/api/v1/users/me', data: {'display_name': nameCtrl.text.trim()});
+                        await api.dio.put('/api/v1/users/me',
+                            data: {'display_name': nameCtrl.text.trim()});
                         setState(() => _displayName = nameCtrl.text.trim());
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Profile updated'), backgroundColor: AppTheme.success),
+                            const SnackBar(
+                                content: Text('Profile updated'),
+                                backgroundColor: AppTheme.success),
                           );
                         }
                       } catch (e) {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed: $e'), backgroundColor: AppTheme.error),
+                            SnackBar(
+                                content: Text('Failed: $e'),
+                                backgroundColor: AppTheme.error),
                           );
                         }
                       }
@@ -136,27 +158,53 @@ class _SettingsPageState extends State<SettingsPage> {
                 Row(children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: AppTheme.warning.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warning),
+                    decoration: BoxDecoration(
+                        color: AppTheme.warning.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.lock_rounded,
+                        size: 20, color: AppTheme.warning),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Change Password', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                  const Text('Change Password',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary)),
                 ]),
                 const SizedBox(height: 20),
-                TextField(controller: currentCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Current Password', prefixIcon: Icon(Icons.lock_outline, size: 20))),
+                TextField(
+                    controller: currentCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                        labelText: 'Current Password',
+                        prefixIcon: Icon(Icons.lock_outline, size: 20))),
                 const SizedBox(height: 12),
-                TextField(controller: newCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'New Password', prefixIcon: Icon(Icons.lock_reset, size: 20))),
+                TextField(
+                    controller: newCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                        labelText: 'New Password',
+                        prefixIcon: Icon(Icons.lock_reset, size: 20))),
                 const SizedBox(height: 12),
-                TextField(controller: confirmCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm Password', prefixIcon: Icon(Icons.lock_reset, size: 20))),
+                TextField(
+                    controller: confirmCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                        labelText: 'Confirm Password',
+                        prefixIcon: Icon(Icons.lock_reset, size: 20))),
                 const SizedBox(height: 24),
                 Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel')),
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: () async {
                       if (newCtrl.text != confirmCtrl.text) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Passwords do not match'), backgroundColor: AppTheme.error),
+                          const SnackBar(
+                              content: Text('Passwords do not match'),
+                              backgroundColor: AppTheme.error),
                         );
                         return;
                       }
@@ -169,13 +217,17 @@ class _SettingsPageState extends State<SettingsPage> {
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Password changed'), backgroundColor: AppTheme.success),
+                            const SnackBar(
+                                content: Text('Password changed'),
+                                backgroundColor: AppTheme.success),
                           );
                         }
                       } catch (e) {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed: $e'), backgroundColor: AppTheme.error),
+                            SnackBar(
+                                content: Text('Failed: $e'),
+                                backgroundColor: AppTheme.error),
                           );
                         }
                       }
@@ -198,14 +250,18 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Settings', style: Theme.of(context).textTheme.displayMedium),
         const SizedBox(height: 4),
-        Text('Configure your PCOS instance', style: Theme.of(context).textTheme.bodyLarge),
+        Text('Configure your PCOS instance',
+            style: Theme.of(context).textTheme.bodyLarge),
         const SizedBox(height: 32),
-
         _SettingsSection(title: 'Account', children: [
           _SettingsTile(
             icon: Icons.person_rounded,
             title: 'Profile',
-            subtitle: _loading ? 'Loading...' : (_displayName.isNotEmpty ? _displayName : 'Edit your display name'),
+            subtitle: _loading
+                ? 'Loading...'
+                : (_displayName.isNotEmpty
+                    ? _displayName
+                    : 'Edit your display name'),
             onTap: () => _showEditProfile(context),
           ),
           _SettingsTile(
@@ -221,37 +277,53 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: () => showDialog(
               context: context,
               builder: (_) => const Dialog(
-                child: SizedBox(width: 500, height: 500, child: _MfaDialogContent()),
+                child: SizedBox(
+                    width: 500, height: 500, child: _MfaDialogContent()),
               ),
             ),
           ),
         ]),
         const SizedBox(height: 24),
-
         _SettingsSection(title: 'Sync & Storage', children: [
-          _SettingsTile(icon: Icons.sync_rounded, title: 'Sync Settings', subtitle: 'Configure sync behavior and folders', onTap: () {}),
-          _SettingsTile(icon: Icons.storage_rounded, title: 'Storage', subtitle: 'View storage usage and manage quotas', onTap: () {}),
-          _SettingsTile(icon: Icons.backup_rounded, title: 'Backups', subtitle: 'Schedule automatic backups', onTap: () {}),
+          _SettingsTile(
+              icon: Icons.sync_rounded,
+              title: 'Sync Settings',
+              subtitle: 'Configure sync behavior and folders',
+              onTap: () {}),
+          _SettingsTile(
+              icon: Icons.storage_rounded,
+              title: 'Storage',
+              subtitle: 'View storage usage and manage quotas',
+              onTap: () {}),
+          _SettingsTile(
+              icon: Icons.backup_rounded,
+              title: 'Backups',
+              subtitle: 'Schedule automatic backups',
+              onTap: () {}),
         ]),
         const SizedBox(height: 24),
-
         _SettingsSection(title: 'AI & Intelligence', children: [
-          _SettingsTile(icon: Icons.auto_awesome_rounded, title: 'AI Provider', subtitle: 'Configure local Ollama or API provider', onTap: () {}),
+          _SettingsTile(
+              icon: Icons.auto_awesome_rounded,
+              title: 'AI Provider',
+              subtitle: 'Configure local Ollama or API provider',
+              onTap: () {}),
           _SettingsTile(
             icon: Icons.label_rounded,
             title: 'Auto-Tagging',
             subtitle: 'Enable automatic file tagging',
-            trailing: Switch(value: true, onChanged: (_) {}, activeColor: AppTheme.primary),
+            trailing: Switch(
+                value: true, onChanged: (_) {}, activeColor: AppTheme.primary),
           ),
           _SettingsTile(
             icon: Icons.find_in_page_rounded,
             title: 'Smart Search',
             subtitle: 'Use AI for natural language search',
-            trailing: Switch(value: true, onChanged: (_) {}, activeColor: AppTheme.primary),
+            trailing: Switch(
+                value: true, onChanged: (_) {}, activeColor: AppTheme.primary),
           ),
         ]),
         const SizedBox(height: 24),
-
         _SettingsSection(title: 'Appearance', children: [
           _SettingsTile(
             icon: Icons.dark_mode_rounded,
@@ -267,13 +339,23 @@ class _SettingsPageState extends State<SettingsPage> {
               activeColor: AppTheme.primary,
             ),
           ),
-          _SettingsTile(icon: Icons.view_module_rounded, title: 'Default View', subtitle: 'Grid view for file browser', onTap: () {}),
+          _SettingsTile(
+              icon: Icons.view_module_rounded,
+              title: 'Default View',
+              subtitle: 'Grid view for file browser',
+              onTap: () {}),
         ]),
         const SizedBox(height: 24),
-
         _SettingsSection(title: 'About', children: [
-          _SettingsTile(icon: Icons.info_rounded, title: 'Version', subtitle: 'PCOS v$_version'),
-          _SettingsTile(icon: Icons.code_rounded, title: 'Source Code', subtitle: 'github.com/dayashimoga/pcos', onTap: () {}),
+          _SettingsTile(
+              icon: Icons.info_rounded,
+              title: 'Version',
+              subtitle: 'PCOS v$_version'),
+          _SettingsTile(
+              icon: Icons.code_rounded,
+              title: 'Source Code',
+              subtitle: 'github.com/dayashimoga/pcos',
+              onTap: () {}),
         ]),
       ]),
     );
@@ -287,21 +369,30 @@ class _SettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textMuted, letterSpacing: 0.5)),
-      const SizedBox(height: 12),
-      Container(
-        decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.border)),
-        child: Column(children: [
-          for (int i = 0; i < children.length; i++) ...[
-            children[i],
-            if (i < children.length - 1) const Divider(height: 1, color: AppTheme.border, indent: 56),
-          ],
-        ]),
-      ),
-    ],
-  );
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                  letterSpacing: 0.5)),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.border)),
+            child: Column(children: [
+              for (int i = 0; i < children.length; i++) ...[
+                children[i],
+                if (i < children.length - 1)
+                  const Divider(height: 1, color: AppTheme.border, indent: 56),
+              ],
+            ]),
+          ),
+        ],
+      );
 }
 
 class _SettingsTile extends StatelessWidget {
@@ -310,22 +401,38 @@ class _SettingsTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback? onTap;
   final Widget? trailing;
-  const _SettingsTile({required this.icon, required this.title, required this.subtitle, this.onTap, this.trailing});
+  const _SettingsTile(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      this.onTap,
+      this.trailing});
 
   @override
   Widget build(BuildContext context) => ListTile(
-    leading: Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-      child: Icon(icon, color: AppTheme.primary, size: 20),
-    ),
-    title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-    subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-    trailing: trailing ?? (onTap != null ? const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted) : null),
-    onTap: onTap,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-  );
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, color: AppTheme.primary, size: 20),
+        ),
+        title: Text(title,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary)),
+        subtitle: Text(subtitle,
+            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+        trailing: trailing ??
+            (onTap != null
+                ? const Icon(Icons.chevron_right_rounded,
+                    color: AppTheme.textMuted)
+                : null),
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      );
 }
 
 class _MfaDialogContent extends StatelessWidget {
@@ -338,7 +445,9 @@ class _MfaDialogContent extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Two-Factor Authentication'),
-          leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+          leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context)),
           backgroundColor: AppTheme.surface,
         ),
         body: const SingleChildScrollView(

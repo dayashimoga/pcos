@@ -84,7 +84,8 @@ class DeviceBloc extends Bloc<DeviceEvent, DeviceState> {
     on<DeviceRemoveRequested>(_onRemoveRequested);
   }
 
-  Future<void> _onLoadRequested(DevicesLoadRequested event, Emitter<DeviceState> emit) async {
+  Future<void> _onLoadRequested(
+      DevicesLoadRequested event, Emitter<DeviceState> emit) async {
     emit(const DeviceLoading());
     try {
       final result = await deviceRepository.listDevices();
@@ -97,7 +98,8 @@ class DeviceBloc extends Bloc<DeviceEvent, DeviceState> {
     }
   }
 
-  Future<void> _onRegisterRequested(DeviceRegisterRequested event, Emitter<DeviceState> emit) async {
+  Future<void> _onRegisterRequested(
+      DeviceRegisterRequested event, Emitter<DeviceState> emit) async {
     emit(const DeviceLoading());
     try {
       await deviceRepository.registerDevice(
@@ -113,7 +115,8 @@ class DeviceBloc extends Bloc<DeviceEvent, DeviceState> {
     }
   }
 
-  Future<void> _onRemoveRequested(DeviceRemoveRequested event, Emitter<DeviceState> emit) async {
+  Future<void> _onRemoveRequested(
+      DeviceRemoveRequested event, Emitter<DeviceState> emit) async {
     try {
       await deviceRepository.removeDevice(event.deviceId);
       emit(const DeviceActionSuccess('Device removed'));

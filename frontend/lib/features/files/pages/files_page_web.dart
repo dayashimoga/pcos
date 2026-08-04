@@ -18,10 +18,10 @@ void pickAndUploadFiles(BuildContext context, String? parentFolderId) {
       reader.onLoadEnd.listen((_) {
         final bytes = (reader.result as List<int>);
         context.read<FileBloc>().add(FileUploadRequested(
-          filename: file.name,
-          bytes: bytes,
-          parentId: parentFolderId,
-        ));
+              filename: file.name,
+              bytes: bytes,
+              parentId: parentFolderId,
+            ));
       });
     }
   });

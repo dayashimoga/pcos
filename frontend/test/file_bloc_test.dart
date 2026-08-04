@@ -65,8 +65,7 @@ void main() {
                 });
         return FileBloc(fileRepository: mockRepo);
       },
-      act: (bloc) =>
-          bloc.add(const FilesLoadRequested(folderId: 'folder-1')),
+      act: (bloc) => bloc.add(const FilesLoadRequested(folderId: 'folder-1')),
       expect: () => [isA<FileLoading>(), isA<FileLoaded>()],
     );
 
@@ -86,8 +85,7 @@ void main() {
                 });
         return FileBloc(fileRepository: mockRepo);
       },
-      act: (bloc) =>
-          bloc.add(const FolderCreateRequested(name: 'New Folder')),
+      act: (bloc) => bloc.add(const FolderCreateRequested(name: 'New Folder')),
       expect: () =>
           [isA<FileActionSuccess>(), isA<FileLoading>(), isA<FileLoaded>()],
     );
@@ -95,8 +93,7 @@ void main() {
     blocTest<FileBloc, FileState>(
       'emits [FileError] on load failure',
       build: () {
-        when(() => mockRepo.listRoot())
-            .thenThrow(Exception('Network error'));
+        when(() => mockRepo.listRoot()).thenThrow(Exception('Network error'));
         return FileBloc(fileRepository: mockRepo);
       },
       act: (bloc) => bloc.add(const FilesLoadRequested()),
@@ -106,8 +103,7 @@ void main() {
     blocTest<FileBloc, FileState>(
       'emits [FileActionSuccess] on delete',
       build: () {
-        when(() => mockRepo.deleteItem('item-1'))
-            .thenAnswer((_) async {});
+        when(() => mockRepo.deleteItem('item-1')).thenAnswer((_) async {});
         return FileBloc(fileRepository: mockRepo);
       },
       act: (bloc) => bloc.add(const FileDeleteRequested('item-1')),

@@ -6,26 +6,26 @@ class AppTheme {
   AppTheme._();
 
   // ─── Brand Colors ─────────────────────────────────────
-  static const Color primary = Color(0xFF6366F1);       // Indigo-500
-  static const Color primaryLight = Color(0xFF818CF8);   // Indigo-400
-  static const Color primaryDark = Color(0xFF4F46E5);    // Indigo-600
-  static const Color accent = Color(0xFF22D3EE);         // Cyan-400
-  static const Color secondary = Color(0xFF818CF8);       // Indigo-400
-  static const Color success = Color(0xFF10B981);        // Emerald-500
-  static const Color warning = Color(0xFFF59E0B);        // Amber-500
-  static const Color error = Color(0xFFEF4444);          // Red-500
+  static const Color primary = Color(0xFF6366F1); // Indigo-500
+  static const Color primaryLight = Color(0xFF818CF8); // Indigo-400
+  static const Color primaryDark = Color(0xFF4F46E5); // Indigo-600
+  static const Color accent = Color(0xFF22D3EE); // Cyan-400
+  static const Color secondary = Color(0xFF818CF8); // Indigo-400
+  static const Color success = Color(0xFF10B981); // Emerald-500
+  static const Color warning = Color(0xFFF59E0B); // Amber-500
+  static const Color error = Color(0xFFEF4444); // Red-500
 
   // ─── Surface Colors ───────────────────────────────────
-  static const Color background = Color(0xFF0F172A);     // Slate-900
-  static const Color surface = Color(0xFF1E293B);        // Slate-800
-  static const Color surfaceLight = Color(0xFF334155);   // Slate-700
+  static const Color background = Color(0xFF0F172A); // Slate-900
+  static const Color surface = Color(0xFF1E293B); // Slate-800
+  static const Color surfaceLight = Color(0xFF334155); // Slate-700
   static const Color surfaceLighter = Color(0xFF475569); // Slate-600
-  static const Color border = Color(0xFF334155);         // Slate-700
+  static const Color border = Color(0xFF334155); // Slate-700
 
   // ─── Text Colors ──────────────────────────────────────
-  static const Color textPrimary = Color(0xFFF1F5F9);    // Slate-100
-  static const Color textSecondary = Color(0xFF94A3B8);  // Slate-400
-  static const Color textMuted = Color(0xFF64748B);      // Slate-500
+  static const Color textPrimary = Color(0xFFF1F5F9); // Slate-100
+  static const Color textSecondary = Color(0xFF94A3B8); // Slate-400
+  static const Color textMuted = Color(0xFF64748B); // Slate-500
 
   // ─── Gradients ────────────────────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
@@ -58,16 +58,32 @@ class AppTheme {
       ),
       textTheme: GoogleFonts.interTextTheme(
         const TextTheme(
-          displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: textPrimary, letterSpacing: -0.5),
-          displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: textPrimary, letterSpacing: -0.5),
-          headlineLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: textPrimary),
-          headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: textPrimary),
-          titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: textPrimary),
-          titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: textPrimary),
-          bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: textSecondary),
-          bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: textSecondary),
-          bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: textMuted),
-          labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary),
+          displayLarge: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w700,
+              color: textPrimary,
+              letterSpacing: -0.5),
+          displayMedium: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: textPrimary,
+              letterSpacing: -0.5),
+          headlineLarge: TextStyle(
+              fontSize: 24, fontWeight: FontWeight.w600, color: textPrimary),
+          headlineMedium: TextStyle(
+              fontSize: 20, fontWeight: FontWeight.w600, color: textPrimary),
+          titleLarge: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.w600, color: textPrimary),
+          titleMedium: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w500, color: textPrimary),
+          bodyLarge: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w400, color: textSecondary),
+          bodyMedium: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w400, color: textSecondary),
+          bodySmall: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w400, color: textMuted),
+          labelLarge: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary),
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -90,7 +106,8 @@ class AppTheme {
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
@@ -99,13 +116,15 @@ class AppTheme {
           foregroundColor: textPrimary,
           side: const BorderSide(color: border),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: border),
@@ -153,16 +172,48 @@ class AppTheme {
       ),
       textTheme: GoogleFonts.interTextTheme(
         const TextTheme(
-          displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Color(0xFF0F172A), letterSpacing: -0.5),
-          displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Color(0xFF0F172A), letterSpacing: -0.5),
-          headlineLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF0F172A)),
-          bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: Color(0xFF475569)),
-          bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Color(0xFF475569)),
-          bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Color(0xFF94A3B8)),
-          labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+          displayLarge: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+              letterSpacing: -0.5),
+          displayMedium: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+              letterSpacing: -0.5),
+          headlineLarge: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0F172A)),
+          headlineMedium: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0F172A)),
+          titleLarge: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0F172A)),
+          titleMedium: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF0F172A)),
+          bodyLarge: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF475569)),
+          bodyMedium: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF475569)),
+          bodySmall: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF94A3B8)),
+          labelLarge: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0F172A)),
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -185,7 +236,8 @@ class AppTheme {
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
@@ -194,13 +246,15 @@ class AppTheme {
           foregroundColor: const Color(0xFF0F172A),
           side: const BorderSide(color: Color(0xFFE2E8F0)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -220,7 +274,8 @@ class AppTheme {
         hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
         labelStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
       ),
-      dividerTheme: const DividerThemeData(color: Color(0xFFE2E8F0), thickness: 1),
+      dividerTheme:
+          const DividerThemeData(color: Color(0xFFE2E8F0), thickness: 1),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: const Color(0xFF1E293B),
         contentTextStyle: const TextStyle(color: Colors.white),

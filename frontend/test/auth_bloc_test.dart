@@ -81,8 +81,7 @@ void main() {
     blocTest<AuthBloc, AuthState>(
       'emits [AuthUnauthenticated] when no stored session',
       build: () {
-        when(() => mockRepo.getCurrentUser())
-            .thenAnswer((_) async => null);
+        when(() => mockRepo.getCurrentUser()).thenAnswer((_) async => null);
         return AuthBloc(authRepository: mockRepo);
       },
       act: (bloc) => bloc.add(const AuthCheckRequested()),
