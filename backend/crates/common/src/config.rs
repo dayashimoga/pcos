@@ -86,7 +86,9 @@ impl AppConfig {
 
         // Warn if using default JWT secret
         if config.auth.jwt_secret.contains("must-be-changed") {
-            eprintln!("⚠ WARNING: Using default JWT secret! Set PCOS_AUTH__JWT_SECRET in production.");
+            eprintln!(
+                "⚠ WARNING: Using default JWT secret! Set PCOS_AUTH__JWT_SECRET in production."
+            );
         }
 
         Ok(config)
