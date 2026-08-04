@@ -57,9 +57,9 @@
 - [x] Image thumbnail previews in file grid (for image/* MIME types)
 
 ### Deployment
-- [ ] Setup wizard (first-run configuration)
-- [ ] Environment validator ("PCOS Doctor")
-- [ ] One-command installer script
+- [x] Setup wizard (first-run configuration) — 3-step: server check → admin account → done
+- [x] Environment validator ("PCOS Doctor") — 10 diagnostic checks with pass/fail summary
+- [x] One-command installer script — `curl | bash` with prerequisite checks, .env generation, Docker Compose
 
 ### Media
 - [ ] PDF preview panel
