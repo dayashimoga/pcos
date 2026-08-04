@@ -90,10 +90,10 @@ jobs:
       - name: Build Windows
         working-directory: frontend
         run: |
+          $env:CMAKE_GENERATOR = 'Visual Studio 17 2022'
           flutter config --enable-windows-desktop
           if (Test-Path windows) { Remove-Item -Recurse -Force windows }
           flutter create --platforms=windows .
-          # Patch CMakeLists.txt to use Visual Studio 17 2022 (windows-latest has VS 2022)
           $cmakeFile = 'windows/CMakeLists.txt'
           if (Test-Path $cmakeFile) {
             (Get-Content $cmakeFile) -replace 'Visual Studio 16 2019', 'Visual Studio 17 2022' | Set-Content $cmakeFile
