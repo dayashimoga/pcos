@@ -64,9 +64,18 @@ class _AdminPageState extends State<AdminPage> {
 
     return SingleChildScrollView(padding: const EdgeInsets.all(24), child: Column(
       crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Admin Portal', style: Theme.of(context).textTheme.displayMedium),
-        const SizedBox(height: 8),
-        Text('System management and user administration', style: Theme.of(context).textTheme.bodyLarge),
+        Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Admin Portal', style: Theme.of(context).textTheme.displayMedium),
+            const SizedBox(height: 8),
+            Text('System management and user administration', style: Theme.of(context).textTheme.bodyLarge),
+          ])),
+          ElevatedButton.icon(
+            onPressed: () => _showCreateUserDialog(context),
+            icon: const Icon(Icons.person_add_rounded, size: 18),
+            label: const Text('Create User'),
+          ),
+        ]),
         const SizedBox(height: 24),
 
         // System Stats Cards
@@ -96,16 +105,125 @@ class _AdminPageState extends State<AdminPage> {
             title: Text(u['display_name'] ?? u['email'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             subtitle: Text('${u['email']} • ${u['role']}${u['totp_enabled'] == true ? ' • 🔐 MFA' : ''}',
               style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-            trailing: PopupMenuButton<String>(
-              onSelected: (role) => _updateRole(u['id'], role),
-              itemBuilder: (_) => ['admin', 'user', 'viewer'].map((r) =>
-                PopupMenuItem(value: r, child: Text(r.toUpperCase()))).toList(),
-              child: Chip(label: Text(u['role'], style: const TextStyle(fontSize: 11)), backgroundColor: AppTheme.surface),
-            ),
+            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+              PopupMenuButton<String>(
+                onSelected: (role) => _updateRole(u['id'], role),
+                itemBuilder: (_) => ['admin', 'user', 'viewer'].map((r) =>
+                  PopupMenuItem(value: r, child: Text(r.toUpperCase()))).toList(),
+                child: Chip(label: Text(u['role'], style: const TextStyle(fontSize: 11)), backgroundColor: AppTheme.surface),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.error),
+                tooltip: 'Delete User',
+                onPressed: () => _confirmDeleteUser(context, u['id'], u['email']),
+              ),
+            ]),
           )).toList()),
         ),
       ],
     ));
+  }
+
+  void _showCreateUserDialog(BuildContext context) {
+    final emailCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.person_add_rounded, size: 20, color: AppTheme.primary)),
+                const SizedBox(width: 12),
+                const Text('Create User', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+              ]),
+              const SizedBox(height: 20),
+              TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined, size: 20)), keyboardType: TextInputType.emailAddress),
+              const SizedBox(height: 12),
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Display Name', prefixIcon: Icon(Icons.badge_outlined, size: 20))),
+              const SizedBox(height: 12),
+              TextField(controller: passCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline, size: 20))),
+              const SizedBox(height: 24),
+              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () async {
+                    try {
+                      final api = getIt<ApiClient>();
+                      await api.dio.post('/api/v1/auth/register', data: {
+                        'email': emailCtrl.text.trim(),
+                        'display_name': nameCtrl.text.trim(),
+                        'password': passCtrl.text,
+                      });
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      _loadData();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('User created'), backgroundColor: AppTheme.success),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed: $e'), backgroundColor: AppTheme.error),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Create'),
+                ),
+              ]),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteUser(BuildContext context, String userId, String email) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        icon: const Icon(Icons.warning_rounded, color: AppTheme.error, size: 32),
+        title: const Text('Delete User?'),
+        content: Text('Permanently delete $email and all their data. This cannot be undone.'),
+        actions: [
+          OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
+            onPressed: () async {
+              try {
+                final api = getIt<ApiClient>();
+                await api.dio.delete('/api/v1/admin/users/$userId');
+                if (ctx.mounted) Navigator.pop(ctx);
+                _loadData();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('User deleted'), backgroundColor: AppTheme.success),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed: $e'), backgroundColor: AppTheme.error),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _statCard(String label, String value, IconData icon) {

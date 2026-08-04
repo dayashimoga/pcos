@@ -33,6 +33,8 @@ class _FilesContent extends StatefulWidget {
 class _FilesContentState extends State<_FilesContent> {
   bool _isGridView = true;
   String? _currentFolderId;
+  String _sortBy = 'name';
+  bool _sortAsc = true;
 
   @override
   Widget build(BuildContext context) {
@@ -125,13 +127,14 @@ class _FilesContentState extends State<_FilesContent> {
                     sliver: SliverLayoutBuilder(builder: (context, constraints) {
                       final w = constraints.crossAxisExtent;
                       final cols = w >= 1200 ? 6 : w >= 900 ? 5 : w >= 600 ? 3 : 2;
+                      final sorted = _sortEntries(state.entries);
                       return SliverGrid(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: cols, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.0,
                         ),
                         delegate: SliverChildBuilderDelegate(
-                          (_, i) => _FileGridCard(entry: state.entries[i], onTap: () => _handleItemTap(context, state.entries[i]), onAction: (a) => _handleAction(context, state.entries[i], a)),
-                          childCount: state.entries.length,
+                          (_, i) => _FileGridCard(entry: sorted[i], onTap: () => _handleItemTap(context, sorted[i]), onAction: (a) => _handleAction(context, sorted[i], a)),
+                          childCount: sorted.length,
                         ),
                       );
                     }),
@@ -139,7 +142,7 @@ class _FilesContentState extends State<_FilesContent> {
                 else
                   SliverToBoxAdapter(child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16),
-                    child: _FileList(entries: state.entries, onTap: (e) => _handleItemTap(context, e), onAction: (e, a) => _handleAction(context, e, a)),
+                    child: _FileList(entries: _sortEntries(state.entries), onTap: (e) => _handleItemTap(context, e), onAction: (e, a) => _handleAction(context, e, a)),
                   )),
               ],
 
@@ -161,9 +164,60 @@ class _FilesContentState extends State<_FilesContent> {
           _ViewToggle(icon: Icons.view_list_rounded, active: !_isGridView, onTap: () => setState(() => _isGridView = false)),
         ]),
       ),
+      // Sort dropdown
+      Container(
+        decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.border)),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _sortBy,
+            isDense: true,
+            icon: Icon(_sortAsc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 14, color: AppTheme.textMuted),
+            dropdownColor: AppTheme.surface,
+            style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+            items: const [
+              DropdownMenuItem(value: 'name', child: Text('Name')),
+              DropdownMenuItem(value: 'size', child: Text('Size')),
+              DropdownMenuItem(value: 'type', child: Text('Type')),
+            ],
+            onChanged: (v) {
+              if (v == _sortBy) {
+                setState(() => _sortAsc = !_sortAsc);
+              } else {
+                setState(() { _sortBy = v!; _sortAsc = true; });
+              }
+            },
+          ),
+        ),
+      ),
       _ActionButton(icon: Icons.create_new_folder_rounded, label: 'New Folder', onPressed: () => _showNewFolderDialog(context)),
       _ActionButton(icon: Icons.upload_file_rounded, label: 'Upload', primary: true, onPressed: () => _handleUpload(context)),
     ]);
+  }
+
+  List<Map<String, dynamic>> _sortEntries(List<Map<String, dynamic>> entries) {
+    final sorted = List<Map<String, dynamic>>.from(entries);
+    sorted.sort((a, b) {
+      // Folders always first
+      final aIsFolder = a['entry_type'] == 'folder';
+      final bIsFolder = b['entry_type'] == 'folder';
+      if (aIsFolder && !bIsFolder) return -1;
+      if (!aIsFolder && bIsFolder) return 1;
+
+      int cmp;
+      switch (_sortBy) {
+        case 'size':
+          cmp = ((a['size_bytes'] ?? 0) as int).compareTo((b['size_bytes'] ?? 0) as int);
+          break;
+        case 'type':
+          cmp = (a['mime_type'] ?? '').toString().compareTo((b['mime_type'] ?? '').toString());
+          break;
+        default:
+          cmp = (a['name'] ?? '').toString().toLowerCase().compareTo((b['name'] ?? '').toString().toLowerCase());
+      }
+      return _sortAsc ? cmp : -cmp;
+    });
+    return sorted;
   }
 
   Widget _buildLoadingSkeleton(bool isWide) {

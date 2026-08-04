@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-08-04
+
+### Usability & Feature Improvements
+
+#### Frontend — Files
+- Added sort dropdown (Name, Size, Type) with ascending/descending toggle
+- Folders always sort first regardless of sort field
+- Added Download and Copy Link actions to file context menu (grid + list views)
+
+#### Frontend — Admin
+- Added "Create User" button and dialog (email, name, password)
+- Added delete user with confirmation dialog
+- Full user CRUD: create, read, update role, delete
+
+#### Frontend — Settings
+- Profile edit now calls `PUT /api/v1/users/me` with display name update
+- Password change now calls `PUT /api/v1/users/me/password` with validation
+- Version string dynamically loaded from `/api/v1/version` (was hardcoded v0.2.0)
+
+#### Frontend — Dashboard
+- Added Upload Files and Search to Quick Actions
+
+#### Documentation
+- Added GAP_ANALYSIS.md — comparison-based analysis vs Nextcloud, Google Drive, Synology
+- Added ROADMAP.md — prioritized v1.3–v2.0 development plan
+- Updated FEATURE_MATRIX.md with honest feature status
+
+---
+
 ## [1.2.0] - 2026-08-04
 
 ### Production Hardening

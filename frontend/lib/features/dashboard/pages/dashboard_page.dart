@@ -79,7 +79,9 @@ class _DashboardPageState extends State<DashboardPage> {
           Text('Quick Actions', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 16),
           Wrap(spacing: 12, runSpacing: 12, children: [
+            _ActionChip(icon: Icons.upload_file_rounded, label: 'Upload Files', onTap: () => context.go('/files')),
             _ActionChip(icon: Icons.folder_rounded, label: 'Browse Files', onTap: () => context.go('/files')),
+            _ActionChip(icon: Icons.search_rounded, label: 'Search', onTap: () => context.go('/search')),
             _ActionChip(icon: Icons.devices_rounded, label: 'Manage Devices', onTap: () => context.go('/devices')),
             _ActionChip(icon: Icons.settings_rounded, label: 'Settings', onTap: () => context.go('/settings')),
             _ActionChip(icon: Icons.delete_outline_rounded, label: 'Trash', onTap: () => context.go('/trash')),
