@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-08-04
+
+### Advanced Features
+
+#### Global Search (Ctrl+K Command Palette)
+- Ctrl+K opens floating command palette overlay with page search
+- Filterable list of all app pages with instant navigation
+- Clickable search bar hint in desktop sidebar header
+- Search icon added to mobile app bar
+- Shows keyboard shortcuts (ESC to close, Ctrl+K to open)
+
+#### Search Page Filters
+- Filter chips: All / Files / Folders — re-queries API with type filter
+- Sort results: By Name (A→Z), By Size (largest first), or Relevance
+- Copy link button alongside download in search results
+- Improved empty state with suggestion text
+
+#### File Management
+- Move file/folder dialog — move items to any folder by target ID
+- Upload progress spinner snackbar when uploading
+- File Info dialog shows type, MIME, size, ID, created/modified dates + quick actions
+- Context menu now has 7 actions: Download, Copy Link, Info, Move, Rename, Delete
+
+#### Dashboard
+- Recent Files section showing 5 most recent files from API
+- "View all" link to files page
+
+---
+
+## [1.4.0] - 2026-08-04
+
+### Feature Parity
+
+#### Theme System
+- Full Material 3 light theme added to AppTheme
+- Dark/Light theme toggle in Settings — uses global ValueNotifier
+- main.dart refactored with ValueListenableBuilder for live theme switching
+
+---
+
 ## [1.3.0] - 2026-08-04
 
 ### Usability & Feature Improvements
