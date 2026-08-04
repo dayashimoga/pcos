@@ -17,6 +17,129 @@ class ShellLayout extends StatelessWidget {
   }
 }
 
+void _showQuickSearch(BuildContext context) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black54,
+    builder: (ctx) => const _QuickSearchOverlay(),
+  );
+}
+
+class _QuickSearchOverlay extends StatefulWidget {
+  const _QuickSearchOverlay();
+  @override
+  State<_QuickSearchOverlay> createState() => _QuickSearchOverlayState();
+}
+
+class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
+  final _ctrl = TextEditingController();
+  final _focusNode = FocusNode();
+
+  static const _pages = [
+    ('Dashboard', Icons.dashboard_rounded, '/dashboard'),
+    ('Files', Icons.folder_rounded, '/files'),
+    ('Search', Icons.search_rounded, '/search'),
+    ('Devices', Icons.devices_rounded, '/devices'),
+    ('Trash', Icons.delete_rounded, '/trash'),
+    ('Admin', Icons.admin_panel_settings_rounded, '/admin'),
+    ('Settings', Icons.settings_rounded, '/settings'),
+  ];
+
+  List<(String, IconData, String)> get _filtered {
+    final q = _ctrl.text.toLowerCase();
+    if (q.isEmpty) return _pages;
+    return _pages.where((p) => p.$1.toLowerCase().contains(q)).toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: const Alignment(0, -0.3),
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 480,
+          constraints: const BoxConstraints(maxHeight: 400),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.border),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 24, offset: const Offset(0, 8))],
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: TextField(
+                controller: _ctrl,
+                focusNode: _focusNode,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  hintText: 'Search pages, actions...',
+                  prefixIcon: Icon(Icons.search_rounded, color: AppTheme.textMuted, size: 20),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                ),
+                style: const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
+              ),
+            ),
+            const Divider(color: AppTheme.border, height: 1),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.all(8),
+                children: _filtered.map((p) => ListTile(
+                  leading: Icon(p.$2, size: 20, color: AppTheme.primary),
+                  title: Text(p.$1, style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
+                  trailing: Text('Go', style: TextStyle(fontSize: 11, color: AppTheme.textMuted.withOpacity(0.6))),
+                  dense: true,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  hoverColor: AppTheme.primary.withOpacity(0.08),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.go(p.$3);
+                  },
+                )).toList(),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppTheme.border))),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: AppTheme.surfaceLight, borderRadius: BorderRadius.circular(4)),
+                  child: const Text('ESC', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 6),
+                const Text('to close', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: AppTheme.surfaceLight, borderRadius: BorderRadius.circular(4)),
+                  child: const Text('Ctrl+K', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class _NavItem {
   final String label;
   final IconData icon;
@@ -67,6 +190,8 @@ class _DesktopShellState extends State<_DesktopShell> {
         for (int i = 0; i < _navItems.length; i++)
           SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), control: true):
               () => context.go(_navItems[i].path),
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true):
+            () => _showQuickSearch(context),
       },
       child: Focus(
         autofocus: true,
@@ -107,7 +232,46 @@ class _DesktopShellState extends State<_DesktopShell> {
                   ]),
                 ),
                 const Divider(color: AppTheme.border, height: 1),
-                const SizedBox(height: 8),
+                // Search bar hint
+                if (!_collapsed)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _showQuickSearch(context),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: AppTheme.background,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppTheme.border),
+                          ),
+                          child: Row(children: [
+                            const Icon(Icons.search_rounded, size: 16, color: AppTheme.textMuted),
+                            const SizedBox(width: 8),
+                            const Expanded(child: Text('Search...', style: TextStyle(fontSize: 13, color: AppTheme.textMuted))),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(color: AppTheme.surfaceLight, borderRadius: BorderRadius.circular(4)),
+                              child: const Text('⌘K', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                            ),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: IconButton(
+                      onPressed: () => _showQuickSearch(context),
+                      icon: const Icon(Icons.search_rounded, size: 20, color: AppTheme.textMuted),
+                      tooltip: 'Search (Ctrl+K)',
+                    ),
+                  ),
+                const SizedBox(height: 4),
 
                 // Nav items
                 ...List.generate(_navItems.length, (i) {
@@ -271,6 +435,11 @@ class _MobileShell extends StatelessWidget {
           const Text('PCOS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
         ]),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search_rounded, size: 22, color: AppTheme.textMuted),
+            onPressed: () => _showQuickSearch(context),
+            tooltip: 'Search',
+          ),
           IconButton(
             icon: const Icon(Icons.admin_panel_settings_outlined, size: 22, color: AppTheme.textMuted),
             onPressed: () => context.go('/admin'),
