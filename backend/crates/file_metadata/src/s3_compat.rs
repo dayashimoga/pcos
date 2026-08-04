@@ -37,7 +37,7 @@ pub async fn list_buckets(auth: AuthUser) -> impl IntoResponse {
     Response::builder()
         .header(header::CONTENT_TYPE, "application/xml")
         .body(Body::from(xml))
-        .unwrap()
+        .expect("valid S3 response")
 }
 
 /// GET /s3/pcos-files?list-type=2 — ListObjectsV2
@@ -85,7 +85,7 @@ pub async fn list_objects(
     Ok(Response::builder()
         .header(header::CONTENT_TYPE, "application/xml")
         .body(Body::from(xml))
-        .unwrap())
+        .expect("valid S3 response"))
 }
 
 /// HEAD /s3/pcos-files/:key — HeadObject (file metadata)
@@ -111,11 +111,11 @@ pub async fn head_object(
             )
             .header(header::LAST_MODIFIED, modified)
             .body(Body::empty())
-            .unwrap()),
+            .expect("valid S3 response")),
         None => Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Body::empty())
-            .unwrap()),
+            .expect("valid S3 response")),
     }
 }
 

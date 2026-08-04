@@ -101,7 +101,7 @@ fn hmac_sha1(key: &[u8], msg: &[u8]) -> [u8; 20] {
 fn current_time_step() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .expect("system clock is after UNIX epoch")
         .as_secs()
         / 30
 }

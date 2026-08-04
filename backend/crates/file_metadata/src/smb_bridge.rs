@@ -57,7 +57,7 @@ impl SmbBridge {
 
     /// Get active session count.
     pub fn active_sessions(&self) -> usize {
-        self.sessions.read().unwrap().len()
+        self.sessions.read().map(|s| s.len()).unwrap_or(0)
     }
 
     /// Placeholder: Start the SMB listener on port 445.

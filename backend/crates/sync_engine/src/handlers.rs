@@ -48,7 +48,7 @@ async fn handle_sync_ws(mut socket: WebSocket, _state: AppState) {
                         payload: serde_json::json!({ "received": sync_msg.msg_type }),
                     };
                     if socket
-                        .send(Message::Text(serde_json::to_string(&response).unwrap()))
+                        .send(Message::Text(serde_json::to_string(&response).unwrap_or_default()))
                         .await
                         .is_err()
                     {

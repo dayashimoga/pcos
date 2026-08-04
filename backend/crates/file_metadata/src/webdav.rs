@@ -57,7 +57,7 @@ pub async fn propfind(
                     return Ok(Response::builder()
                         .status(StatusCode::NOT_FOUND)
                         .body(Body::empty())
-                        .unwrap());
+                        .expect("valid 404 response"));
                 }
             }
             _ => {
@@ -74,7 +74,7 @@ pub async fn propfind(
         .header(header::CONTENT_TYPE, "application/xml; charset=utf-8")
         .header("DAV", "1, 2")
         .body(Body::from(xml))
-        .unwrap())
+        .expect("valid 207 response"))
 }
 
 /// MKCOL — create a folder (WebDAV equivalent of mkdir)
@@ -151,5 +151,5 @@ pub async fn options() -> impl IntoResponse {
         )
         .header("MS-Author-Via", "DAV")
         .body(Body::empty())
-        .unwrap()
+        .expect("valid OPTIONS response")
 }
