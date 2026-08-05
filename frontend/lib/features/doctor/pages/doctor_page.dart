@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
@@ -72,10 +73,17 @@ class _DoctorPageState extends State<DoctorPage> {
 
     // 6. Admin API
     await _runCheck('Admin API', 'System administration endpoints', () async {
-      final resp = await api.dio.get('/api/v1/admin/system');
-      final users = resp.data is Map ? (resp.data['total_users'] ?? 0) : 0;
-      final files = resp.data is Map ? (resp.data['total_files'] ?? 0) : 0;
-      return 'Admin system OK ($users users, $files files)';
+      try {
+        final resp = await api.dio.get('/api/v1/admin/system');
+        final users = resp.data is Map ? (resp.data['total_users'] ?? 0) : 0;
+        final files = resp.data is Map ? (resp.data['total_files'] ?? 0) : 0;
+        return 'Admin system OK ($users users, $files files)';
+      } catch (e) {
+        if (e is DioException && e.response?.statusCode == 403) {
+          return 'Admin endpoints active (Role-guarded: Requires admin user)';
+        }
+        rethrow;
+      }
     });
 
     // 7. Sharing

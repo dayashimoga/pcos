@@ -42,11 +42,23 @@ pub async fn register(
     let password_hash = hash_password(&req.password)
         .map_err(|e| AppError::Internal(format!("Password hashing failed: {e}")))?;
 
+    // First user or admin email automatically gets admin role
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
+
+    let role = if count == 0 || email.starts_with("admin") {
+        "admin"
+    } else {
+        "user"
+    };
+
     // Create user
     let user = sqlx::query_as::<_, User>(
         r#"
-        INSERT INTO users (id, email, display_name, password_hash, is_active, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, true, NOW(), NOW())
+        INSERT INTO users (id, email, display_name, password_hash, role, is_active, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
         RETURNING *
         "#,
     )
@@ -54,6 +66,7 @@ pub async fn register(
     .bind(&email)
     .bind(&req.display_name)
     .bind(&password_hash)
+    .bind(role)
     .fetch_one(pool)
     .await?;
 
