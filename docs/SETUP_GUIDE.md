@@ -25,29 +25,24 @@
 - A server, desktop, or laptop (any OS — Linux, Windows, macOS)
 - At least 2 GB RAM, 10 GB disk space
 
-### 3-Command Setup
+### 1-Click Universal Setup (Any Laptop / Desktop / Server)
 
-```bash
-# Option A: One-Command Automated Installer
-curl -fsSL https://raw.githubusercontent.com/dayashimoga/pcos/main/install.sh | bash
+```powershell
+# Windows (PowerShell)
+.\spinup.ps1
 
-# Option B: Manual Setup
-# 1. Clone the repository
-git clone https://github.com/dayashimoga/pcos.git
-cd pcos
-
-# 2. Configure environment
-cp .env.example .env
-# Edit .env to set your passwords and domain:
-#   POSTGRES_PASSWORD=your_secure_password
-#   JWT_SECRET=your_random_32_char_secret
-#   PCOS_DOMAIN=cloud.yourdomain.com (or localhost for local)
-
-# 3. Start everything
-docker compose up -d
+# To stop: .\bringdown.ps1
 ```
 
-**That's it!** Open `http://localhost:3000` in your browser. On your first visit, you will be guided through the **3-step Setup Wizard** (`/setup`) to configure your admin account.
+```bash
+# Linux / macOS / Cloud VPS / Server (Bash)
+chmod +x spinup.sh bringdown.sh
+./spinup.sh
+
+# To stop: ./bringdown.sh
+```
+
+**That's it!** Open `http://localhost` in your browser. On your first visit, you will be guided through the **Setup Wizard** (`http://localhost/#/setup`) to configure your admin account.
 
 ---
 
