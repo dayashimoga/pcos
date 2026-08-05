@@ -15,4 +15,4 @@ RUN curl -L -o /tmp/gradle.zip https://github.com/gradle/gradle-distributions/re
 ENV PATH="/opt/gradle-8.3/bin:${PATH}"
 
 # Build APK using global Gradle 8.3
-RUN cd android && gradle assembleRelease && mkdir -p /app/build/app/outputs/flutter-apk && cp app/build/outputs/apk/release/app-release.apk /app/build/app/outputs/flutter-apk/app-release.apk
+RUN cd android && gradle assembleRelease && mkdir -p /app/build/app/outputs/flutter-apk && find . -name "*.apk" -exec cp {} /app/build/app/outputs/flutter-apk/ \;
