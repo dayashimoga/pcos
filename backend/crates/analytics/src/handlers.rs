@@ -13,7 +13,7 @@ pub async fn overview(
     let uid = auth.claims.sub;
     let (files,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM file_entries WHERE user_id=$1 AND entry_type='file' AND is_trashed=false").bind(uid).fetch_one(pool).await.unwrap_or((0,));
     let (folders,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM file_entries WHERE user_id=$1 AND entry_type='folder' AND is_trashed=false").bind(uid).fetch_one(pool).await.unwrap_or((0,));
-    let (size,): (Option<i64>,) = sqlx::query_as("SELECT SUM(size_bytes) FROM file_entries WHERE user_id=$1 AND entry_type='file' AND is_trashed=false").bind(uid).fetch_one(pool).await.unwrap_or((None,));
+    let (size,): (i64,) = sqlx::query_as("SELECT COALESCE(SUM(size_bytes), 0)::BIGINT FROM file_entries WHERE user_id=$1 AND entry_type='file' AND is_trashed=false").bind(uid).fetch_one(pool).await.unwrap_or((0,));
     let (devices,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM devices WHERE user_id=$1")
         .bind(uid)
         .fetch_one(pool)
@@ -32,9 +32,9 @@ pub async fn overview(
         .unwrap_or((0,));
 
     Ok(Json(serde_json::json!({
-        "total_files": files, "total_folders": folders, "total_size_bytes": size.unwrap_or(0),
+        "total_files": files, "total_folders": folders, "total_size_bytes": size,
         "total_devices": devices, "active_shares": shares, "total_backups": backups,
-        "formatted_size": format_bytes(size.unwrap_or(0))
+        "formatted_size": format_bytes(size)
     })))
 }
 
@@ -55,7 +55,7 @@ pub async fn storage_analytics(
 
     // Storage by type
     let by_type: Vec<(Option<String>, i64, i64)> = sqlx::query_as(
-        "SELECT COALESCE(SPLIT_PART(mime_type,'/',1),'unknown'), COUNT(*), COALESCE(SUM(size_bytes),0) FROM file_entries WHERE user_id=$1 AND entry_type='file' AND is_trashed=false GROUP BY 1 ORDER BY 3 DESC"
+        "SELECT COALESCE(SPLIT_PART(mime_type,'/',1),'unknown'), COUNT(*), COALESCE(SUM(size_bytes),0)::BIGINT FROM file_entries WHERE user_id=$1 AND entry_type='file' AND is_trashed=false GROUP BY 1 ORDER BY 3 DESC"
     ).bind(uid).fetch_all(pool).await.unwrap_or_default();
 
     let types: Vec<serde_json::Value> = by_type.into_iter().map(|(t, count, size)| {

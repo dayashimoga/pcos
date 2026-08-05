@@ -413,9 +413,9 @@ pub async fn storage_stats(pool: &PgPool, user_id: Uuid) -> AppResult<StorageSta
         "SELECT COUNT(*) FROM file_entries WHERE user_id = $1 AND entry_type = 'folder' AND is_trashed = false"
     ).bind(user_id).fetch_one(pool).await.unwrap_or((0,));
 
-    let (total_size,): (Option<i64>,) = sqlx::query_as(
-        "SELECT SUM(size_bytes) FROM file_entries WHERE user_id = $1 AND entry_type = 'file' AND is_trashed = false"
-    ).bind(user_id).fetch_one(pool).await.unwrap_or((None,));
+    let (total_size,): (i64,) = sqlx::query_as(
+        "SELECT COALESCE(SUM(size_bytes), 0)::BIGINT FROM file_entries WHERE user_id = $1 AND entry_type = 'file' AND is_trashed = false"
+    ).bind(user_id).fetch_one(pool).await.unwrap_or((0,));
 
     let (trashed,): (i64,) = sqlx::query_as(
         "SELECT COUNT(*) FROM file_entries WHERE user_id = $1 AND is_trashed = true",
@@ -428,7 +428,7 @@ pub async fn storage_stats(pool: &PgPool, user_id: Uuid) -> AppResult<StorageSta
     Ok(StorageStatsResponse {
         total_files,
         total_folders,
-        total_size_bytes: total_size.unwrap_or(0),
+        total_size_bytes: total_size,
         trashed_items: trashed,
     })
 }

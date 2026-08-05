@@ -138,7 +138,7 @@ pub async fn system_stats(
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
     let (total_storage,): (i64,) = sqlx::query_as(
-        "SELECT COALESCE(SUM(size_bytes), 0) FROM file_entries WHERE entry_type = 'file' AND is_trashed = false",
+        "SELECT COALESCE(SUM(size_bytes), 0)::BIGINT FROM file_entries WHERE entry_type = 'file' AND is_trashed = false",
     )
     .fetch_one(pool)
     .await

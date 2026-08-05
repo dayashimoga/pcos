@@ -50,8 +50,8 @@ pub async fn create_backup(
     // Count user's files
     let (file_count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM file_entries WHERE user_id = $1 AND entry_type = 'file' AND is_trashed = false")
         .bind(user_id).fetch_one(pool).await.unwrap_or((0,));
-    let (total_size,): (Option<i64>,) = sqlx::query_as("SELECT SUM(size_bytes) FROM file_entries WHERE user_id = $1 AND entry_type = 'file' AND is_trashed = false")
-        .bind(user_id).fetch_one(pool).await.unwrap_or((None,));
+    let (total_size,): (i64,) = sqlx::query_as("SELECT COALESCE(SUM(size_bytes), 0)::BIGINT FROM file_entries WHERE user_id = $1 AND entry_type = 'file' AND is_trashed = false")
+        .bind(user_id).fetch_one(pool).await.unwrap_or((0,));
 
     // Get base storage path from environment
     let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
@@ -89,7 +89,7 @@ pub async fn create_backup(
         "created_at": chrono::Utc::now().to_rfc3339(),
         "file_count": file_count,
         "files_copied": copied,
-        "total_size_bytes": total_size.unwrap_or(0),
+        "total_size_bytes": total_size,
         "files": files.iter().map(|(id, name, path, size)| {
             serde_json::json!({"id": id, "name": name, "storage_path": path, "size_bytes": size})
         }).collect::<Vec<_>>(),
@@ -125,7 +125,7 @@ pub async fn create_backup(
 
     let backup = sqlx::query_as::<_, Backup>(
         "INSERT INTO backups (id, user_id, name, status, size_bytes, file_count, storage_path, created_at, completed_at) VALUES ($1,$2,$3,'completed',$4,$5,$6,NOW(),NOW()) RETURNING *"
-    ).bind(backup_id).bind(user_id).bind(&req.name).bind(total_size.unwrap_or(0)).bind(file_count).bind(&storage_path)
+    ).bind(backup_id).bind(user_id).bind(&req.name).bind(total_size).bind(file_count).bind(&storage_path)
     .fetch_one(pool).await?;
 
     tracing::info!(backup_id = %backup.id, files = file_count, copied = copied, "Backup created with file copy");
