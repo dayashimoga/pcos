@@ -161,24 +161,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return 'Invalid email or password';
       }
       if (error.response?.statusCode == 409) {
-        return 'This email is already registered';
+        return 'This email is already registered. Tap "Sign In" below to log in.';
       }
       if (error.response?.data is Map &&
           error.response?.data['message'] != null) {
-        return error.response?.data['message'].toString() ??
-            'Authentication failed';
+        final msg = error.response?.data['message'].toString() ?? '';
+        if (msg.toLowerCase().contains('already registered') ||
+            msg.contains('Conflict')) {
+          return 'This email is already registered. Tap "Sign In" below to log in.';
+        }
+        return msg;
       }
       if (error.type == DioExceptionType.connectionError ||
           error.type == DioExceptionType.connectionTimeout) {
-        return 'Unable to connect to server. Please ensure PCOS server is running.';
+        return 'Unable to connect to server. Please ensure PCOS server is running and reachable.';
       }
     }
     final str = error.toString().toLowerCase();
     if (str.contains('401') || str.contains('unauthorized')) {
       return 'Invalid email or password';
     }
-    if (str.contains('409') || str.contains('conflict')) {
-      return 'This email is already registered';
+    if (str.contains('409') ||
+        str.contains('conflict') ||
+        str.contains('already registered')) {
+      return 'This email is already registered. Tap "Sign In" below to log in.';
     }
     return 'Authentication failed. Please check your credentials and try again.';
   }

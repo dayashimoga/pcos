@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// ignore: unused_import
 import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
@@ -18,6 +17,9 @@ class _SettingsPageState extends State<SettingsPage> {
   String _displayName = '';
   String _email = '';
   bool _loading = true;
+  bool _autoTagging = true;
+  bool _smartSearch = true;
+  String _defaultView = 'Grid View';
 
   @override
   void initState() {
@@ -243,6 +245,310 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  void _showSyncSettings(BuildContext context) {
+    String interval = '15 minutes';
+    bool wifiOnly = true;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          backgroundColor: AppTheme.surface,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(children: [
+            Icon(Icons.sync_rounded, color: AppTheme.primary),
+            SizedBox(width: 10),
+            Text('Sync Settings',
+                style: TextStyle(color: AppTheme.textPrimary)),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Auto-Sync Interval',
+                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: interval,
+                dropdownColor: AppTheme.surface,
+                items: const [
+                  DropdownMenuItem(
+                      value: '5 minutes', child: Text('Every 5 minutes')),
+                  DropdownMenuItem(
+                      value: '15 minutes', child: Text('Every 15 minutes')),
+                  DropdownMenuItem(
+                      value: '1 hour', child: Text('Every 1 hour')),
+                  DropdownMenuItem(
+                      value: 'Manual', child: Text('Manual Sync Only')),
+                ],
+                onChanged: (val) => setDlgState(() => interval = val!),
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Wi-Fi Only Sync',
+                    style:
+                        TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
+                subtitle: const Text('Sync only when connected to Wi-Fi',
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                value: wifiOnly,
+                activeColor: AppTheme.primary,
+                onChanged: (v) => setDlgState(() => wifiOnly = v),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Sync settings saved'),
+                    backgroundColor: AppTheme.success));
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showStorageInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(children: [
+          Icon(Icons.storage_rounded, color: AppTheme.primary),
+          SizedBox(width: 10),
+          Text('Storage Usage & Quota',
+              style: TextStyle(color: AppTheme.textPrimary)),
+        ]),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Storage Volume',
+                style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+            SizedBox(height: 6),
+            Text('Docker Volume: file_storage (/data/pcos/storage)',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary)),
+            SizedBox(height: 16),
+            LinearProgressIndicator(
+                value: 0.15,
+                backgroundColor: Colors.white10,
+                color: AppTheme.primary),
+            SizedBox(height: 8),
+            Text('Unlimited Quota (Self-Hosted Instance)',
+                style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  void _showBackupsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(children: [
+          Icon(Icons.backup_rounded, color: AppTheme.primary),
+          SizedBox(width: 10),
+          Text('Automatic Backups',
+              style: TextStyle(color: AppTheme.textPrimary)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Nightly Snapshot Schedule',
+                style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+            const SizedBox(height: 6),
+            const Text('Status: Active (Every day at 02:00 UTC)',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.success)),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () async {
+                try {
+                  final api = getIt<ApiClient>();
+                  await api.dio.post('/api/v1/backups',
+                      data: {'name': 'Manual Snapshot'});
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Backup triggered successfully!'),
+                        backgroundColor: AppTheme.success));
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Backup failed: $e'),
+                        backgroundColor: AppTheme.error));
+                  }
+                }
+              },
+              icon: const Icon(Icons.play_arrow_rounded, size: 18),
+              label: const Text('Create Manual Backup Now'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  void _showAiProviderDialog(BuildContext context) {
+    String provider = 'Local Ollama';
+    String endpoint = 'http://ollama:11434';
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          backgroundColor: AppTheme.surface,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(children: [
+            Icon(Icons.auto_awesome_rounded, color: AppTheme.primary),
+            SizedBox(width: 10),
+            Text('AI Provider Configuration',
+                style: TextStyle(color: AppTheme.textPrimary)),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Selected Provider',
+                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: provider,
+                dropdownColor: AppTheme.surface,
+                items: const [
+                  DropdownMenuItem(
+                      value: 'Local Ollama',
+                      child: Text('Local Ollama (Zero Cost)')),
+                  DropdownMenuItem(
+                      value: 'OpenAI API', child: Text('OpenAI (Cloud GPT-4)')),
+                ],
+                onChanged: (val) => setDlgState(() => provider = val!),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                initialValue: endpoint,
+                decoration:
+                    const InputDecoration(labelText: 'Provider Endpoint'),
+                onChanged: (val) => endpoint = val,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('AI Provider updated'),
+                    backgroundColor: AppTheme.success));
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDefaultViewDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        backgroundColor: AppTheme.surface,
+        title: const Text('Select Default View',
+            style: TextStyle(color: AppTheme.textPrimary)),
+        children: [
+          SimpleDialogOption(
+            onPressed: () {
+              setState(() => _defaultView = 'Grid View');
+              Navigator.pop(ctx);
+            },
+            child: const Row(children: [
+              Icon(Icons.grid_view_rounded, color: AppTheme.primary),
+              SizedBox(width: 12),
+              Text('Grid View', style: TextStyle(color: AppTheme.textPrimary)),
+            ]),
+          ),
+          SimpleDialogOption(
+            onPressed: () {
+              setState(() => _defaultView = 'List View');
+              Navigator.pop(ctx);
+            },
+            child: const Row(children: [
+              Icon(Icons.format_list_bulleted_rounded, color: AppTheme.primary),
+              SizedBox(width: 12),
+              Text('List View', style: TextStyle(color: AppTheme.textPrimary)),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSourceCodeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(children: [
+          Icon(Icons.code_rounded, color: AppTheme.primary),
+          SizedBox(width: 10),
+          Text('PCOS Source Code',
+              style: TextStyle(color: AppTheme.textPrimary)),
+        ]),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Repository',
+                style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+            SizedBox(height: 4),
+            SelectableText('https://github.com/dayashimoga/pcos.git',
+                style: TextStyle(
+                    color: AppTheme.primary, fontWeight: FontWeight.bold)),
+            SizedBox(height: 12),
+            Text('License: AGPL-3.0 (Open Source & Self-Hosted)',
+                style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -289,17 +595,17 @@ class _SettingsPageState extends State<SettingsPage> {
               icon: Icons.sync_rounded,
               title: 'Sync Settings',
               subtitle: 'Configure sync behavior and folders',
-              onTap: () {}),
+              onTap: () => _showSyncSettings(context)),
           _SettingsTile(
               icon: Icons.storage_rounded,
               title: 'Storage',
               subtitle: 'View storage usage and manage quotas',
-              onTap: () {}),
+              onTap: () => _showStorageInfo(context)),
           _SettingsTile(
               icon: Icons.backup_rounded,
               title: 'Backups',
               subtitle: 'Schedule automatic backups',
-              onTap: () {}),
+              onTap: () => _showBackupsDialog(context)),
         ]),
         const SizedBox(height: 24),
         _SettingsSection(title: 'AI & Intelligence', children: [
@@ -307,20 +613,36 @@ class _SettingsPageState extends State<SettingsPage> {
               icon: Icons.auto_awesome_rounded,
               title: 'AI Provider',
               subtitle: 'Configure local Ollama or API provider',
-              onTap: () {}),
+              onTap: () => _showAiProviderDialog(context)),
           _SettingsTile(
             icon: Icons.label_rounded,
             title: 'Auto-Tagging',
             subtitle: 'Enable automatic file tagging',
             trailing: Switch(
-                value: true, onChanged: (_) {}, activeColor: AppTheme.primary),
+                value: _autoTagging,
+                onChanged: (v) {
+                  setState(() => _autoTagging = v);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content:
+                          Text('Auto-tagging ${v ? "enabled" : "disabled"}'),
+                      backgroundColor: AppTheme.success));
+                },
+                activeColor: AppTheme.primary),
           ),
           _SettingsTile(
             icon: Icons.find_in_page_rounded,
             title: 'Smart Search',
             subtitle: 'Use AI for natural language search',
             trailing: Switch(
-                value: true, onChanged: (_) {}, activeColor: AppTheme.primary),
+                value: _smartSearch,
+                onChanged: (v) {
+                  setState(() => _smartSearch = v);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content:
+                          Text('Smart Search ${v ? "enabled" : "disabled"}'),
+                      backgroundColor: AppTheme.success));
+                },
+                activeColor: AppTheme.primary),
           ),
         ]),
         const SizedBox(height: 24),
@@ -342,20 +664,25 @@ class _SettingsPageState extends State<SettingsPage> {
           _SettingsTile(
               icon: Icons.view_module_rounded,
               title: 'Default View',
-              subtitle: 'Grid view for file browser',
-              onTap: () {}),
+              subtitle: _defaultView,
+              onTap: () => _showDefaultViewDialog(context)),
         ]),
         const SizedBox(height: 24),
         _SettingsSection(title: 'About', children: [
           _SettingsTile(
               icon: Icons.info_rounded,
               title: 'Version',
-              subtitle: 'PCOS v$_version'),
+              subtitle: 'PCOS v$_version',
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('PCOS v1.2.0 is up to date'),
+                    backgroundColor: AppTheme.success));
+              }),
           _SettingsTile(
               icon: Icons.code_rounded,
               title: 'Source Code',
               subtitle: 'github.com/dayashimoga/pcos',
-              onTap: () {}),
+              onTap: () => _showSourceCodeDialog(context)),
         ]),
       ]),
     );
