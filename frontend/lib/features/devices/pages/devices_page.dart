@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/theme/app_theme.dart';
 import '../bloc/device_bloc.dart';
@@ -56,11 +57,21 @@ class _DevicesContent extends StatelessWidget {
                           style: Theme.of(context).textTheme.bodyLarge),
                     ],
                   ),
-                  ElevatedButton.icon(
-                    key: const Key('add_device_button'),
-                    onPressed: () => _showAddDeviceDialog(context),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Add Device'),
+                  Row(
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => context.go('/devices/pair'),
+                        icon: const Icon(Icons.qr_code_rounded, size: 18),
+                        label: const Text('Pair Mobile via QR Code'),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        key: const Key('add_device_button'),
+                        onPressed: () => _showAddDeviceDialog(context),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Add Device'),
+                      ),
+                    ],
                   ),
                 ],
               ),

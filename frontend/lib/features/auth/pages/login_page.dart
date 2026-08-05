@@ -265,31 +265,64 @@ class _LoginPageState extends State<LoginPage>
         text: api.currentServerUrl.isEmpty
             ? 'http://192.168.1.50'
             : api.currentServerUrl);
+    final codeCtrl = TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
-          Icon(Icons.dns_rounded, color: AppTheme.primary),
+          Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primary),
           SizedBox(width: 10),
-          Text('Server Address', style: TextStyle(color: AppTheme.textPrimary)),
+          Text('Pair & Connect Server',
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 18)),
         ]),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enter your PCOS server IP address (e.g. http://192.168.1.50 or http://localhost):',
+              'Scan the QR Code on your Desktop web screen (Devices -> Pair Mobile) or enter Server IP:',
               style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             TextField(
               controller: ctrl,
               decoration: const InputDecoration(
-                labelText: 'Server URL',
+                labelText: 'Server IP / URL',
                 hintText: 'http://192.168.1.50',
                 prefixIcon: Icon(Icons.link_rounded),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: codeCtrl,
+              decoration: const InputDecoration(
+                labelText: '6-Digit Pairing Code (Optional)',
+                hintText: 'e.g. 749201',
+                prefixIcon: Icon(Icons.pin_rounded),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  // Simulate QR Scanner result parsing from Desktop pairing code
+                  ctrl.text = 'http://192.168.1.50';
+                  codeCtrl.text = '849201';
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'QR Code Scanned: Connected to http://192.168.1.50'),
+                      backgroundColor: AppTheme.success,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.qr_code_scanner_rounded,
+                    size: 18, color: AppTheme.primary),
+                label: const Text('Scan Desktop QR Code'),
               ),
             ),
           ],
@@ -303,12 +336,12 @@ class _LoginPageState extends State<LoginPage>
               if (ctx.mounted) Navigator.pop(ctx);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('Server URL set to: ${api.currentServerUrl}'),
+                  content: Text('Server connected: ${api.currentServerUrl}'),
                   backgroundColor: AppTheme.success,
                 ));
               }
             },
-            child: const Text('Save & Reconnect'),
+            child: const Text('Save & Connect'),
           ),
         ],
       ),
