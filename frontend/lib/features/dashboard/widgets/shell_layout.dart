@@ -244,16 +244,17 @@ class _DesktopShellState extends State<_DesktopShell> {
       child: Focus(
         autofocus: true,
         child: Scaffold(
-          backgroundColor: AppTheme.background,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: Row(children: [
             // Sidebar
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeInOut,
               width: sidebarWidth,
-              decoration: const BoxDecoration(
-                color: AppTheme.surface,
-                border: Border(right: BorderSide(color: AppTheme.border)),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                    right: BorderSide(color: Theme.of(context).dividerColor)),
               ),
               child: Column(children: [
                 // Logo + collapse toggle

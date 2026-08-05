@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -258,23 +259,93 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  Widget _buildFooter() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          "Don't have an account?",
-          style: TextStyle(color: Colors.white.withOpacity(0.6)),
-        ),
-        TextButton(
-          key: const Key('register_link'),
-          onPressed: () => context.go('/register'),
-          child: const Text(
-            'Create One',
-            style: TextStyle(
-              color: AppTheme.primary,
-              fontWeight: FontWeight.bold,
+  void _showServerConfig(BuildContext context) {
+    final api = getIt<ApiClient>();
+    final ctrl = TextEditingController(
+        text: api.currentServerUrl.isEmpty
+            ? 'http://192.168.1.50'
+            : api.currentServerUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(children: [
+          Icon(Icons.dns_rounded, color: AppTheme.primary),
+          SizedBox(width: 10),
+          Text('Server Address', style: TextStyle(color: AppTheme.textPrimary)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your PCOS server IP address (e.g. http://192.168.1.50 or http://localhost):',
+              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
             ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              decoration: const InputDecoration(
+                labelText: 'Server URL',
+                hintText: 'http://192.168.1.50',
+                prefixIcon: Icon(Icons.link_rounded),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () async {
+              await api.setServerUrl(ctrl.text.trim());
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Server URL set to: ${api.currentServerUrl}'),
+                  backgroundColor: AppTheme.success,
+                ));
+              }
+            },
+            child: const Text('Save & Reconnect'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "Don't have an account?",
+              style: TextStyle(color: Colors.white.withOpacity(0.6)),
+            ),
+            TextButton(
+              key: const Key('register_link'),
+              onPressed: () => context.go('/register'),
+              child: const Text(
+                'Create One',
+                style: TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        TextButton.icon(
+          onPressed: () => _showServerConfig(context),
+          icon: const Icon(Icons.settings_ethernet_rounded,
+              size: 16, color: AppTheme.textMuted),
+          label: Text(
+            'Server: ${getIt<ApiClient>().currentServerUrl.isEmpty ? "Default (Local)" : getIt<ApiClient>().currentServerUrl}',
+            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
           ),
         ),
       ],

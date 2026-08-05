@@ -8,6 +8,7 @@ class ApiClient {
 
   static const String _accessTokenKey = 'pcos_access_token';
   static const String _refreshTokenKey = 'pcos_refresh_token';
+  static const String _serverUrlKey = 'pcos_server_url';
 
   static String _resolveBaseUrl() {
     const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
@@ -20,9 +21,30 @@ class ApiClient {
     return envUrl;
   }
 
+  String get currentServerUrl {
+    final stored = prefs.getString(_serverUrlKey);
+    if (stored != null && stored.isNotEmpty) {
+      return stored;
+    }
+    return _resolveBaseUrl();
+  }
+
+  Future<void> setServerUrl(String url) async {
+    String cleanUrl = url.trim();
+    if (cleanUrl.endsWith('/')) {
+      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
+    }
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'http://$cleanUrl';
+    }
+    await prefs.setString(_serverUrlKey, cleanUrl);
+    dio.options.baseUrl = cleanUrl;
+  }
+
   ApiClient({required this.prefs}) {
+    final initialUrl = prefs.getString(_serverUrlKey) ?? _resolveBaseUrl();
     dio = Dio(BaseOptions(
-      baseUrl: _resolveBaseUrl(),
+      baseUrl: initialUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
