@@ -53,9 +53,9 @@ class _DoctorPageState extends State<DoctorPage> {
 
     // 4. File Storage
     await _runCheck('File Storage', 'Storage directory accessible', () async {
-      final resp = await api.dio.get('/api/v1/files');
-      final total = resp.data['total'] ?? 0;
-      return '$total entries in root';
+      final resp = await api.dio.get('/api/v1/storage/stats');
+      final total = resp.data is Map ? (resp.data['total_files'] ?? 0) : 0;
+      return 'Storage active ($total files stored)';
     });
 
     // 5. Search Engine
@@ -63,28 +63,42 @@ class _DoctorPageState extends State<DoctorPage> {
         () async {
       final resp =
           await api.dio.get('/api/v1/search', queryParameters: {'q': 'test'});
-      final count = (resp.data['results'] as List?)?.length ?? 0;
+      int count = 0;
+      if (resp.data is Map && resp.data['results'] is List) {
+        count = (resp.data['results'] as List).length;
+      }
       return 'Index available ($count results for test query)';
     });
 
     // 6. Admin API
     await _runCheck('Admin API', 'System administration endpoints', () async {
-      final resp = await api.dio.get('/api/v1/admin/overview');
-      final users = resp.data['total_users'] ?? 0;
-      return '$users users, ${resp.data['total_files'] ?? 0} files';
+      final resp = await api.dio.get('/api/v1/admin/system');
+      final users = resp.data is Map ? (resp.data['total_users'] ?? 0) : 0;
+      final files = resp.data is Map ? (resp.data['total_files'] ?? 0) : 0;
+      return 'Admin system OK ($users users, $files files)';
     });
 
     // 7. Sharing
     await _runCheck('Sharing', 'Share link creation and management', () async {
       final resp = await api.dio.get('/api/v1/shares');
-      final count = (resp.data as List?)?.length ?? 0;
+      int count = 0;
+      if (resp.data is Map && resp.data['shares'] is List) {
+        count = (resp.data['shares'] as List).length;
+      } else if (resp.data is List) {
+        count = (resp.data as List).length;
+      }
       return '$count active share links';
     });
 
     // 8. Device Sync
     await _runCheck('Device Sync', 'Device registration and sync', () async {
       final resp = await api.dio.get('/api/v1/devices');
-      final count = (resp.data as List?)?.length ?? 0;
+      int count = 0;
+      if (resp.data is List) {
+        count = (resp.data as List).length;
+      } else if (resp.data is Map && resp.data['devices'] is List) {
+        count = (resp.data['devices'] as List).length;
+      }
       return '$count registered devices';
     });
 
@@ -97,7 +111,12 @@ class _DoctorPageState extends State<DoctorPage> {
     // 10. Trash
     await _runCheck('Trash', 'Soft-delete and recovery system', () async {
       final resp = await api.dio.get('/api/v1/trash');
-      final count = (resp.data as List?)?.length ?? 0;
+      int count = 0;
+      if (resp.data is Map && resp.data['items'] is List) {
+        count = (resp.data['items'] as List).length;
+      } else if (resp.data is List) {
+        count = (resp.data as List).length;
+      }
       return '$count items in trash';
     });
 
