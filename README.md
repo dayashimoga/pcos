@@ -119,11 +119,13 @@ cd backend && cargo test --test integration -- --ignored
 
 | Document | Description |
 |----------|-------------|
+| [Comprehensive FAQ](docs/FAQ.md) | All setup, 5 transfer methods, custom drive paths, K3s, and troubleshooting |
+| [Setup Guide](docs/SETUP_GUIDE.md) | 1-Click spinup scripts and initial configuration |
 | [Architecture](docs/ARCHITECTURE.md) | System design and crate structure |
 | [API Reference](docs/API_REFERENCE.md) | All 55+ endpoints |
 | [Database Design](docs/DATABASE_DESIGN.md) | 12 tables with schema |
 | [Security](docs/SECURITY.md) | Auth, hashing, validation |
-| [Deployment](docs/DEPLOYMENT.md) | Docker and bare-metal setup |
+| [Deployment](docs/DEPLOYMENT.md) | Docker, K3s, and bare-metal setup |
 | [Operations](docs/OPERATIONS.md) | Runbook, troubleshooting, backup |
 | [Implementation](docs/IMPLEMENTATION.md) | Feature checklist by crate |
 | [Changelog](docs/CHANGELOG.md) | Version history |
