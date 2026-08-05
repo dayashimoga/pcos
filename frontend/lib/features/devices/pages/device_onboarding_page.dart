@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
@@ -243,27 +244,28 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
   }
 
   Widget _buildQrPlaceholder() {
-    // Generate a visual QR-like pattern from the code
-    if (_onboardingCode == null) {
+    if (_qrData == null) {
       return const Center(
           child: Icon(Icons.qr_code_rounded, size: 80, color: Colors.black12));
     }
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        // QR pattern using Icon
-        const Icon(Icons.qr_code_2_rounded, size: 100, color: Colors.black87),
-        const SizedBox(height: 12),
-        Text('PCOS',
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: Colors.grey.shade700,
-                letterSpacing: 2)),
-        Text(_qrData?.replaceAll(RegExp(r'https?://'), '') ?? '',
-            style: TextStyle(fontSize: 8, color: Colors.grey.shade500),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1),
+        QrImageView(
+          data: _qrData!,
+          version: QrVersions.auto,
+          size: 150.0,
+          backgroundColor: Colors.white,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'PCOS PAIRING',
+          style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Colors.grey.shade700,
+              letterSpacing: 2),
+        ),
       ]),
     );
   }
