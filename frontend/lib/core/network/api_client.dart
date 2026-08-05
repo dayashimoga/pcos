@@ -9,10 +9,20 @@ class ApiClient {
   static const String _accessTokenKey = 'pcos_access_token';
   static const String _refreshTokenKey = 'pcos_refresh_token';
 
+  static String _resolveBaseUrl() {
+    const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+    if (envUrl == '/' || envUrl.isEmpty) {
+      return '';
+    }
+    if (envUrl.endsWith('/')) {
+      return envUrl.substring(0, envUrl.length - 1);
+    }
+    return envUrl;
+  }
+
   ApiClient({required this.prefs}) {
     dio = Dio(BaseOptions(
-      // In production, this is the same origin. In dev, use env variable.
-      baseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: '/'),
+      baseUrl: _resolveBaseUrl(),
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 30),
       headers: {

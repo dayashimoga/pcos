@@ -7,7 +7,7 @@ COPY pubspec.yaml pubspec.lock* ./
 RUN flutter pub get
 
 COPY . .
-RUN flutter build web --release --dart-define=API_BASE_URL=/
+RUN flutter build web --release
 
 # Runtime stage - serve with nginx
 FROM nginx:alpine AS runtime

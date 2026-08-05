@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/router/app_router.dart';
@@ -155,12 +156,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   String _extractErrorMessage(dynamic error) {
-    if (error.toString().contains('Conflict')) {
-      return 'This email is already registered';
+    if (error is DioException) {
+      if (error.response?.statusCode == 401) {
+        return 'Invalid email or password';
+      }
+      if (error.response?.statusCode == 409) {
+        return 'This email is already registered';
+      }
+      if (error.response?.data is Map &&
+          error.response?.data['message'] != null) {
+        return error.response?.data['message'].toString() ??
+            'Authentication failed';
+      }
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout) {
+        return 'Unable to connect to server. Please ensure PCOS server is running.';
+      }
     }
-    if (error.toString().contains('Unauthorized')) {
+    final str = error.toString().toLowerCase();
+    if (str.contains('401') || str.contains('unauthorized')) {
       return 'Invalid email or password';
     }
-    return 'An error occurred. Please try again.';
+    if (str.contains('409') || str.contains('conflict')) {
+      return 'This email is already registered';
+    }
+    return 'Authentication failed. Please check your credentials and try again.';
   }
 }

@@ -34,20 +34,24 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
   }
 
   Future<void> _checkServer() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final api = getIt<ApiClient>();
       final resp = await api.dio.get('/api/v1/health');
       setState(() {
         _serverReachable = true;
         _healthData = Map<String, dynamic>.from(resp.data);
-        _serverVersion = _healthData['version'] ?? 'unknown';
+        _serverVersion = _healthData['version'] ?? '0.1.0';
         _loading = false;
       });
     } catch (e) {
       setState(() {
         _serverReachable = false;
-        _error = 'Cannot reach PCOS server: $e';
+        _error =
+            'Unable to connect to PCOS server. Please ensure the server containers are running and click Retry Connection.';
         _loading = false;
       });
     }
