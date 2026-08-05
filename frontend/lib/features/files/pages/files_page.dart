@@ -36,6 +36,30 @@ class _FilesContentState extends State<_FilesContent> {
   String? _currentFolderId;
   String _sortBy = 'name';
   bool _sortAsc = true;
+  // Bulk selection
+  final Set<String> _selectedIds = {};
+  bool _selectionMode = false;
+  // Drag-and-drop
+  final bool _isDragOver = false;
+
+  void _exitSelectionMode() {
+    setState(() {
+      _selectionMode = false;
+      _selectedIds.clear();
+    });
+  }
+
+  void _toggleSelection(String id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+        if (_selectedIds.isEmpty) _selectionMode = false;
+      } else {
+        _selectedIds.add(id);
+        _selectionMode = true;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +68,7 @@ class _FilesContentState extends State<_FilesContent> {
     return BlocConsumer<FileBloc, FileState>(
       listener: (context, state) {
         if (state is FileActionSuccess) {
+          _exitSelectionMode();
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Row(children: [
               const Icon(Icons.check_circle_rounded,
@@ -76,128 +101,249 @@ class _FilesContentState extends State<_FilesContent> {
         }
       },
       builder: (context, state) {
-        return RefreshIndicator(
-          onRefresh: () async {
-            context
-                .read<FileBloc>()
-                .add(FilesLoadRequested(folderId: _currentFolderId));
-            await Future.delayed(const Duration(milliseconds: 500));
-          },
-          child: CustomScrollView(
-            slivers: [
-              // Header
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      isWide ? 24 : 16, isWide ? 24 : 16, isWide ? 24 : 16, 0),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Title row — responsive
-                        if (isWide)
-                          Row(children: [
-                            Expanded(
-                                child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                  Text('Files',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .displayMedium),
-                                  const SizedBox(height: 4),
-                                  Text('Manage your files and folders',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge),
-                                ])),
-                            _buildToolbar(context),
-                          ])
-                        else ...[
-                          Text('Files',
-                              style: Theme.of(context).textTheme.headlineLarge),
-                          const SizedBox(height: 12),
-                          _buildToolbar(context),
-                        ],
-                        const SizedBox(height: 16),
-
-                        // Breadcrumb
-                        if (state is FileLoaded && state.breadcrumb.isNotEmpty)
-                          _Breadcrumb(
-                              items: state.breadcrumb,
-                              onTap: (id) {
-                                _currentFolderId = id;
-                                context
-                                    .read<FileBloc>()
-                                    .add(FilesLoadRequested(folderId: id));
-                              }),
-                        const SizedBox(height: 12),
+        return Stack(children: [
+          RefreshIndicator(
+            onRefresh: () async {
+              context
+                  .read<FileBloc>()
+                  .add(FilesLoadRequested(folderId: _currentFolderId));
+              await Future.delayed(const Duration(milliseconds: 500));
+            },
+            child: CustomScrollView(
+              slivers: [
+                // Bulk selection bar
+                if (_selectionMode)
+                  SliverToBoxAdapter(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      color: AppTheme.primary.withOpacity(0.08),
+                      child: Row(children: [
+                        IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            onPressed: _exitSelectionMode),
+                        Text('${_selectedIds.length} selected',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primary)),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.select_all_rounded, size: 20),
+                          tooltip: 'Select all',
+                          onPressed: () {
+                            if (state is FileLoaded) {
+                              setState(() {
+                                for (final e in state.entries) {
+                                  _selectedIds.add(e['id'].toString());
+                                }
+                              });
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded,
+                              size: 20, color: AppTheme.error),
+                          tooltip: 'Delete selected',
+                          onPressed: () {
+                            context.read<FileBloc>().add(
+                                BulkDeleteRequested(_selectedIds.toList()));
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.download_rounded, size: 20),
+                          tooltip: 'Download selected',
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(
+                                  'Downloading ${_selectedIds.length} items...'),
+                              backgroundColor: AppTheme.primary,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ));
+                          },
+                        ),
                       ]),
-                ),
-              ),
+                    ),
+                  ),
+                // Header
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(isWide ? 24 : 16,
+                        isWide ? 24 : 16, isWide ? 24 : 16, 0),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title row — responsive
+                          if (isWide)
+                            Row(children: [
+                              Expanded(
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                    Text('Files',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .displayMedium),
+                                    const SizedBox(height: 4),
+                                    Text('Manage your files and folders',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge),
+                                  ])),
+                              _buildToolbar(context),
+                            ])
+                          else ...[
+                            Text('Files',
+                                style:
+                                    Theme.of(context).textTheme.headlineLarge),
+                            const SizedBox(height: 12),
+                            _buildToolbar(context),
+                          ],
+                          const SizedBox(height: 16),
 
-              // Content
-              if (state is FileLoading)
-                SliverToBoxAdapter(child: _buildLoadingSkeleton(isWide))
-              else if (state is FileError)
-                SliverToBoxAdapter(
-                    child: _buildErrorState(context, state.message))
-              else if (state is FileLoaded && state.entries.isEmpty)
-                SliverToBoxAdapter(
-                    child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16),
-                  child: _EmptyFolder(
-                      onUpload: () => _handleUpload(context),
-                      onNewFolder: () => _showNewFolderDialog(context)),
-                ))
-              else if (state is FileLoaded) ...[
-                if (_isGridView)
-                  SliverPadding(
-                    padding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16),
-                    sliver:
-                        SliverLayoutBuilder(builder: (context, constraints) {
-                      final w = constraints.crossAxisExtent;
-                      final cols = w >= 1200
-                          ? 6
-                          : w >= 900
-                              ? 5
-                              : w >= 600
-                                  ? 3
-                                  : 2;
-                      final sorted = _sortEntries(state.entries);
-                      return SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: cols,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.0,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (_, i) => _FileGridCard(
-                              entry: sorted[i],
-                              onTap: () => _handleItemTap(context, sorted[i]),
-                              onAction: (a) =>
-                                  _handleAction(context, sorted[i], a)),
-                          childCount: sorted.length,
-                        ),
-                      );
-                    }),
-                  )
-                else
+                          // Breadcrumb
+                          if (state is FileLoaded &&
+                              state.breadcrumb.isNotEmpty)
+                            _Breadcrumb(
+                                items: state.breadcrumb,
+                                onTap: (id) {
+                                  _currentFolderId = id;
+                                  context
+                                      .read<FileBloc>()
+                                      .add(FilesLoadRequested(folderId: id));
+                                }),
+                          const SizedBox(height: 12),
+                        ]),
+                  ),
+                ),
+
+                // Content
+                if (state is FileLoading)
+                  SliverToBoxAdapter(child: _buildLoadingSkeleton(isWide))
+                else if (state is FileError)
+                  SliverToBoxAdapter(
+                      child: _buildErrorState(context, state.message))
+                else if (state is FileLoaded && state.entries.isEmpty)
                   SliverToBoxAdapter(
                       child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16),
-                    child: _FileList(
-                        entries: _sortEntries(state.entries),
-                        onTap: (e) => _handleItemTap(context, e),
-                        onAction: (e, a) => _handleAction(context, e, a)),
-                  )),
-              ],
+                    child: _EmptyFolder(
+                        onUpload: () => _handleUpload(context),
+                        onNewFolder: () => _showNewFolderDialog(context)),
+                  ))
+                else if (state is FileLoaded) ...[
+                  if (_isGridView)
+                    SliverPadding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: isWide ? 24 : 16),
+                      sliver:
+                          SliverLayoutBuilder(builder: (context, constraints) {
+                        final w = constraints.crossAxisExtent;
+                        final cols = w >= 1200
+                            ? 6
+                            : w >= 900
+                                ? 5
+                                : w >= 600
+                                    ? 3
+                                    : 2;
+                        final sorted = _sortEntries(state.entries);
+                        return SliverGrid(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: cols,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 1.0,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (_, i) => _FileGridCard(
+                                entry: sorted[i],
+                                selected: _selectedIds
+                                    .contains(sorted[i]['id']?.toString()),
+                                selectionMode: _selectionMode,
+                                onTap: () {
+                                  if (_selectionMode) {
+                                    _toggleSelection(
+                                        sorted[i]['id'].toString());
+                                  } else {
+                                    _handleItemTap(context, sorted[i]);
+                                  }
+                                },
+                                onLongPress: () => _toggleSelection(
+                                    sorted[i]['id'].toString()),
+                                onAction: (a) =>
+                                    _handleAction(context, sorted[i], a)),
+                            childCount: sorted.length,
+                          ),
+                        );
+                      }),
+                    )
+                  else
+                    SliverToBoxAdapter(
+                        child: Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: isWide ? 24 : 16),
+                      child: _FileList(
+                          entries: _sortEntries(state.entries),
+                          selectedIds: _selectedIds,
+                          selectionMode: _selectionMode,
+                          onTap: (e) {
+                            if (_selectionMode) {
+                              _toggleSelection(e['id'].toString());
+                            } else {
+                              _handleItemTap(context, e);
+                            }
+                          },
+                          onLongPress: (e) =>
+                              _toggleSelection(e['id'].toString()),
+                          onAction: (e, a) => _handleAction(context, e, a)),
+                    )),
+                ],
 
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            ],
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
+            ),
           ),
-        );
+          // Drag-and-drop overlay
+          if (_isDragOver)
+            Positioned.fill(
+              child: Container(
+                color: AppTheme.primary.withOpacity(0.08),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 48, vertical: 36),
+                    decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppTheme.primary, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                              color: AppTheme.primary.withOpacity(0.2),
+                              blurRadius: 24)
+                        ]),
+                    child:
+                        const Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.cloud_upload_rounded,
+                          size: 56, color: AppTheme.primary),
+                      SizedBox(height: 16),
+                      Text('Drop files to upload',
+                          style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary)),
+                      SizedBox(height: 4),
+                      Text('Files will be uploaded to current folder',
+                          style: TextStyle(
+                              fontSize: 14, color: AppTheme.textMuted)),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+        ]);
       },
     );
   }
@@ -258,6 +404,12 @@ class _FilesContentState extends State<_FilesContent> {
           ),
         ),
       ),
+      if (!_selectionMode)
+        IconButton(
+          icon: const Icon(Icons.checklist_rounded, size: 20),
+          tooltip: 'Select multiple',
+          onPressed: () => setState(() => _selectionMode = true),
+        ),
       _ActionButton(
           icon: Icons.create_new_folder_rounded,
           label: 'New Folder',
@@ -404,6 +556,9 @@ class _FilesContentState extends State<_FilesContent> {
         break;
       case 'delete':
         context.read<FileBloc>().add(FileDeleteRequested(entry['id']));
+        break;
+      case 'favorite':
+        context.read<FileBloc>().add(FavoriteToggleRequested(entry['id']));
         break;
       case 'download':
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1165,9 +1320,17 @@ class _EmptyFolder extends StatelessWidget {
 class _FileGridCard extends StatelessWidget {
   final Map<String, dynamic> entry;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final Function(String) onAction;
+  final bool selected;
+  final bool selectionMode;
   const _FileGridCard(
-      {required this.entry, required this.onTap, required this.onAction});
+      {required this.entry,
+      required this.onTap,
+      required this.onAction,
+      this.onLongPress,
+      this.selected = false,
+      this.selectionMode = false});
 
   IconData _icon() {
     if (entry['entry_type'] == 'folder') return Icons.folder_rounded;
@@ -1193,20 +1356,35 @@ class _FileGridCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(14),
           hoverColor: AppTheme.primary.withOpacity(0.04),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.border)),
+                border: Border.all(
+                    color: selected ? AppTheme.primary : AppTheme.border,
+                    width: selected ? 2 : 1)),
             child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        if (entry['entry_type'] == 'file' &&
+                        if (selectionMode)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Icon(
+                                selected
+                                    ? Icons.check_circle_rounded
+                                    : Icons.circle_outlined,
+                                size: 22,
+                                color: selected
+                                    ? AppTheme.primary
+                                    : AppTheme.textMuted),
+                          )
+                        else if (entry['entry_type'] == 'file' &&
                             (entry['mime_type'] ?? '')
                                 .toString()
                                 .startsWith('image/'))
@@ -1238,15 +1416,282 @@ class _FileGridCard extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(12)),
                               child:
                                   Icon(_icon(), size: 24, color: _iconColor())),
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          InkWell(
+                            onTap: () => onAction('favorite'),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(
+                                  entry['is_favorite'] == true
+                                      ? Icons.star_rounded
+                                      : Icons.star_border_rounded,
+                                  size: 18,
+                                  color: entry['is_favorite'] == true
+                                      ? const Color(0xFFFFC107)
+                                      : AppTheme.textMuted),
+                            ),
+                          ),
+                          PopupMenuButton<String>(
+                              onSelected: onAction,
+                              icon: const Icon(Icons.more_vert_rounded,
+                                  size: 18, color: AppTheme.textMuted),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              color: AppTheme.surface,
+                              itemBuilder: (_) => [
+                                    const PopupMenuItem(
+                                        value: 'favorite',
+                                        child: Row(children: [
+                                          Icon(Icons.star_rounded,
+                                              size: 16,
+                                              color: Color(0xFFFFC107)),
+                                          SizedBox(width: 8),
+                                          Text('Favorite')
+                                        ])),
+                                    if (entry['entry_type'] == 'file')
+                                      const PopupMenuItem(
+                                          value: 'download',
+                                          child: Row(children: [
+                                            Icon(Icons.download_rounded,
+                                                size: 16,
+                                                color: AppTheme.textMuted),
+                                            SizedBox(width: 8),
+                                            Text('Download')
+                                          ])),
+                                    if (entry['entry_type'] == 'file')
+                                      const PopupMenuItem(
+                                          value: 'share',
+                                          child: Row(children: [
+                                            Icon(Icons.link_rounded,
+                                                size: 16,
+                                                color: AppTheme.textMuted),
+                                            SizedBox(width: 8),
+                                            Text('Copy Link')
+                                          ])),
+                                    if (entry['entry_type'] == 'file')
+                                      const PopupMenuItem(
+                                          value: 'share_dialog',
+                                          child: Row(children: [
+                                            Icon(Icons.share_rounded,
+                                                size: 16,
+                                                color: AppTheme.primary),
+                                            SizedBox(width: 8),
+                                            Text('Share...',
+                                                style: TextStyle(
+                                                    color: AppTheme.primary))
+                                          ])),
+                                    const PopupMenuItem(
+                                        value: 'info',
+                                        child: Row(children: [
+                                          Icon(Icons.info_outline_rounded,
+                                              size: 16,
+                                              color: AppTheme.textMuted),
+                                          SizedBox(width: 8),
+                                          Text('Info')
+                                        ])),
+                                    const PopupMenuItem(
+                                        value: 'move',
+                                        child: Row(children: [
+                                          Icon(Icons.drive_file_move_rounded,
+                                              size: 16,
+                                              color: AppTheme.textMuted),
+                                          SizedBox(width: 8),
+                                          Text('Move')
+                                        ])),
+                                    const PopupMenuItem(
+                                        value: 'rename',
+                                        child: Row(children: [
+                                          Icon(Icons.edit_rounded,
+                                              size: 16,
+                                              color: AppTheme.textMuted),
+                                          SizedBox(width: 8),
+                                          Text('Rename')
+                                        ])),
+                                    const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(children: [
+                                          Icon(Icons.delete_outline_rounded,
+                                              size: 16, color: AppTheme.error),
+                                          SizedBox(width: 8),
+                                          Text('Move to Trash',
+                                              style: TextStyle(
+                                                  color: AppTheme.error))
+                                        ])),
+                                  ]),
+                        ]),
+                      ]),
+                  Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: Text(entry['name'] ?? '',
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimary),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        if (entry['entry_type'] == 'file')
+                          Text(formatFileSize(entry['size_bytes'] ?? 0),
+                              style: const TextStyle(
+                                  fontSize: 11, color: AppTheme.textMuted)),
+                      ]),
+                ]),
+          ),
+        ),
+      );
+}
+
+class _FileList extends StatelessWidget {
+  final List<Map<String, dynamic>> entries;
+  final Function(Map<String, dynamic>) onTap;
+  final Function(Map<String, dynamic>)? onLongPress;
+  final Function(Map<String, dynamic>, String) onAction;
+  final Set<String> selectedIds;
+  final bool selectionMode;
+  const _FileList(
+      {required this.entries,
+      required this.onTap,
+      required this.onAction,
+      this.onLongPress,
+      this.selectedIds = const {},
+      this.selectionMode = false});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.border)),
+        child: Column(children: [
+          // Header
+          Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppTheme.border))),
+              child: const Row(children: [
+                Expanded(
+                    flex: 4,
+                    child: Text('Name',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textMuted))),
+                Expanded(
+                    flex: 2,
+                    child: Text('Size',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textMuted))),
+                Expanded(
+                    flex: 2,
+                    child: Text('Type',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textMuted))),
+                SizedBox(width: 40),
+              ])),
+          ...entries.map(
+            (e) {
+              final isSelected = selectedIds.contains(e['id']?.toString());
+              return Material(
+                color: isSelected
+                    ? AppTheme.primary.withOpacity(0.06)
+                    : Colors.transparent,
+                child: InkWell(
+                  onTap: () => onTap(e),
+                  onLongPress:
+                      onLongPress != null ? () => onLongPress!(e) : null,
+                  hoverColor: AppTheme.primary.withOpacity(0.04),
+                  child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      decoration: const BoxDecoration(
+                          border: Border(
+                              bottom: BorderSide(
+                                  color: AppTheme.border, width: 0.5))),
+                      child: Row(children: [
+                        if (selectionMode)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: Icon(
+                                isSelected
+                                    ? Icons.check_circle_rounded
+                                    : Icons.circle_outlined,
+                                size: 20,
+                                color: isSelected
+                                    ? AppTheme.primary
+                                    : AppTheme.textMuted),
+                          ),
+                        Expanded(
+                            flex: 4,
+                            child: Row(children: [
+                              Icon(
+                                  e['entry_type'] == 'folder'
+                                      ? Icons.folder_rounded
+                                      : Icons.insert_drive_file_rounded,
+                                  size: 20,
+                                  color: e['entry_type'] == 'folder'
+                                      ? const Color(0xFFFFC107)
+                                      : AppTheme.primary),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                  child: Text(e['name'] ?? '',
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppTheme.textPrimary),
+                                      overflow: TextOverflow.ellipsis)),
+                            ])),
+                        Expanded(
+                            flex: 2,
+                            child: Text(
+                                e['entry_type'] == 'folder'
+                                    ? '--'
+                                    : formatFileSize(e['size_bytes'] ?? 0),
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppTheme.textMuted))),
+                        Expanded(
+                            flex: 2,
+                            child: Text(e['mime_type'] ?? e['entry_type'] ?? '',
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppTheme.textMuted))),
+                        InkWell(
+                          onTap: () => onAction(e, 'favorite'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                                e['is_favorite'] == true
+                                    ? Icons.star_rounded
+                                    : Icons.star_border_rounded,
+                                size: 16,
+                                color: e['is_favorite'] == true
+                                    ? const Color(0xFFFFC107)
+                                    : AppTheme.textMuted),
+                          ),
+                        ),
                         PopupMenuButton<String>(
-                            onSelected: onAction,
+                            onSelected: (a) => onAction(e, a),
                             icon: const Icon(Icons.more_vert_rounded,
-                                size: 18, color: AppTheme.textMuted),
+                                size: 16, color: AppTheme.textMuted),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                             color: AppTheme.surface,
                             itemBuilder: (_) => [
-                                  if (entry['entry_type'] == 'file')
+                                  const PopupMenuItem(
+                                      value: 'favorite',
+                                      child: Row(children: [
+                                        Icon(Icons.star_rounded,
+                                            size: 16, color: Color(0xFFFFC107)),
+                                        SizedBox(width: 8),
+                                        Text('Favorite')
+                                      ])),
+                                  if (e['entry_type'] == 'file')
                                     const PopupMenuItem(
                                         value: 'download',
                                         child: Row(children: [
@@ -1256,7 +1701,7 @@ class _FileGridCard extends StatelessWidget {
                                           SizedBox(width: 8),
                                           Text('Download')
                                         ])),
-                                  if (entry['entry_type'] == 'file')
+                                  if (e['entry_type'] == 'file')
                                     const PopupMenuItem(
                                         value: 'share',
                                         child: Row(children: [
@@ -1266,7 +1711,7 @@ class _FileGridCard extends StatelessWidget {
                                           SizedBox(width: 8),
                                           Text('Copy Link')
                                         ])),
-                                  if (entry['entry_type'] == 'file')
+                                  if (e['entry_type'] == 'file')
                                     const PopupMenuItem(
                                         value: 'share_dialog',
                                         child: Row(children: [
@@ -1316,197 +1761,10 @@ class _FileGridCard extends StatelessWidget {
                                                 color: AppTheme.error))
                                       ])),
                                 ]),
-                      ]),
-                  Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: double.infinity,
-                          child: Text(entry['name'] ?? '',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimary),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis),
-                        ),
-                        if (entry['entry_type'] == 'file')
-                          Text(formatFileSize(entry['size_bytes'] ?? 0),
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppTheme.textMuted)),
-                      ]),
-                ]),
-          ),
-        ),
-      );
-}
-
-class _FileList extends StatelessWidget {
-  final List<Map<String, dynamic>> entries;
-  final Function(Map<String, dynamic>) onTap;
-  final Function(Map<String, dynamic>, String) onAction;
-  const _FileList(
-      {required this.entries, required this.onTap, required this.onAction});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.border)),
-        child: Column(children: [
-          // Header
-          Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppTheme.border))),
-              child: const Row(children: [
-                Expanded(
-                    flex: 4,
-                    child: Text('Name',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textMuted))),
-                Expanded(
-                    flex: 2,
-                    child: Text('Size',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textMuted))),
-                Expanded(
-                    flex: 2,
-                    child: Text('Type',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textMuted))),
-                SizedBox(width: 40),
-              ])),
-          ...entries.map(
-            (e) => Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => onTap(e),
-                hoverColor: AppTheme.primary.withOpacity(0.04),
-                child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: const BoxDecoration(
-                        border: Border(
-                            bottom: BorderSide(
-                                color: AppTheme.border, width: 0.5))),
-                    child: Row(children: [
-                      Expanded(
-                          flex: 4,
-                          child: Row(children: [
-                            Icon(
-                                e['entry_type'] == 'folder'
-                                    ? Icons.folder_rounded
-                                    : Icons.insert_drive_file_rounded,
-                                size: 20,
-                                color: e['entry_type'] == 'folder'
-                                    ? const Color(0xFFFFC107)
-                                    : AppTheme.primary),
-                            const SizedBox(width: 10),
-                            Expanded(
-                                child: Text(e['name'] ?? '',
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        color: AppTheme.textPrimary),
-                                    overflow: TextOverflow.ellipsis)),
-                          ])),
-                      Expanded(
-                          flex: 2,
-                          child: Text(
-                              e['entry_type'] == 'folder'
-                                  ? '--'
-                                  : formatFileSize(e['size_bytes'] ?? 0),
-                              style: const TextStyle(
-                                  fontSize: 12, color: AppTheme.textMuted))),
-                      Expanded(
-                          flex: 2,
-                          child: Text(e['mime_type'] ?? e['entry_type'] ?? '',
-                              style: const TextStyle(
-                                  fontSize: 12, color: AppTheme.textMuted))),
-                      PopupMenuButton<String>(
-                          onSelected: (a) => onAction(e, a),
-                          icon: const Icon(Icons.more_vert_rounded,
-                              size: 16, color: AppTheme.textMuted),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          color: AppTheme.surface,
-                          itemBuilder: (_) => [
-                                if (e['entry_type'] == 'file')
-                                  const PopupMenuItem(
-                                      value: 'download',
-                                      child: Row(children: [
-                                        Icon(Icons.download_rounded,
-                                            size: 16,
-                                            color: AppTheme.textMuted),
-                                        SizedBox(width: 8),
-                                        Text('Download')
-                                      ])),
-                                if (e['entry_type'] == 'file')
-                                  const PopupMenuItem(
-                                      value: 'share',
-                                      child: Row(children: [
-                                        Icon(Icons.link_rounded,
-                                            size: 16,
-                                            color: AppTheme.textMuted),
-                                        SizedBox(width: 8),
-                                        Text('Copy Link')
-                                      ])),
-                                if (e['entry_type'] == 'file')
-                                  const PopupMenuItem(
-                                      value: 'share_dialog',
-                                      child: Row(children: [
-                                        Icon(Icons.share_rounded,
-                                            size: 16, color: AppTheme.primary),
-                                        SizedBox(width: 8),
-                                        Text('Share...',
-                                            style: TextStyle(
-                                                color: AppTheme.primary))
-                                      ])),
-                                const PopupMenuItem(
-                                    value: 'info',
-                                    child: Row(children: [
-                                      Icon(Icons.info_outline_rounded,
-                                          size: 16, color: AppTheme.textMuted),
-                                      SizedBox(width: 8),
-                                      Text('Info')
-                                    ])),
-                                const PopupMenuItem(
-                                    value: 'move',
-                                    child: Row(children: [
-                                      Icon(Icons.drive_file_move_rounded,
-                                          size: 16, color: AppTheme.textMuted),
-                                      SizedBox(width: 8),
-                                      Text('Move')
-                                    ])),
-                                const PopupMenuItem(
-                                    value: 'rename',
-                                    child: Row(children: [
-                                      Icon(Icons.edit_rounded,
-                                          size: 16, color: AppTheme.textMuted),
-                                      SizedBox(width: 8),
-                                      Text('Rename')
-                                    ])),
-                                const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(children: [
-                                      Icon(Icons.delete_outline_rounded,
-                                          size: 16, color: AppTheme.error),
-                                      SizedBox(width: 8),
-                                      Text('Move to Trash',
-                                          style:
-                                              TextStyle(color: AppTheme.error))
-                                    ])),
-                              ]),
-                    ])),
-              ),
-            ),
+                      ])),
+                ),
+              );
+            },
           ),
         ]),
       );

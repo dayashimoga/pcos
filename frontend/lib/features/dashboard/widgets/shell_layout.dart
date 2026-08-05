@@ -42,6 +42,8 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
     ('Devices', Icons.devices_rounded, '/devices'),
     ('Trash', Icons.delete_rounded, '/trash'),
     ('Admin', Icons.admin_panel_settings_rounded, '/admin'),
+    ('API Explorer', Icons.api_rounded, '/admin/api'),
+    ('Duplicates', Icons.find_replace_rounded, '/duplicates'),
     ('Settings', Icons.settings_rounded, '/settings'),
   ];
 
@@ -192,8 +194,11 @@ const _navItems = [
       'Devices', Icons.devices_outlined, Icons.devices_rounded, '/devices'),
   _NavItem(
       'Trash', Icons.delete_outline_rounded, Icons.delete_rounded, '/trash'),
+  _NavItem('Duplicates', Icons.find_replace_outlined,
+      Icons.find_replace_rounded, '/duplicates'),
   _NavItem('Admin', Icons.admin_panel_settings_outlined,
       Icons.admin_panel_settings_rounded, '/admin'),
+  _NavItem('API Explorer', Icons.api_outlined, Icons.api_rounded, '/admin/api'),
   _NavItem('Doctor', Icons.health_and_safety_outlined,
       Icons.health_and_safety_rounded, '/doctor'),
   _NavItem(

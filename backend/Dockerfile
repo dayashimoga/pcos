@@ -1,4 +1,3 @@
-# Build stage
 FROM rust:latest AS builder
 
 WORKDIR /app
@@ -47,8 +46,8 @@ RUN find crates -name "*.rs" -exec touch {} +
 ENV SQLX_OFFLINE=true
 RUN cargo build --release --bin pcos-server
 
-# Runtime stage - minimal image
-FROM debian:bookworm-slim AS runtime
+# Runtime stage - minimal image (Debian Trixie matching rust:latest GLIBC 2.39)
+FROM debian:trixie-slim AS runtime
 
 RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
 

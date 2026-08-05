@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/di/service_locator.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/auth/bloc/auth_bloc.dart';
 
 /// Global theme mode notifier — accessible from Settings to toggle light/dark.
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
@@ -17,15 +19,18 @@ class PCOSApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: themeNotifier,
-      builder: (_, mode, __) => MaterialApp.router(
-        title: 'PCOS - Personal Cloud OS',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: mode,
-        routerConfig: AppRouter.router,
+    return BlocProvider<AuthBloc>(
+      create: (_) => getIt<AuthBloc>(),
+      child: ValueListenableBuilder<ThemeMode>(
+        valueListenable: themeNotifier,
+        builder: (_, mode, __) => MaterialApp.router(
+          title: 'PCOS - Personal Cloud OS',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: mode,
+          routerConfig: AppRouter.router,
+        ),
       ),
     );
   }

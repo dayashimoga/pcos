@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/di/service_locator.dart';
 import '../../../core/theme/app_theme.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -13,6 +14,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage>
     with SingleTickerProviderStateMixin {
+  late final AuthBloc _authBloc;
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -24,6 +26,7 @@ class _LoginPageState extends State<LoginPage>
   @override
   void initState() {
     super.initState();
+    _authBloc = getIt<AuthBloc>();
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -43,12 +46,25 @@ class _LoginPageState extends State<LoginPage>
     _animController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _authBloc.close();
     super.dispose();
+  }
+
+  void _onSubmit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      _authBloc.add(
+        AuthLoginRequested(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
+      bloc: _authBloc,
       listener: (context, state) {
         if (state is AuthAuthenticated) {
           context.go('/dashboard');
@@ -82,14 +98,11 @@ class _LoginPageState extends State<LoginPage>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Logo & Branding
                         _buildHeader(),
                         const SizedBox(height: 40),
-                        // Login Form Card
                         _buildFormCard(),
                         const SizedBox(height: 24),
-                        // Register link
-                        _buildRegisterLink(),
+                        _buildFooter(),
                       ],
                     ),
                   ),
@@ -109,27 +122,37 @@ class _LoginPageState extends State<LoginPage>
           width: 72,
           height: 72,
           decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [AppTheme.primary, AppTheme.accent],
+            ),
+            borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
                 color: AppTheme.primary.withOpacity(0.4),
-                blurRadius: 24,
+                blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: const Icon(Icons.cloud_rounded, size: 36, color: Colors.white),
+          child: const Icon(Icons.cloud_rounded, size: 40, color: Colors.white),
         ),
-        const SizedBox(height: 24),
-        Text(
-          'Welcome Back',
-          style: Theme.of(context).textTheme.displayMedium,
+        const SizedBox(height: 20),
+        const Text(
+          'Welcome to PCOS',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            letterSpacing: -0.5,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
-          'Sign in to your Personal Cloud',
-          style: Theme.of(context).textTheme.bodyLarge,
+          'Your personal cloud, unified & secure',
+          style: TextStyle(
+            fontSize: 15,
+            color: Colors.white.withOpacity(0.6),
+          ),
         ),
       ],
     );
@@ -139,14 +162,14 @@ class _LoginPageState extends State<LoginPage>
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: AppTheme.surface.withOpacity(0.6),
+        color: AppTheme.surface.withOpacity(0.8),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 40,
-            offset: const Offset(0, 16),
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
           ),
         ],
       ),
@@ -155,25 +178,23 @@ class _LoginPageState extends State<LoginPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Email field
             TextFormField(
               key: const Key('login_email_field'),
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
-                labelText: 'Email address',
+                labelText: 'Email Address',
                 prefixIcon: Icon(Icons.email_outlined, size: 20),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Email is required';
-                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
+                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                   return 'Enter a valid email';
+                }
                 return null;
               },
             ),
             const SizedBox(height: 20),
-
-            // Password field
             TextFormField(
               key: const Key('login_password_field'),
               controller: _passwordController,
@@ -192,17 +213,18 @@ class _LoginPageState extends State<LoginPage>
                 ),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty)
+                if (value == null || value.isEmpty) {
                   return 'Password is required';
-                if (value.length < 8)
+                }
+                if (value.length < 8) {
                   return 'Password must be at least 8 characters';
+                }
                 return null;
               },
             ),
             const SizedBox(height: 32),
-
-            // Submit button
             BlocBuilder<AuthBloc, AuthState>(
+              bloc: _authBloc,
               builder: (context, state) {
                 final isLoading = state is AuthLoading;
                 return AnimatedContainer(
@@ -236,29 +258,26 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  Widget _buildRegisterLink() {
+  Widget _buildFooter() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Don't have an account? ",
-            style: Theme.of(context).textTheme.bodyMedium),
+        Text(
+          "Don't have an account?",
+          style: TextStyle(color: Colors.white.withOpacity(0.6)),
+        ),
         TextButton(
-          key: const Key('login_register_link'),
+          key: const Key('register_link'),
           onPressed: () => context.go('/register'),
-          child: const Text('Create one',
-              style: TextStyle(
-                  color: AppTheme.primary, fontWeight: FontWeight.w600)),
+          child: const Text(
+            'Create One',
+            style: TextStyle(
+              color: AppTheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ],
     );
-  }
-
-  void _onSubmit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      context.read<AuthBloc>().add(AuthLoginRequested(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          ));
-    }
   }
 }

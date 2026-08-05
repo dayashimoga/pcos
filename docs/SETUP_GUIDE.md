@@ -25,25 +25,24 @@
 - A server, desktop, or laptop (any OS — Linux, Windows, macOS)
 - At least 2 GB RAM, 10 GB disk space
 
-### 3-Command Setup
+### 1-Click Universal Setup (Any Laptop / Desktop / Server)
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/dayashimoga/pcos.git
-cd pcos
+```powershell
+# Windows (PowerShell)
+.\spinup.ps1
 
-# 2. Configure environment
-cp .env.example .env
-# Edit .env to set your passwords and domain:
-#   POSTGRES_PASSWORD=your_secure_password
-#   JWT_SECRET=your_random_32_char_secret
-#   PCOS_DOMAIN=cloud.yourdomain.com (or localhost for local)
-
-# 3. Start everything
-docker compose up -d
+# To stop: .\bringdown.ps1
 ```
 
-**That's it!** Open `http://localhost:3000` in your browser.
+```bash
+# Linux / macOS / Cloud VPS / Server (Bash)
+chmod +x spinup.sh bringdown.sh
+./spinup.sh
+
+# To stop: ./bringdown.sh
+```
+
+**That's it!** Open `http://localhost` in your browser. On your first visit, you will be guided through the **Setup Wizard** (`http://localhost/#/setup`) to configure your admin account.
 
 ---
 
@@ -349,6 +348,32 @@ curl $SERVER/api/v1/streaming/stream/{job_id} -H "Authorization: Bearer $TOKEN"
 The Plugin SDK supports 8 lifecycle hooks:
 - BeforeUpload, AfterUpload, BeforeDownload, AfterDelete
 - OnSearch, OnShare, OnNotification, OnSchedule
+
+### 🩺 Diagnostic Tool ("PCOS Doctor")
+
+Access `/doctor` in the web UI for automated environment diagnostics:
+- Runs 10 automated component health checks (Database, Redis, NATS, Storage, Auth, Search, Backup, Email, WebPush, System)
+- Displays instant pass/fail status with resolution recommendations
+
+### 🔍 Duplicate File Finder
+
+Access `/duplicates` in the web UI to find and clean redundant files:
+- Scans all stored files and groups duplicates by matching file name and size
+- Shows potential disk space savings dashboard
+- One-click duplicate cleanup with "Keep" vs "Dup" indicators
+
+### 🛠️ REST API Explorer
+
+Access `/admin/api` in the web UI for interactive API testing:
+- Complete interactive catalog of 30+ endpoints grouped by module
+- Color-coded HTTP methods (GET, POST, PUT, DELETE)
+- One-click execution with formatted JSON responses and HTTP status badges
+
+### 📱 Device QR Pairing
+
+Access `/devices/pair` in the web UI to easily add mobile/desktop devices:
+- Generates secure 6-digit pairing code with animated QR code display
+- Expiry timer and auto-refresh for safe onboarding
 
 ### 🌐 Localization
 

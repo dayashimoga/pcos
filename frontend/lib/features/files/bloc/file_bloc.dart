@@ -57,6 +57,20 @@ class FileMoveRequested extends FileEvent {
   List<Object?> get props => [itemId, targetFolderId];
 }
 
+class FavoriteToggleRequested extends FileEvent {
+  final String itemId;
+  const FavoriteToggleRequested(this.itemId);
+  @override
+  List<Object?> get props => [itemId];
+}
+
+class BulkDeleteRequested extends FileEvent {
+  final List<String> itemIds;
+  const BulkDeleteRequested(this.itemIds);
+  @override
+  List<Object?> get props => [itemIds];
+}
+
 class TrashLoadRequested extends FileEvent {
   const TrashLoadRequested();
 }
@@ -133,6 +147,8 @@ class FileBloc extends Bloc<FileEvent, FileState> {
     on<FileDeleteRequested>(_onDelete);
     on<FileRenameRequested>(_onRename);
     on<FileMoveRequested>(_onMove);
+    on<FavoriteToggleRequested>(_onToggleFavorite);
+    on<BulkDeleteRequested>(_onBulkDelete);
     on<TrashLoadRequested>(_onLoadTrash);
     on<TrashRestoreRequested>(_onRestore);
     on<TrashEmptyRequested>(_onEmptyTrash);
@@ -203,6 +219,26 @@ class FileBloc extends Bloc<FileEvent, FileState> {
     try {
       await fileRepository.moveItem(event.itemId, event.targetFolderId);
       emit(const FileActionSuccess('Moved'));
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
+  }
+
+  Future<void> _onToggleFavorite(
+      FavoriteToggleRequested event, Emitter<FileState> emit) async {
+    try {
+      await fileRepository.toggleFavorite(event.itemId);
+      emit(const FileActionSuccess('Favorite toggled'));
+    } catch (e) {
+      emit(FileError(e.toString()));
+    }
+  }
+
+  Future<void> _onBulkDelete(
+      BulkDeleteRequested event, Emitter<FileState> emit) async {
+    try {
+      await fileRepository.bulkDelete(event.itemIds);
+      emit(FileActionSuccess('${event.itemIds.length} items moved to trash'));
     } catch (e) {
       emit(FileError(e.toString()));
     }

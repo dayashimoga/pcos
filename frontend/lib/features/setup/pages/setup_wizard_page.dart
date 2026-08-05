@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
@@ -34,20 +36,24 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
   }
 
   Future<void> _checkServer() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final api = getIt<ApiClient>();
       final resp = await api.dio.get('/api/v1/health');
       setState(() {
         _serverReachable = true;
         _healthData = Map<String, dynamic>.from(resp.data);
-        _serverVersion = _healthData['version'] ?? 'unknown';
+        _serverVersion = _healthData['version'] ?? '0.1.0';
         _loading = false;
       });
     } catch (e) {
       setState(() {
         _serverReachable = false;
-        _error = 'Cannot reach PCOS server: $e';
+        _error =
+            'Unable to connect to PCOS server. Please ensure the server containers are running and click Retry Connection.';
         _loading = false;
       });
     }
@@ -84,9 +90,23 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
         _step = 2;
       });
     } catch (e) {
+      String msg = 'Failed to create account. Please try again.';
+      if (e is DioException) {
+        if (e.response?.statusCode == 409) {
+          msg =
+              'An account with this email address already exists. Please sign in with your existing account.';
+        } else if (e.response?.data is Map &&
+            e.response?.data['message'] != null) {
+          msg = e.response?.data['message'].toString() ?? msg;
+        } else if (e.type == DioExceptionType.connectionError ||
+            e.type == DioExceptionType.connectionTimeout) {
+          msg =
+              'Unable to connect to PCOS server. Please ensure server is running.';
+        }
+      }
       setState(() {
         _loading = false;
-        _error = 'Failed to create account: $e';
+        _error = msg;
       });
     }
   }
@@ -262,15 +282,33 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
             decoration: BoxDecoration(
                 color: AppTheme.error.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10)),
-            child: Row(children: [
-              const Icon(Icons.error_outline_rounded,
-                  size: 18, color: AppTheme.error),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: Text(_error!,
-                      style: const TextStyle(
-                          fontSize: 13, color: AppTheme.error))),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Icon(Icons.error_outline_rounded,
+                      size: 18, color: AppTheme.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text(_error!,
+                          style: const TextStyle(
+                              fontSize: 13, color: AppTheme.error))),
+                ]),
+                if (_error!.contains('already exists')) ...[
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () => context.go('/login'),
+                    icon: const Icon(Icons.login_rounded, size: 16),
+                    label: const Text('Go to Login Screen'),
+                  )
+                ]
+              ],
+            ),
           ),
         TextField(
             controller: _emailCtrl,
@@ -342,8 +380,7 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
         SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () =>
-                  Navigator.of(context).pushReplacementNamed('/login'),
+              onPressed: () => context.go('/login'),
               icon: const Icon(Icons.login_rounded, size: 18),
               label: const Text('Go to Login'),
             )),

@@ -73,6 +73,15 @@ class FileRepository {
     return r.data;
   }
 
+  Future<void> toggleFavorite(String itemId) async {
+    await apiClient.dio.put('/api/v1/files/$itemId/favorite');
+  }
+
+  Future<void> bulkDelete(List<String> itemIds) async {
+    await apiClient.dio
+        .post('/api/v1/files/bulk-delete', data: {'ids': itemIds});
+  }
+
   String downloadUrl(String fileId) => '/api/v1/files/$fileId/download';
   String previewUrl(String fileId) => '/api/v1/files/$fileId/preview';
 }

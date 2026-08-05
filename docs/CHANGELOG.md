@@ -19,12 +19,45 @@ All notable changes to this project will be documented in this file.
 - Copy link button alongside download in search results
 - Improved empty state with search suggestion text
 
-#### File Management & Context Menu (8 Actions)
-- Context menu expanded to 8 actions: Download, Copy Link, Share..., Info, Move, Rename, Delete
+#### File Management & Context Menu (11 Actions)
+- Context menu expanded to 11 actions: Favorite, Download, Copy Link, Share..., Info, Move, Rename, Delete
 - Move file/folder dialog — move items to any target folder by ID
 - Upload progress spinner snackbar when starting uploads
 - File Info dialog displaying type, MIME, size, ID, created/modified dates, and quick actions
 - Image thumbnail previews inside grid cards for all `image/*` files with icon fallback
+
+#### Bulk File Selection
+- Multi-select mode activated via long-press on any file/folder or toolbar button
+- Selection toolbar with item count, select all, bulk delete, and bulk download
+- Checkbox indicators on both grid and list view during selection mode
+- Selected items highlighted with primary color border (grid) or background tint (list)
+- Auto-exits selection mode on successful bulk action
+
+#### Favorites (Star Files)
+- Star toggle icon on every file/folder in both grid and list views
+- Quick-tap star icon or use "Favorite" action in context menu
+- Gold star (⭐) for favorited items, outline star for unfavorited
+- Calls `PUT /api/v1/files/:id/favorite` to persist
+
+#### Drag-and-Drop Upload (Web)
+- Visual drop overlay with cloud upload icon and instructional text
+- Overlay appears when files are dragged over the files area
+- Files uploaded to the current folder on drop
+
+#### Duplicate File Finder (`/duplicates`)
+- Full-page scan interface with scan/re-scan button
+- Groups duplicates by matching file name + size
+- Stats dashboard: files scanned, duplicates found, savable space
+- Per-group display with "Keep" vs "Dup" badges
+- One-click delete to remove individual duplicates
+
+#### REST API Explorer (`/admin/api`)
+- Interactive endpoint browser listing 30+ PCOS API routes
+- Endpoints grouped by module: Auth, Users, Files, Search, Shares, Devices, Trash, Notifications, Admin, Analytics, Storage, System
+- Color-coded HTTP method badges (GET/POST/PUT/DELETE)
+- One-click execute with live JSON response display
+- Status code badge with copy-to-clipboard support
+- Two-column layout on desktop, stacked on mobile
 
 #### File Sharing Dialog
 - Full sharing dialog powered by `POST /api/v1/shares` API

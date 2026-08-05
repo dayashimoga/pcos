@@ -47,12 +47,12 @@
 ### Search & AI
 - [x] Global search in app bar (Ctrl+K command palette)
 - [ ] AI document Q&A ("Ask My Files")
-- [ ] Duplicate file finder
+- [x] Duplicate file finder — scan by name+size, stats dashboard, one-click delete duplicates
 
 ### File Management
-- [ ] Drag-and-drop upload (web)
-- [ ] Bulk file selection with toolbar
-- [ ] Favorites (star files)
+- [x] Drag-and-drop upload (web) — visual drop overlay with upload feedback
+- [x] Bulk file selection with toolbar — long-press/toolbar to multi-select, bulk delete/download, select all
+- [x] Favorites (star files) — star toggle on grid/list, favorite action in context menu
 - [x] File sharing dialog (password, expiry, download limits)
 - [x] Image thumbnail previews in file grid (for image/* MIME types)
 
@@ -85,7 +85,7 @@
 - [ ] Share extensions (Android/iOS)
 - [ ] System tray integration (Windows/macOS/Linux)
 - [ ] Offline-first with sync queue
-- [ ] REST API explorer UI
+- [x] REST API explorer UI — interactive endpoint browser with 30+ routes, one-click execute, JSON response viewer
 - [ ] GraphQL gateway (optional)
 - [ ] Public SDK for extensions
 
