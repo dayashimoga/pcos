@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
@@ -346,8 +347,7 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
         SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () =>
-                  Navigator.of(context).pushReplacementNamed('/login'),
+              onPressed: () => context.go('/login'),
               icon: const Icon(Icons.login_rounded, size: 18),
               label: const Text('Go to Login'),
             )),
