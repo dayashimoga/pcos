@@ -14,17 +14,21 @@ FROM nginx:alpine AS runtime
 
 COPY --from=builder /app/build/web /usr/share/nginx/html
 
-# Configure nginx for SPA routing
+# Configure nginx for SPA routing with cache control
 RUN echo 'server { \
     listen 80; \
     root /usr/share/nginx/html; \
     index index.html; \
     location / { \
         try_files $uri $uri/ /index.html; \
+        add_header Cache-Control "no-cache, no-store, must-revalidate"; \
     } \
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ { \
-        expires 1y; \
-        add_header Cache-Control "public, immutable"; \
+    location ~* \.(js|css)$ { \
+        add_header Cache-Control "no-cache, no-store, must-revalidate"; \
+    } \
+    location ~* \.(png|jpg|jpeg|gif|ico|svg|woff|woff2)$ { \
+        expires 7d; \
+        add_header Cache-Control "public"; \
     } \
     gzip on; \
     gzip_types text/plain text/css application/json application/javascript text/xml; \
