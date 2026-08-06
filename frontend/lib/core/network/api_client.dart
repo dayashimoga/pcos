@@ -26,7 +26,11 @@ class ApiClient {
     if (stored != null && stored.isNotEmpty) {
       return stored;
     }
-    return _resolveBaseUrl();
+    final envUrl = _resolveBaseUrl();
+    if (envUrl.isEmpty) {
+      return 'http://192.168.0.111';
+    }
+    return envUrl;
   }
 
   Future<void> setServerUrl(String url) async {

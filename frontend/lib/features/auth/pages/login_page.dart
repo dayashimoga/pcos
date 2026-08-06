@@ -261,10 +261,7 @@ class _LoginPageState extends State<LoginPage>
 
   void _showServerConfig(BuildContext context) {
     final api = getIt<ApiClient>();
-    final ctrl = TextEditingController(
-        text: api.currentServerUrl.isEmpty
-            ? 'http://192.168.1.50'
-            : api.currentServerUrl);
+    final ctrl = TextEditingController(text: api.currentServerUrl);
     final codeCtrl = TextEditingController();
 
     showDialog(
@@ -283,7 +280,7 @@ class _LoginPageState extends State<LoginPage>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Scan the QR Code on your Desktop web screen (Devices -> Pair Mobile) or enter Server IP:',
+              'Enter your PCOS server IP address (e.g. http://192.168.0.111):',
               style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
             ),
             const SizedBox(height: 16),
@@ -291,7 +288,7 @@ class _LoginPageState extends State<LoginPage>
               controller: ctrl,
               decoration: const InputDecoration(
                 labelText: 'Server IP / URL',
-                hintText: 'http://192.168.1.50',
+                hintText: 'http://192.168.0.111',
                 prefixIcon: Icon(Icons.link_rounded),
               ),
             ),
@@ -309,13 +306,12 @@ class _LoginPageState extends State<LoginPage>
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () {
-                  // Simulate QR Scanner result parsing from Desktop pairing code
-                  ctrl.text = 'http://192.168.1.50';
+                  ctrl.text = 'http://192.168.0.111';
                   codeCtrl.text = '849201';
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text(
-                          'QR Code Scanned: Connected to http://192.168.1.50'),
+                          'QR Code Scanned: Connected to http://192.168.0.111'),
                       backgroundColor: AppTheme.success,
                     ),
                   );
@@ -332,7 +328,9 @@ class _LoginPageState extends State<LoginPage>
               onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
-              await api.setServerUrl(ctrl.text.trim());
+              final newUrl = ctrl.text.trim();
+              await api.setServerUrl(newUrl);
+              setState(() {});
               if (ctx.mounted) Navigator.pop(ctx);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -349,6 +347,9 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Widget _buildFooter() {
+    final api = getIt<ApiClient>();
+    final serverUrl = api.currentServerUrl;
+
     return Column(
       children: [
         Row(
@@ -377,7 +378,7 @@ class _LoginPageState extends State<LoginPage>
           icon: const Icon(Icons.settings_ethernet_rounded,
               size: 16, color: AppTheme.textMuted),
           label: Text(
-            'Server: ${getIt<ApiClient>().currentServerUrl.isEmpty ? "Default (Local)" : getIt<ApiClient>().currentServerUrl}',
+            'Server: $serverUrl',
             style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
           ),
         ),
