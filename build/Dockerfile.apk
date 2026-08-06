@@ -7,12 +7,9 @@ RUN flutter pub get
 
 COPY . .
 
-# Download and install Gradle 8.3 globally
-RUN curl -L -o /tmp/gradle.zip https://github.com/gradle/gradle-distributions/releases/download/v8.3.0/gradle-8.3-bin.zip && \
-    unzip -q /tmp/gradle.zip -d /opt && \
-    rm /tmp/gradle.zip
+# Pre-download Gradle 8.3 distribution for wrapper cache
+RUN mkdir -p /root/.gradle/wrapper/dists/gradle-8.3-bin/cached && \
+    curl -L -o /root/.gradle/wrapper/dists/gradle-8.3-bin/cached/gradle-8.3-bin.zip https://github.com/gradle/gradle-distributions/releases/download/v8.3.0/gradle-8.3-bin.zip
 
-ENV PATH="/opt/gradle-8.3/bin:${PATH}"
-
-# Build APK using global Gradle 8.3
-RUN cd android && gradle assembleRelease && mkdir -p /app/build/app/outputs/flutter-apk && find . -name "*.apk" -exec cp {} /app/build/app/outputs/flutter-apk/ \;
+# Build release APK using flutter build apk to target physical Android ARM architectures
+RUN flutter build apk --release --no-tree-shake-icons
