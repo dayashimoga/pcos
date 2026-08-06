@@ -231,6 +231,13 @@ class _DesktopShellState extends State<_DesktopShell> {
   Widget build(BuildContext context) {
     final idx = _currentIndex(context);
     final sidebarWidth = _collapsed ? 72.0 : 240.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppTheme.textPrimary : const Color(0xFF0F172A);
+    final textSecondary =
+        isDark ? AppTheme.textSecondary : const Color(0xFF475569);
+    final textMuted = isDark ? AppTheme.textMuted : const Color(0xFF64748B);
+    final boxBg = isDark ? AppTheme.background : const Color(0xFFF1F5F9);
+    final borderColor = isDark ? AppTheme.border : const Color(0xFFE2E8F0);
 
     return CallbackShortcuts(
       bindings: {
@@ -253,8 +260,7 @@ class _DesktopShellState extends State<_DesktopShell> {
               width: sidebarWidth,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                border: Border(
-                    right: BorderSide(color: Theme.of(context).dividerColor)),
+                border: Border(right: BorderSide(color: borderColor)),
               ),
               child: Column(children: [
                 // Logo + collapse toggle
@@ -272,7 +278,7 @@ class _DesktopShellState extends State<_DesktopShell> {
                     ),
                     if (!_collapsed) ...[
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -280,17 +286,17 @@ class _DesktopShellState extends State<_DesktopShell> {
                                   style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
-                                      color: AppTheme.textPrimary,
+                                      color: textPrimary,
                                       letterSpacing: 1)),
                               Text('Personal Cloud OS',
                                   style: TextStyle(
-                                      fontSize: 10, color: AppTheme.textMuted)),
+                                      fontSize: 10, color: textMuted)),
                             ]),
                       ),
                     ],
                   ]),
                 ),
-                const Divider(color: AppTheme.border, height: 1),
+                Divider(color: borderColor, height: 1),
                 // Search bar hint
                 if (!_collapsed)
                   Padding(
@@ -304,29 +310,28 @@ class _DesktopShellState extends State<_DesktopShell> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 9),
                           decoration: BoxDecoration(
-                            color: AppTheme.background,
+                            color: boxBg,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppTheme.border),
+                            border: Border.all(color: borderColor),
                           ),
                           child: Row(children: [
-                            const Icon(Icons.search_rounded,
-                                size: 16, color: AppTheme.textMuted),
+                            Icon(Icons.search_rounded,
+                                size: 16, color: textMuted),
                             const SizedBox(width: 8),
-                            const Expanded(
+                            Expanded(
                                 child: Text('Search...',
                                     style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppTheme.textMuted))),
+                                        fontSize: 13, color: textMuted))),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 5, vertical: 1),
                               decoration: BoxDecoration(
-                                  color: AppTheme.surfaceLight,
+                                  color: AppTheme.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(4)),
-                              child: const Text('⌘K',
+                              child: Text('⌘K',
                                   style: TextStyle(
                                       fontSize: 10,
-                                      color: AppTheme.textMuted,
+                                      color: AppTheme.primary,
                                       fontWeight: FontWeight.w600)),
                             ),
                           ]),
@@ -340,8 +345,8 @@ class _DesktopShellState extends State<_DesktopShell> {
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     child: IconButton(
                       onPressed: () => _showQuickSearch(context),
-                      icon: const Icon(Icons.search_rounded,
-                          size: 20, color: AppTheme.textMuted),
+                      icon: Icon(Icons.search_rounded,
+                          size: 20, color: textMuted),
                       tooltip: 'Search (Ctrl+K)',
                     ),
                   ),
@@ -377,7 +382,7 @@ class _DesktopShellState extends State<_DesktopShell> {
                                     size: 20,
                                     color: isActive
                                         ? AppTheme.primary
-                                        : AppTheme.textMuted),
+                                        : textMuted),
                                 if (!_collapsed) ...[
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -389,7 +394,7 @@ class _DesktopShellState extends State<_DesktopShell> {
                                                 : FontWeight.w400,
                                             color: isActive
                                                 ? AppTheme.primary
-                                                : AppTheme.textSecondary),
+                                                : textSecondary),
                                         overflow: TextOverflow.ellipsis),
                                   ),
                                   if (isActive)
@@ -434,12 +439,12 @@ class _DesktopShellState extends State<_DesktopShell> {
                                     ? Icons.chevron_right_rounded
                                     : Icons.chevron_left_rounded,
                                 size: 20,
-                                color: AppTheme.textMuted),
+                                color: textMuted),
                             if (!_collapsed) ...[
                               const SizedBox(width: 12),
-                              const Text('Collapse',
+                              Text('Collapse',
                                   style: TextStyle(
-                                      fontSize: 13, color: AppTheme.textMuted)),
+                                      fontSize: 13, color: textMuted)),
                             ],
                           ],
                         ),
@@ -454,34 +459,32 @@ class _DesktopShellState extends State<_DesktopShell> {
                     margin: const EdgeInsets.all(16),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                        color: AppTheme.background,
-                        borderRadius: BorderRadius.circular(12)),
+                        color: boxBg, borderRadius: BorderRadius.circular(12)),
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(children: [
-                            Icon(Icons.cloud_done_rounded,
+                          Row(children: [
+                            const Icon(Icons.cloud_done_rounded,
                                 size: 16, color: AppTheme.primary),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Text('Storage',
                                 style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
-                                    color: AppTheme.textPrimary)),
+                                    color: textPrimary)),
                           ]),
                           const SizedBox(height: 8),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: const LinearProgressIndicator(
+                            child: LinearProgressIndicator(
                                 value: 0.0,
                                 minHeight: 6,
-                                backgroundColor: AppTheme.border,
+                                backgroundColor: borderColor,
                                 color: AppTheme.primary),
                           ),
                           const SizedBox(height: 6),
-                          const Text('Unlimited',
-                              style: TextStyle(
-                                  fontSize: 11, color: AppTheme.textMuted)),
+                          Text('Unlimited',
+                              style: TextStyle(fontSize: 11, color: textMuted)),
                         ]),
                   ),
                 const SizedBox(height: 8),

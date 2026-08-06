@@ -695,31 +695,37 @@ class _SettingsSection extends StatelessWidget {
   const _SettingsSection({required this.title, required this.children});
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textMuted,
-                  letterSpacing: 0.5)),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.border)),
-            child: Column(children: [
-              for (int i = 0; i < children.length; i++) ...[
-                children[i],
-                if (i < children.length - 1)
-                  const Divider(height: 1, color: AppTheme.border, indent: 56),
-              ],
-            ]),
-          ),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? AppTheme.textMuted : const Color(0xFF64748B);
+    final borderColor = isDark ? AppTheme.border : const Color(0xFFE2E8F0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: muted,
+                letterSpacing: 0.5)),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: borderColor)),
+          child: Column(children: [
+            for (int i = 0; i < children.length; i++) ...[
+              children[i],
+              if (i < children.length - 1)
+                Divider(height: 1, color: borderColor, indent: 56),
+            ],
+          ]),
+        ),
+      ],
+    );
+  }
 }
 
 class _SettingsTile extends StatelessWidget {
@@ -736,30 +742,33 @@ class _SettingsTile extends StatelessWidget {
       this.trailing});
 
   @override
-  Widget build(BuildContext context) => ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, color: AppTheme.primary, size: 20),
-        ),
-        title: Text(title,
-            style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
-        subtitle: Text(subtitle,
-            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-        trailing: trailing ??
-            (onTap != null
-                ? const Icon(Icons.chevron_right_rounded,
-                    color: AppTheme.textMuted)
-                : null),
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      );
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppTheme.textPrimary : const Color(0xFF0F172A);
+    final textMuted = isDark ? AppTheme.textMuted : const Color(0xFF64748B);
+
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, color: AppTheme.primary, size: 20),
+      ),
+      title: Text(title,
+          style: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary)),
+      subtitle:
+          Text(subtitle, style: TextStyle(fontSize: 12, color: textMuted)),
+      trailing: trailing ??
+          (onTap != null
+              ? Icon(Icons.chevron_right_rounded, color: textMuted)
+              : null),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    );
+  }
 }
 
 class _MfaDialogContent extends StatelessWidget {
