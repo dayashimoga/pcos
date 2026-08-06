@@ -102,19 +102,20 @@ class _AdminPageState extends State<AdminPage> {
             // System Stats Cards
             if (_systemStats != null) ...[
               Wrap(spacing: 16, runSpacing: 16, children: [
-                _statCard('Users', '${_systemStats!['total_users']}',
+                _statCard(context, 'Users', '${_systemStats!['total_users']}',
                     Icons.people_rounded),
-                _statCard('Files', '${_systemStats!['total_files']}',
+                _statCard(context, 'Files', '${_systemStats!['total_files']}',
                     Icons.insert_drive_file_rounded),
                 _statCard(
+                    context,
                     'Storage',
                     _formatBytes(_systemStats!['total_storage_bytes'] ?? 0),
                     Icons.storage_rounded),
-                _statCard('Shares', '${_systemStats!['total_active_shares']}',
+                _statCard(context, 'Shares', '${_systemStats!['total_active_shares']}',
                     Icons.share_rounded),
-                _statCard('Devices', '${_systemStats!['total_devices']}',
+                _statCard(context, 'Devices', '${_systemStats!['total_devices']}',
                     Icons.devices_rounded),
-                _statCard('Version', '${_systemStats!['version']}',
+                _statCard(context, 'Version', '${_systemStats!['version']}',
                     Icons.info_rounded),
               ]),
               const SizedBox(height: 32),
@@ -125,32 +126,34 @@ class _AdminPageState extends State<AdminPage> {
             const SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
-                  color: AppTheme.surface,
+                  color: AppTheme.surfaceColor(context),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.border)),
+                  border: Border.all(color: AppTheme.borderColor(context))),
               child: Column(
                   children: _users
                       .map((u) => ListTile(
                             leading: CircleAvatar(
                               backgroundColor: u['role'] == 'admin'
                                   ? AppTheme.primary
-                                  : AppTheme.textMuted.withOpacity(0.2),
+                                  : AppTheme.textMutedColor(context).withOpacity(0.2),
                               child: Icon(
                                   u['role'] == 'admin'
                                       ? Icons.shield_rounded
                                       : Icons.person_rounded,
                                   color: u['role'] == 'admin'
                                       ? Colors.white
-                                      : AppTheme.textMuted,
+                                      : AppTheme.textMutedColor(context),
                                   size: 20),
                             ),
                             title: Text(u['display_name'] ?? u['email'],
-                                style: const TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.w600)),
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textPrimaryColor(context))),
                             subtitle: Text(
                                 '${u['email']} • ${u['role']}${u['totp_enabled'] == true ? ' • 🔐 MFA' : ''}',
-                                style: const TextStyle(
-                                    fontSize: 12, color: AppTheme.textMuted)),
+                                style: TextStyle(
+                                    fontSize: 12, color: AppTheme.textMutedColor(context))),
                             trailing:
                                 Row(mainAxisSize: MainAxisSize.min, children: [
                               PopupMenuButton<String>(
@@ -162,8 +165,10 @@ class _AdminPageState extends State<AdminPage> {
                                     .toList(),
                                 child: Chip(
                                     label: Text(u['role'],
-                                        style: const TextStyle(fontSize: 11)),
-                                    backgroundColor: AppTheme.surface),
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: AppTheme.textPrimaryColor(context))),
+                                    backgroundColor: AppTheme.surfaceColor(context)),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline_rounded,
@@ -187,7 +192,7 @@ class _AdminPageState extends State<AdminPage> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: AppTheme.surfaceColor(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
@@ -206,11 +211,11 @@ class _AdminPageState extends State<AdminPage> {
                         child: const Icon(Icons.person_add_rounded,
                             size: 20, color: AppTheme.primary)),
                     const SizedBox(width: 12),
-                    const Text('Create User',
+                    Text('Create User',
                         style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimary)),
+                            color: AppTheme.textPrimaryColor(context))),
                   ]),
                   const SizedBox(height: 20),
                   TextField(
@@ -280,7 +285,7 @@ class _AdminPageState extends State<AdminPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: AppTheme.surfaceColor(context),
         icon:
             const Icon(Icons.warning_rounded, color: AppTheme.error, size: 32),
         title: const Text('Delete User?'),
@@ -321,25 +326,25 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
-  Widget _statCard(String label, String value, IconData icon) {
+  Widget _statCard(BuildContext context, String label, String value, IconData icon) {
     return Container(
       width: 160,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceColor(context),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.border)),
+          border: Border.all(color: AppTheme.borderColor(context))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(icon, color: AppTheme.primary, size: 24),
         const SizedBox(height: 12),
         Text(value,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary)),
+                color: AppTheme.textPrimaryColor(context))),
         const SizedBox(height: 4),
         Text(label,
-            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+            style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
       ]),
     );
   }

@@ -106,17 +106,17 @@ class _GalleryPageState extends State<GalleryPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                    color: AppTheme.surface,
+                    color: AppTheme.surfaceColor(context),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppTheme.border)),
+                    border: Border.all(color: AppTheme.borderColor(context))),
                 child: Row(children: [
-                  Icon(Icons.grid_view_rounded,
+                  const Icon(Icons.grid_view_rounded,
                       size: 18, color: AppTheme.primary),
                   const SizedBox(width: 8),
                   Text('${_photos.length}',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13,
-                          color: AppTheme.textMuted,
+                          color: AppTheme.textMutedColor(context),
                           fontWeight: FontWeight.w600)),
                 ]),
               ),
@@ -140,20 +140,20 @@ class _GalleryPageState extends State<GalleryPage> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                  color: AppTheme.surfaceLight.withOpacity(0.3),
+                  color: AppTheme.surfaceLightColor(context).withOpacity(0.3),
                   borderRadius: BorderRadius.circular(20)),
-              child: const Icon(Icons.photo_library_rounded,
-                  size: 48, color: AppTheme.textMuted),
+              child: Icon(Icons.photo_library_rounded,
+                  size: 48, color: AppTheme.textMutedColor(context)),
             ),
             const SizedBox(height: 16),
-            const Text('No photos yet',
+            Text('No photos yet',
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary)),
+                    color: AppTheme.textPrimaryColor(context))),
             const SizedBox(height: 8),
-            const Text('Upload images to see them here',
-                style: TextStyle(color: AppTheme.textMuted)),
+            Text('Upload images to see them here',
+                style: TextStyle(color: AppTheme.textMutedColor(context))),
           ])))
         else
           ..._grouped.entries.expand((group) => [
@@ -176,8 +176,8 @@ class _GalleryPageState extends State<GalleryPage> {
                     ),
                     const SizedBox(width: 8),
                     Text('${group.value.length} photos',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppTheme.textMuted)),
+                        style: TextStyle(
+                            fontSize: 12, color: AppTheme.textMutedColor(context))),
                   ]),
                 )),
                 SliverPadding(
@@ -225,7 +225,7 @@ class _PhotoTile extends StatelessWidget {
           loadingBuilder: (_, child, progress) {
             if (progress == null) return child;
             return Container(
-                color: AppTheme.surfaceLight,
+                color: AppTheme.surfaceLightColor(context),
                 child: const Center(
                   child: SizedBox(
                       width: 16,
@@ -235,10 +235,10 @@ class _PhotoTile extends StatelessWidget {
                 ));
           },
           errorBuilder: (_, __, ___) => Container(
-            color: AppTheme.surfaceLight,
-            child: const Center(
+            color: AppTheme.surfaceLightColor(context),
+            child: Center(
                 child: Icon(Icons.broken_image_rounded,
-                    size: 24, color: AppTheme.textMuted)),
+                    size: 24, color: AppTheme.textMutedColor(context))),
           ),
         ),
       ),

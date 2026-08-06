@@ -316,7 +316,7 @@ class _FilesContentState extends State<_FilesContent> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 48, vertical: 36),
                     decoration: BoxDecoration(
-                        color: AppTheme.surface,
+                        color: AppTheme.surfaceColor(context),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: AppTheme.primary, width: 2),
                         boxShadow: [
@@ -325,19 +325,19 @@ class _FilesContentState extends State<_FilesContent> {
                               blurRadius: 24)
                         ]),
                     child:
-                        const Column(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.cloud_upload_rounded,
+                        Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.cloud_upload_rounded,
                           size: 56, color: AppTheme.primary),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Text('Drop files to upload',
                           style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimary)),
-                      SizedBox(height: 4),
+                              color: AppTheme.textPrimaryColor(context))),
+                      const SizedBox(height: 4),
                       Text('Files will be uploaded to current folder',
                           style: TextStyle(
-                              fontSize: 14, color: AppTheme.textMuted)),
+                              fontSize: 14, color: AppTheme.textMutedColor(context))),
                     ]),
                   ),
                 ),
@@ -353,9 +353,9 @@ class _FilesContentState extends State<_FilesContent> {
       // View toggle
       Container(
         decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.surfaceColor(context),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppTheme.border)),
+            border: Border.all(color: AppTheme.borderColor(context))),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           _ViewToggle(
               icon: Icons.grid_view_rounded,
@@ -370,9 +370,9 @@ class _FilesContentState extends State<_FilesContent> {
       // Sort dropdown
       Container(
         decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.surfaceColor(context),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppTheme.border)),
+            border: Border.all(color: AppTheme.borderColor(context))),
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
@@ -383,9 +383,9 @@ class _FilesContentState extends State<_FilesContent> {
                     ? Icons.arrow_upward_rounded
                     : Icons.arrow_downward_rounded,
                 size: 14,
-                color: AppTheme.textMuted),
-            dropdownColor: AppTheme.surface,
-            style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+                color: AppTheme.textMutedColor(context)),
+            dropdownColor: AppTheme.surfaceColor(context),
+            style: TextStyle(fontSize: 13, color: AppTheme.textPrimaryColor(context)),
             items: const [
               DropdownMenuItem(value: 'name', child: Text('Name')),
               DropdownMenuItem(value: 'size', child: Text('Size')),
@@ -514,14 +514,14 @@ class _FilesContentState extends State<_FilesContent> {
               size: 48, color: AppTheme.error),
         ),
         const SizedBox(height: 20),
-        const Text('Something went wrong',
+        Text('Something went wrong',
             style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
+                color: AppTheme.textPrimaryColor(context))),
         const SizedBox(height: 8),
         Text(message,
-            style: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
+            style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 14),
             textAlign: TextAlign.center),
         const SizedBox(height: 20),
         ElevatedButton.icon(

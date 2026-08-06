@@ -45,10 +45,45 @@ class ApiClient {
     dio.options.baseUrl = cleanUrl;
   }
 
+  /// Test connection to a candidate server URL.
+  Future<String?> testServerUrl(String url) async {
+    String cleanUrl = url.trim();
+    if (cleanUrl.isEmpty) return 'Server URL cannot be empty';
+    if (cleanUrl.endsWith('/')) {
+      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
+    }
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'http://$cleanUrl';
+    }
+    final testDio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 4),
+      receiveTimeout: const Duration(seconds: 4),
+    ));
+    try {
+      final resp = await testDio.get('$cleanUrl/health');
+      if (resp.statusCode == 200) {
+        return null; // Success
+      }
+      return 'Server returned HTTP status ${resp.statusCode}';
+    } catch (e) {
+      if (e is DioException) {
+        if (e.type == DioExceptionType.connectionTimeout) {
+          return 'Connection timed out. Check firewall and IP ($cleanUrl).';
+        }
+        if (e.type == DioExceptionType.connectionError) {
+          return 'Connection refused. Ensure PCOS is running and check port (e.g. :80 or :8080).';
+        }
+        if (e.response != null) {
+          return 'Server returned status ${e.response?.statusCode}';
+        }
+      }
+      return 'Connection failed: $e';
+    }
+  }
+
   ApiClient({required this.prefs}) {
-    final initialUrl = prefs.getString(_serverUrlKey) ?? _resolveBaseUrl();
     dio = Dio(BaseOptions(
-      baseUrl: initialUrl,
+      baseUrl: currentServerUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 30),
       headers: {

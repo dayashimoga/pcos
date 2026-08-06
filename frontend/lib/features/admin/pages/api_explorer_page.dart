@@ -175,17 +175,17 @@ class _ApiExplorerPageState extends State<ApiExplorerPage> {
   Widget _buildEndpointList(Map<String, List<Map<String, String>>> groups) {
     return Container(
       decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceColor(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.border)),
+          border: Border.all(color: AppTheme.borderColor(context))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Text('Endpoints',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary)),
+                  color: AppTheme.textPrimaryColor(context))),
         ),
         ...groups.entries.expand((group) => [
               // Group header
@@ -193,12 +193,12 @@ class _ApiExplorerPageState extends State<ApiExplorerPage> {
                 width: double.infinity,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                color: AppTheme.background,
+                color: AppTheme.backgroundColor(context),
                 child: Text(group.key,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textMuted,
+                        color: AppTheme.textMutedColor(context),
                         letterSpacing: 0.5)),
               ),
               // Endpoints
@@ -231,9 +231,9 @@ class _ApiExplorerPageState extends State<ApiExplorerPage> {
                           const SizedBox(width: 10),
                           Expanded(
                               child: Text(ep['path']!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 12,
-                                      color: AppTheme.textPrimary,
+                                      color: AppTheme.textPrimaryColor(context),
                                       fontFamily: 'monospace'),
                                   overflow: TextOverflow.ellipsis)),
                         ]),
@@ -249,24 +249,24 @@ class _ApiExplorerPageState extends State<ApiExplorerPage> {
   Widget _buildResponsePanel() {
     return Container(
       decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceColor(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.border)),
+          border: Border.all(color: AppTheme.borderColor(context))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Header
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppTheme.border))),
+          decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppTheme.borderColor(context)))),
           child: Row(children: [
             const Icon(Icons.terminal_rounded,
                 size: 18, color: AppTheme.primary),
             const SizedBox(width: 8),
-            const Text('Response',
+            Text('Response',
                 style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary)),
+                    color: AppTheme.textPrimaryColor(context))),
             const Spacer(),
             if (_statusCode > 0)
               Container(
@@ -287,8 +287,8 @@ class _ApiExplorerPageState extends State<ApiExplorerPage> {
             if (_responseBody.isNotEmpty) ...[
               const SizedBox(width: 8),
               IconButton(
-                icon: const Icon(Icons.copy_rounded,
-                    size: 16, color: AppTheme.textMuted),
+                icon: Icon(Icons.copy_rounded,
+                    size: 16, color: AppTheme.textMutedColor(context)),
                 tooltip: 'Copy response',
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: _responseBody));
@@ -311,11 +311,11 @@ class _ApiExplorerPageState extends State<ApiExplorerPage> {
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           )
         else if (_responseBody.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(32),
+          Padding(
+            padding: const EdgeInsets.all(32),
             child: Center(
                 child: Text('Select an endpoint to send a request',
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 14))),
+                    style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 14))),
           )
         else
           Container(
@@ -324,10 +324,10 @@ class _ApiExplorerPageState extends State<ApiExplorerPage> {
             padding: const EdgeInsets.all(16),
             child: SingleChildScrollView(
               child: SelectableText(_responseBody,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12,
                       fontFamily: 'monospace',
-                      color: AppTheme.textPrimary)),
+                      color: AppTheme.textPrimaryColor(context))),
             ),
           ),
       ]),

@@ -40,6 +40,67 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
+  // ─── Dynamic Helpers for High-Contrast Light & Dark Modes ───
+  static Color surfaceColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? surface
+        : Colors.white;
+  }
+
+  static Color cardColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? surface
+        : Colors.white;
+  }
+
+  static Color cardBgColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF1E293B)
+        : const Color(0xFFF1F5F9);
+  }
+
+  static Color backgroundColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? background
+        : const Color(0xFFF8FAFC);
+  }
+
+  static Color textPrimaryColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? textPrimary
+        : const Color(0xFF0F172A);
+  }
+
+  static Color textSecondaryColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? textSecondary
+        : const Color(0xFF475569);
+  }
+
+  static Color textMutedColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? textMuted
+        : const Color(0xFF64748B);
+  }
+
+  static Color borderColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? border
+        : const Color(0xFFE2E8F0);
+  }
+
+  static Color surfaceLightColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? surfaceLight
+        : const Color(0xFFF1F5F9);
+  }
+
+  static Color inputFillColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? surface
+        : const Color(0xFFF8FAFC);
+  }
+
   // ─── Theme Data ───────────────────────────────────────
   static ThemeData get darkTheme {
     return ThemeData(

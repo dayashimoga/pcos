@@ -263,85 +263,137 @@ class _LoginPageState extends State<LoginPage>
     final api = getIt<ApiClient>();
     final ctrl = TextEditingController(text: api.currentServerUrl);
     final codeCtrl = TextEditingController();
+    bool testing = false;
+    String? testResult;
+    bool? testSuccess;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(children: [
-          Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primary),
-          SizedBox(width: 10),
-          Text('Pair & Connect Server',
-              style: TextStyle(color: AppTheme.textPrimary, fontSize: 18)),
-        ]),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Enter your PCOS server IP address (e.g. http://192.168.0.111):',
-              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: ctrl,
-              decoration: const InputDecoration(
-                labelText: 'Server IP / URL',
-                hintText: 'http://192.168.0.111',
-                prefixIcon: Icon(Icons.link_rounded),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.surfaceColor(context),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(children: [
+            const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primary),
+            const SizedBox(width: 10),
+            Text('Pair & Connect Server',
+                style: TextStyle(
+                    color: AppTheme.textPrimaryColor(context), fontSize: 18)),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Enter your PCOS server IP address (e.g. http://192.168.1.50 or http://192.168.1.50:8080):',
+                style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context)),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: codeCtrl,
-              decoration: const InputDecoration(
-                labelText: '6-Digit Pairing Code (Optional)',
-                hintText: 'e.g. 749201',
-                prefixIcon: Icon(Icons.pin_rounded),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ctrl,
+                style: TextStyle(color: AppTheme.textPrimaryColor(context)),
+                decoration: const InputDecoration(
+                  labelText: 'Server IP / URL',
+                  hintText: 'http://192.168.1.50',
+                  prefixIcon: Icon(Icons.link_rounded),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  ctrl.text = 'http://192.168.0.111';
-                  codeCtrl.text = '849201';
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          'QR Code Scanned: Connected to http://192.168.0.111'),
-                      backgroundColor: AppTheme.success,
+              const SizedBox(height: 12),
+              TextField(
+                controller: codeCtrl,
+                style: TextStyle(color: AppTheme.textPrimaryColor(context)),
+                decoration: const InputDecoration(
+                  labelText: '6-Digit Pairing Code (Optional)',
+                  hintText: 'e.g. 749201',
+                  prefixIcon: Icon(Icons.pin_rounded),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (testResult != null)
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: (testSuccess == true ? AppTheme.success : AppTheme.error)
+                        .withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: testSuccess == true
+                            ? AppTheme.success
+                            : AppTheme.error),
+                  ),
+                  child: Row(children: [
+                    Icon(
+                        testSuccess == true
+                            ? Icons.check_circle_rounded
+                            : Icons.error_outline_rounded,
+                        size: 18,
+                        color: testSuccess == true
+                            ? AppTheme.success
+                            : AppTheme.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(testResult!,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: testSuccess == true
+                                  ? AppTheme.success
+                                  : AppTheme.error)),
                     ),
-                  );
-                },
-                icon: const Icon(Icons.qr_code_scanner_rounded,
-                    size: 18, color: AppTheme.primary),
-                label: const Text('Scan Desktop QR Code'),
+                  ]),
+                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: testing
+                          ? null
+                          : () async {
+                              setDialogState(() {
+                                testing = true;
+                                testResult = null;
+                              });
+                              final err = await api.testServerUrl(ctrl.text);
+                              setDialogState(() {
+                                testing = false;
+                                testSuccess = (err == null);
+                                testResult = err ?? 'Connection successful!';
+                              });
+                            },
+                      icon: testing
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.wifi_find_rounded, size: 16),
+                      label: Text(testing ? 'Testing...' : 'Test Connection'),
+                    ),
+                  ),
+                ],
               ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                final newUrl = ctrl.text.trim();
+                await api.setServerUrl(newUrl);
+                setState(() {});
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Server connected: ${api.currentServerUrl}'),
+                    backgroundColor: AppTheme.success,
+                  ));
+                }
+              },
+              child: const Text('Save & Connect'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              final newUrl = ctrl.text.trim();
-              await api.setServerUrl(newUrl);
-              setState(() {});
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('Server connected: ${api.currentServerUrl}'),
-                  backgroundColor: AppTheme.success,
-                ));
-              }
-            },
-            child: const Text('Save & Connect'),
-          ),
-        ],
       ),
     );
   }

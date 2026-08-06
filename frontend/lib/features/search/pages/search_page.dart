@@ -79,9 +79,9 @@ class _SearchPageState extends State<SearchPage> {
         // Search bar
         Container(
           decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.surfaceColor(context),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.border),
+            border: Border.all(color: AppTheme.borderColor(context)),
           ),
           child: TextField(
             controller: _controller,
@@ -154,28 +154,28 @@ class _SearchPageState extends State<SearchPage> {
             padding: const EdgeInsets.all(48),
             width: double.infinity,
             decoration: BoxDecoration(
-                color: AppTheme.surface,
+                color: AppTheme.surfaceColor(context),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.border)),
+                border: Border.all(color: AppTheme.borderColor(context))),
             child: Column(children: [
               Icon(Icons.search_off_rounded,
-                  size: 48, color: AppTheme.textMuted.withOpacity(0.5)),
+                  size: 48, color: AppTheme.textMutedColor(context).withOpacity(0.5)),
               const SizedBox(height: 16),
-              const Text('No results found',
-                  style: TextStyle(fontSize: 16, color: AppTheme.textMuted)),
+              Text('No results found',
+                  style: TextStyle(fontSize: 16, color: AppTheme.textMutedColor(context))),
               const SizedBox(height: 8),
               Text('Try different keywords or filters',
                   style: TextStyle(
                       fontSize: 13,
-                      color: AppTheme.textMuted.withOpacity(0.7))),
+                      color: AppTheme.textMutedColor(context).withOpacity(0.7))),
             ]),
           ),
         if (!_loading && results.isNotEmpty)
           Container(
             decoration: BoxDecoration(
-                color: AppTheme.surface,
+                color: AppTheme.surfaceColor(context),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.border)),
+                border: Border.all(color: AppTheme.borderColor(context))),
             child: Column(children: [
               Padding(
                 padding: const EdgeInsets.all(12),
@@ -184,9 +184,9 @@ class _SearchPageState extends State<SearchPage> {
                     children: [
                       Text(
                         '${results.length} result${results.length == 1 ? '' : 's'}',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 13,
-                            color: AppTheme.textMuted,
+                            color: AppTheme.textMutedColor(context),
                             fontWeight: FontWeight.w600),
                       ),
                       Text(
@@ -195,8 +195,8 @@ class _SearchPageState extends State<SearchPage> {
                             : _sortBy == 'name'
                                 ? 'A → Z'
                                 : 'Largest first',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppTheme.textMuted),
+                        style: TextStyle(
+                            fontSize: 12, color: AppTheme.textMutedColor(context)),
                       ),
                     ]),
               ),
@@ -210,20 +210,20 @@ class _SearchPageState extends State<SearchPage> {
                           : AppTheme.primary,
                     ),
                     title: Text(e['name'] ?? '',
-                        style: const TextStyle(
-                            fontSize: 14, color: AppTheme.textPrimary)),
+                        style: TextStyle(
+                            fontSize: 14, color: AppTheme.textPrimaryColor(context))),
                     subtitle: Text(
                       e['entry_type'] == 'file'
                           ? formatFileSize(e['size_bytes'] ?? 0)
                           : 'Folder',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppTheme.textMuted),
+                      style: TextStyle(
+                          fontSize: 12, color: AppTheme.textMutedColor(context)),
                     ),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                       if (e['entry_type'] == 'file')
                         IconButton(
-                          icon: const Icon(Icons.link_rounded,
-                              size: 18, color: AppTheme.textMuted),
+                          icon: Icon(Icons.link_rounded,
+                              size: 18, color: AppTheme.textMutedColor(context)),
                           tooltip: 'Copy link',
                           onPressed: () {
                             final api = getIt<ApiClient>();
@@ -292,23 +292,23 @@ class _FilterChip extends StatelessWidget {
             decoration: BoxDecoration(
               color: selected
                   ? AppTheme.primary.withOpacity(0.15)
-                  : AppTheme.surface,
+                  : AppTheme.surfaceColor(context),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                  color: selected ? AppTheme.primary : AppTheme.border),
+                  color: selected ? AppTheme.primary : AppTheme.borderColor(context)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               if (icon != null) ...[
                 Icon(icon,
                     size: 14,
-                    color: selected ? AppTheme.primary : AppTheme.textMuted),
+                    color: selected ? AppTheme.primary : AppTheme.textMutedColor(context)),
                 const SizedBox(width: 6),
               ],
               Text(label,
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: selected ? AppTheme.primary : AppTheme.textMuted)),
+                      color: selected ? AppTheme.primary : AppTheme.textMutedColor(context))),
             ]),
           ),
         ),

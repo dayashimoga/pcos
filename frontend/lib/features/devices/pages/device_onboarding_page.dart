@@ -95,9 +95,9 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
           child: Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: AppTheme.surfaceColor(context),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: AppTheme.borderColor(context)),
             ),
             child: Column(children: [
               // QR Code area
@@ -129,8 +129,8 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
 
               // Pairing code
               if (_onboardingCode != null) ...[
-                const Text('Or enter this code manually:',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                Text('Or enter this code manually:',
+                    style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
                 const SizedBox(height: 12),
                 GestureDetector(
                   onTap: () {
@@ -143,7 +143,7 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 14),
                     decoration: BoxDecoration(
-                      color: AppTheme.background,
+                      color: AppTheme.backgroundColor(context),
                       borderRadius: BorderRadius.circular(12),
                       border:
                           Border.all(color: AppTheme.primary.withOpacity(0.3)),
@@ -159,19 +159,19 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
                             fontFamily: 'monospace'),
                       ),
                       const SizedBox(width: 12),
-                      const Icon(Icons.copy_rounded,
-                          size: 18, color: AppTheme.textMuted),
+                      Icon(Icons.copy_rounded,
+                          size: 18, color: AppTheme.textMutedColor(context)),
                     ]),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.timer_outlined,
-                      size: 14, color: AppTheme.textMuted),
+                  Icon(Icons.timer_outlined,
+                      size: 14, color: AppTheme.textMutedColor(context)),
                   const SizedBox(width: 4),
                   Text('Expires in ${_expirySeconds ~/ 60} min',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppTheme.textMuted)),
+                      style: TextStyle(
+                          fontSize: 12, color: AppTheme.textMutedColor(context))),
                 ]),
               ],
 
@@ -209,16 +209,16 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-                color: AppTheme.surface,
+                color: AppTheme.surfaceColor(context),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.border)),
+                border: Border.all(color: AppTheme.borderColor(context))),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('How to connect a device',
+              Text('How to connect a device',
                   style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary)),
+                      color: AppTheme.textPrimaryColor(context))),
               const SizedBox(height: 16),
               _InstructionStep(
                   step: '1',
@@ -301,13 +301,13 @@ class _InstructionStep extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 Text(title,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: AppTheme.textPrimary)),
+                        color: AppTheme.textPrimaryColor(context))),
                 Text(subtitle,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppTheme.textMuted)),
+                    style: TextStyle(
+                        fontSize: 12, color: AppTheme.textMutedColor(context))),
               ])),
         ]),
       );

@@ -220,8 +220,8 @@ class _DoctorPageState extends State<DoctorPage> {
                               : AppTheme.warning),
                     ),
                     Text('$passed/$total checks passed',
-                        style: const TextStyle(
-                            fontSize: 13, color: AppTheme.textMuted)),
+                        style: TextStyle(
+                            fontSize: 13, color: AppTheme.textMutedColor(context))),
                   ])),
             ]),
           ),
@@ -230,29 +230,29 @@ class _DoctorPageState extends State<DoctorPage> {
         // Checks list
         Container(
           decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: AppTheme.surfaceColor(context),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.border)),
+              border: Border.all(color: AppTheme.borderColor(context))),
           child: Column(children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppTheme.border))),
+              decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppTheme.borderColor(context)))),
               child: Row(children: [
-                const Expanded(
+                Expanded(
                     flex: 3,
                     child: Text('Component',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.textMuted))),
-                const Expanded(
+                            color: AppTheme.textMutedColor(context)))),
+                Expanded(
                     flex: 4,
                     child: Text('Status',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.textMuted))),
+                            color: AppTheme.textMutedColor(context)))),
                 const SizedBox(
                     width: 24, child: Text('', style: TextStyle(fontSize: 12))),
               ]),
@@ -260,10 +260,10 @@ class _DoctorPageState extends State<DoctorPage> {
             ..._checks.map((c) => Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                       border: Border(
                           bottom:
-                              BorderSide(color: AppTheme.border, width: 0.5))),
+                              BorderSide(color: AppTheme.borderColor(context), width: 0.5))),
                   child: Row(children: [
                     Expanded(
                         flex: 3,
@@ -271,13 +271,13 @@ class _DoctorPageState extends State<DoctorPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(c.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
-                                      color: AppTheme.textPrimary)),
+                                      color: AppTheme.textPrimaryColor(context))),
                               Text(c.description,
-                                  style: const TextStyle(
-                                      fontSize: 11, color: AppTheme.textMuted)),
+                                  style: TextStyle(
+                                      fontSize: 11, color: AppTheme.textMutedColor(context))),
                             ])),
                     Expanded(
                         flex: 4,
@@ -289,7 +289,7 @@ class _DoctorPageState extends State<DoctorPage> {
                                   ? AppTheme.success
                                   : c.status == _CheckStatus.fail
                                       ? AppTheme.error
-                                      : AppTheme.textMuted),
+                                      : AppTheme.textMutedColor(context)),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 2,
                         )),
@@ -306,7 +306,7 @@ class _DoctorPageState extends State<DoctorPage> {
                               ? AppTheme.success
                               : c.status == _CheckStatus.fail
                                   ? AppTheme.error
-                                  : AppTheme.textMuted,
+                                  : AppTheme.textMutedColor(context),
                         )),
                   ]),
                 )),

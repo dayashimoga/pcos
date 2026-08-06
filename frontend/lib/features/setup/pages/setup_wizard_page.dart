@@ -123,7 +123,7 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.backgroundColor(context),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -141,14 +141,14 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                     color: Colors.white, size: 48),
               ),
               const SizedBox(height: 20),
-              const Text('Welcome to PCOS',
+              Text('Welcome to PCOS',
                   style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimary)),
+                      color: AppTheme.textPrimaryColor(context))),
               const SizedBox(height: 8),
-              const Text('Personal Cloud OS — Setup Wizard',
-                  style: TextStyle(fontSize: 14, color: AppTheme.textMuted)),
+              Text('Personal Cloud OS — Setup Wizard',
+                  style: TextStyle(fontSize: 14, color: AppTheme.textMutedColor(context))),
               const SizedBox(height: 32),
 
               // Step indicator
@@ -161,7 +161,7 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                 Container(
                     width: 40,
                     height: 2,
-                    color: _step > 0 ? AppTheme.primary : AppTheme.border),
+                    color: _step > 0 ? AppTheme.primary : AppTheme.borderColor(context)),
                 _StepDot(
                     label: '2',
                     title: 'Account',
@@ -170,7 +170,7 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                 Container(
                     width: 40,
                     height: 2,
-                    color: _step > 1 ? AppTheme.primary : AppTheme.border),
+                    color: _step > 1 ? AppTheme.primary : AppTheme.borderColor(context)),
                 _StepDot(
                     label: '3', title: 'Done', active: _step == 2, done: false),
               ]),
@@ -181,9 +181,9 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(28),
                 decoration: BoxDecoration(
-                  color: AppTheme.surface,
+                  color: AppTheme.surfaceColor(context),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.border),
+                  border: Border.all(color: AppTheme.borderColor(context)),
                 ),
                 child: _buildStepContent(),
               ),
@@ -209,14 +209,14 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
 
   Widget _buildServerCheck() =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Server Connection',
+        Text('Server Connection',
             style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
+                color: AppTheme.textPrimaryColor(context))),
         const SizedBox(height: 8),
-        const Text('Verifying connection to your PCOS backend server.',
-            style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+        Text('Verifying connection to your PCOS backend server.',
+            style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
         const SizedBox(height: 20),
         if (_loading)
           const Center(

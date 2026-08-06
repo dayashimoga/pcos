@@ -169,19 +169,19 @@ class _DashboardPageState extends State<DashboardPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-                color: AppTheme.surface,
+                color: AppTheme.surfaceColor(context),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.border)),
+                border: Border.all(color: AppTheme.borderColor(context))),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _StatusRow(
                   label: 'Total Folders',
                   value: '${_stats['total_folders'] ?? 0}'),
-              const Divider(color: AppTheme.border, height: 24),
+              Divider(color: AppTheme.borderColor(context), height: 24),
               _StatusRow(
                   label: 'Total Backups',
                   value: '${_stats['total_backups'] ?? 0}'),
-              const Divider(color: AppTheme.border, height: 24),
+              Divider(color: AppTheme.borderColor(context), height: 24),
               _StatusRow(
                   label: 'Server Status',
                   value: 'Online',
@@ -215,12 +215,12 @@ class _StatusRow extends StatelessWidget {
   Widget build(BuildContext context) =>
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(label,
-            style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+            style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
         Text(value,
             style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: valueColor ?? AppTheme.textPrimary)),
+                color: valueColor ?? AppTheme.textPrimaryColor(context))),
       ]);
 }
 
@@ -239,9 +239,9 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.surfaceColor(context),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.border)),
+            border: Border.all(color: AppTheme.borderColor(context))),
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -254,14 +254,14 @@ class _StatCard extends StatelessWidget {
                   child: Icon(icon, size: 20, color: color)),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(value,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary)),
+                        color: AppTheme.textPrimaryColor(context))),
                 const SizedBox(height: 2),
                 Text(label,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppTheme.textMuted)),
+                    style: TextStyle(
+                        fontSize: 12, color: AppTheme.textMutedColor(context))),
               ]),
             ]),
       );
@@ -283,17 +283,17 @@ class _ActionChip extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-                color: AppTheme.surface,
+                color: AppTheme.surfaceColor(context),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.border)),
+                border: Border.all(color: AppTheme.borderColor(context))),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(icon, size: 18, color: AppTheme.primary),
               const SizedBox(width: 8),
               Text(label,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: AppTheme.textPrimary)),
+                      color: AppTheme.textPrimaryColor(context))),
             ]),
           ),
         ),
@@ -339,9 +339,9 @@ class _RecentFilesWidgetState extends State<_RecentFilesWidget> {
         height: 80,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.surfaceColor(context),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.border)),
+            border: Border.all(color: AppTheme.borderColor(context))),
         child: const SizedBox(
             width: 24,
             height: 24,
@@ -352,31 +352,31 @@ class _RecentFilesWidgetState extends State<_RecentFilesWidget> {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.surfaceColor(context),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.border)),
-        child: const Center(
+            border: Border.all(color: AppTheme.borderColor(context))),
+        child: Center(
             child: Text('No recent files',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 13))),
+                style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 13))),
       );
     }
     return Container(
       decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceColor(context),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.border)),
+          border: Border.all(color: AppTheme.borderColor(context))),
       child: Column(
           children: _files
               .map((f) => ListTile(
-                    leading: Icon(Icons.insert_drive_file_rounded,
+                    leading: const Icon(Icons.insert_drive_file_rounded,
                         size: 20, color: AppTheme.primary),
                     title: Text(f['name'] ?? '',
-                        style: const TextStyle(
-                            fontSize: 13, color: AppTheme.textPrimary),
+                        style: TextStyle(
+                            fontSize: 13, color: AppTheme.textPrimaryColor(context)),
                         overflow: TextOverflow.ellipsis),
                     subtitle: Text(formatFileSize(f['size_bytes'] ?? 0),
-                        style: const TextStyle(
-                            fontSize: 11, color: AppTheme.textMuted)),
+                        style: TextStyle(
+                            fontSize: 11, color: AppTheme.textMutedColor(context))),
                     dense: true,
                   ))
               .toList()),

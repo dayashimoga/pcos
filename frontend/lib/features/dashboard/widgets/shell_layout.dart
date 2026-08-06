@@ -77,9 +77,9 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
           width: 480,
           constraints: const BoxConstraints(maxHeight: 400),
           decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.surfaceColor(context),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.border),
+            border: Border.all(color: AppTheme.borderColor(context)),
             boxShadow: [
               BoxShadow(
                   color: Colors.black.withOpacity(0.3),
@@ -94,18 +94,18 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                 controller: _ctrl,
                 focusNode: _focusNode,
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Search pages, actions...',
                   prefixIcon: Icon(Icons.search_rounded,
-                      color: AppTheme.textMuted, size: 20),
+                      color: AppTheme.textMutedColor(context), size: 20),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 style:
-                    const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
+                    TextStyle(fontSize: 15, color: AppTheme.textPrimaryColor(context)),
               ),
             ),
-            const Divider(color: AppTheme.border, height: 1),
+            Divider(color: AppTheme.borderColor(context), height: 1),
             Flexible(
               child: ListView(
                 shrinkWrap: true,
@@ -115,12 +115,12 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                           leading:
                               Icon(p.$2, size: 20, color: AppTheme.primary),
                           title: Text(p.$1,
-                              style: const TextStyle(
-                                  fontSize: 14, color: AppTheme.textPrimary)),
+                              style: TextStyle(
+                                  fontSize: 14, color: AppTheme.textPrimaryColor(context))),
                           trailing: Text('Go',
                               style: TextStyle(
                                   fontSize: 11,
-                                  color: AppTheme.textMuted.withOpacity(0.6))),
+                                  color: AppTheme.textMutedColor(context).withOpacity(0.6))),
                           dense: true,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8)),
@@ -135,35 +135,35 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: const BoxDecoration(
-                  border: Border(top: BorderSide(color: AppTheme.border))),
+              decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: AppTheme.borderColor(context)))),
               child: Row(children: [
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                      color: AppTheme.surfaceLight,
+                      color: AppTheme.surfaceLightColor(context),
                       borderRadius: BorderRadius.circular(4)),
-                  child: const Text('ESC',
+                  child: Text('ESC',
                       style: TextStyle(
                           fontSize: 10,
-                          color: AppTheme.textMuted,
+                          color: AppTheme.textMutedColor(context),
                           fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 6),
-                const Text('to close',
-                    style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                Text('to close',
+                    style: TextStyle(fontSize: 11, color: AppTheme.textMutedColor(context))),
                 const Spacer(),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                      color: AppTheme.surfaceLight,
+                      color: AppTheme.surfaceLightColor(context),
                       borderRadius: BorderRadius.circular(4)),
-                  child: const Text('Ctrl+K',
+                  child: Text('Ctrl+K',
                       style: TextStyle(
                           fontSize: 10,
-                          color: AppTheme.textMuted,
+                          color: AppTheme.textMutedColor(context),
                           fontWeight: FontWeight.w600)),
                 ),
               ]),
@@ -508,11 +508,11 @@ class _TabletShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final idx = _currentIndex(context);
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.backgroundColor(context),
       body: Row(children: [
         NavigationRail(
           selectedIndex: idx,
-          backgroundColor: AppTheme.surface,
+          backgroundColor: AppTheme.surfaceColor(context),
           indicatorColor: AppTheme.primary.withOpacity(0.15),
           onDestinationSelected: (i) => context.go(_navItems[i].path),
           labelType: NavigationRailLabelType.all,
@@ -531,7 +531,7 @@ class _TabletShell extends StatelessWidget {
               .map((item) => NavigationRailDestination(
                     icon: Tooltip(
                         message: item.label,
-                        child: Icon(item.icon, color: AppTheme.textMuted)),
+                        child: Icon(item.icon, color: AppTheme.textMutedColor(context))),
                     selectedIcon:
                         Icon(item.activeIcon, color: AppTheme.primary),
                     label:
@@ -539,7 +539,7 @@ class _TabletShell extends StatelessWidget {
                   ))
               .toList(),
         ),
-        const VerticalDivider(thickness: 1, width: 1, color: AppTheme.border),
+        VerticalDivider(thickness: 1, width: 1, color: AppTheme.borderColor(context)),
         Expanded(child: child),
       ]),
     );
@@ -557,9 +557,9 @@ class _MobileShell extends StatelessWidget {
     final mobileIdx = idx < _mobileNavItems ? idx : 0;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: AppTheme.surfaceColor(context),
         elevation: 0,
         title: Row(children: [
           Container(
@@ -571,28 +571,28 @@ class _MobileShell extends StatelessWidget {
                 const Icon(Icons.cloud_rounded, color: Colors.white, size: 16),
           ),
           const SizedBox(width: 8),
-          const Text('PCOS',
+          Text('PCOS',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.textPrimary)),
+                  color: AppTheme.textPrimaryColor(context))),
         ]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search_rounded,
-                size: 22, color: AppTheme.textMuted),
+            icon: Icon(Icons.search_rounded,
+                size: 22, color: AppTheme.textMutedColor(context)),
             onPressed: () => _showQuickSearch(context),
             tooltip: 'Search',
           ),
           IconButton(
-            icon: const Icon(Icons.admin_panel_settings_outlined,
-                size: 22, color: AppTheme.textMuted),
+            icon: Icon(Icons.admin_panel_settings_outlined,
+                size: 22, color: AppTheme.textMutedColor(context)),
             onPressed: () => context.go('/admin'),
             tooltip: 'Admin',
           ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined,
-                size: 22, color: AppTheme.textMuted),
+            icon: Icon(Icons.settings_outlined,
+                size: 22, color: AppTheme.textMutedColor(context)),
             onPressed: () => context.go('/settings'),
             tooltip: 'Settings',
           ),
@@ -601,11 +601,11 @@ class _MobileShell extends StatelessWidget {
       ),
       body: child,
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: AppTheme.border))),
+        decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: AppTheme.borderColor(context)))),
         child: NavigationBar(
           selectedIndex: mobileIdx,
-          backgroundColor: AppTheme.surface,
+          backgroundColor: AppTheme.surfaceColor(context),
           indicatorColor: AppTheme.primary.withOpacity(0.15),
           onDestinationSelected: (i) => context.go(_navItems[i].path),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -614,7 +614,7 @@ class _MobileShell extends StatelessWidget {
               _mobileNavItems,
               (i) => NavigationDestination(
                     icon: Icon(_navItems[i].icon,
-                        color: AppTheme.textMuted, size: 22),
+                        color: AppTheme.textMutedColor(context), size: 22),
                     selectedIcon: Icon(_navItems[i].activeIcon,
                         color: AppTheme.primary, size: 22),
                     label: _navItems[i].label,

@@ -123,17 +123,17 @@ class _PdfPreview extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            color: AppTheme.surface,
+            color: AppTheme.surfaceColor(context),
             width: double.infinity,
             child: Row(children: [
               const Icon(Icons.picture_as_pdf_rounded,
                   size: 20, color: AppTheme.error),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                   child: Text('PDF Preview',
                       style: TextStyle(
                           fontSize: 14,
-                          color: AppTheme.textPrimary,
+                          color: AppTheme.textPrimaryColor(context),
                           fontWeight: FontWeight.w500))),
               TextButton.icon(
                 onPressed: () {},

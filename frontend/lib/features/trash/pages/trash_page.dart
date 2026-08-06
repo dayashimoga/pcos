@@ -57,9 +57,9 @@ class _TrashContent extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(48),
                   decoration: BoxDecoration(
-                      color: AppTheme.surface,
+                      color: AppTheme.surfaceColor(context),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.border)),
+                      border: Border.all(color: AppTheme.borderColor(context))),
                   child: Column(children: [
                     Container(
                         padding: const EdgeInsets.all(16),
@@ -69,18 +69,18 @@ class _TrashContent extends StatelessWidget {
                         child: const Icon(Icons.check_circle_outline_rounded,
                             size: 48, color: AppTheme.success)),
                     const SizedBox(height: 20),
-                    const Text('Trash is empty',
+                    Text('Trash is empty',
                         style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimary)),
+                            color: AppTheme.textPrimaryColor(context))),
                   ])),
             if (state is TrashLoaded && state.entries.isNotEmpty)
               Container(
                 decoration: BoxDecoration(
-                    color: AppTheme.surface,
+                    color: AppTheme.surfaceColor(context),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.border)),
+                    border: Border.all(color: AppTheme.borderColor(context))),
                 child: Column(
                     children: state.entries
                         .map((e) => ListTile(
@@ -88,14 +88,14 @@ class _TrashContent extends StatelessWidget {
                                   e['entry_type'] == 'folder'
                                       ? Icons.folder_rounded
                                       : Icons.insert_drive_file_rounded,
-                                  color: AppTheme.textMuted),
+                                  color: AppTheme.textMutedColor(context)),
                               title: Text(e['name'] ?? '',
-                                  style: const TextStyle(
-                                      color: AppTheme.textPrimary,
+                                  style: TextStyle(
+                                      color: AppTheme.textPrimaryColor(context),
                                       fontSize: 14)),
                               subtitle: Text(e['entry_type'] ?? '',
-                                  style: const TextStyle(
-                                      color: AppTheme.textMuted, fontSize: 12)),
+                                  style: TextStyle(
+                                      color: AppTheme.textMutedColor(context), fontSize: 12)),
                               trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -121,7 +121,7 @@ class _TrashContent extends StatelessWidget {
     showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-              backgroundColor: AppTheme.surface,
+              backgroundColor: AppTheme.surfaceColor(context),
               title: const Text('Empty Trash?'),
               content: const Text(
                   'This will permanently delete all items in trash. This action cannot be undone.'),

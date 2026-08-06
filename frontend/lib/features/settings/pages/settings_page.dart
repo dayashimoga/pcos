@@ -59,7 +59,7 @@ class _SettingsPageState extends State<SettingsPage> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: AppTheme.surfaceColor(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
@@ -80,11 +80,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         size: 20, color: AppTheme.primary),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Edit Profile',
+                  Text('Edit Profile',
                       style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary)),
+                          color: AppTheme.textPrimaryColor(context))),
                 ]),
                 const SizedBox(height: 20),
                 TextField(
@@ -147,7 +147,7 @@ class _SettingsPageState extends State<SettingsPage> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: AppTheme.surfaceColor(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
@@ -167,11 +167,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         size: 20, color: AppTheme.warning),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Change Password',
+                  Text('Change Password',
                       style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary)),
+                          color: AppTheme.textPrimaryColor(context))),
                 ]),
                 const SizedBox(height: 20),
                 TextField(
@@ -252,25 +252,26 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
-          backgroundColor: AppTheme.surface,
+          backgroundColor: AppTheme.surfaceColor(context),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(children: [
-            Icon(Icons.sync_rounded, color: AppTheme.primary),
-            SizedBox(width: 10),
+          title: Row(children: [
+            const Icon(Icons.sync_rounded, color: AppTheme.primary),
+            const SizedBox(width: 10),
             Text('Sync Settings',
-                style: TextStyle(color: AppTheme.textPrimary)),
+                style: TextStyle(color: AppTheme.textPrimaryColor(context))),
           ]),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Auto-Sync Interval',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+              Text('Auto-Sync Interval',
+                  style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: interval,
-                dropdownColor: AppTheme.surface,
+                dropdownColor: AppTheme.surfaceColor(context),
+                style: TextStyle(color: AppTheme.textPrimaryColor(context)),
                 items: const [
                   DropdownMenuItem(
                       value: '5 minutes', child: Text('Every 5 minutes')),
@@ -286,11 +287,11 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 16),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Wi-Fi Only Sync',
+                title: Text('Wi-Fi Only Sync',
                     style:
-                        TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
-                subtitle: const Text('Sync only when connected to Wi-Fi',
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                        TextStyle(color: AppTheme.textPrimaryColor(context), fontSize: 14)),
+                subtitle: Text('Sync only when connected to Wi-Fi',
+                    style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 12)),
                 value: wifiOnly,
                 activeColor: AppTheme.primary,
                 onChanged: (v) => setDlgState(() => wifiOnly = v),
@@ -320,34 +321,34 @@ class _SettingsPageState extends State<SettingsPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: AppTheme.surfaceColor(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(children: [
-          Icon(Icons.storage_rounded, color: AppTheme.primary),
-          SizedBox(width: 10),
+        title: Row(children: [
+          const Icon(Icons.storage_rounded, color: AppTheme.primary),
+          const SizedBox(width: 10),
           Text('Storage Usage & Quota',
-              style: TextStyle(color: AppTheme.textPrimary)),
+              style: TextStyle(color: AppTheme.textPrimaryColor(context))),
         ]),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Storage Volume',
-                style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
-            SizedBox(height: 6),
+                style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
+            const SizedBox(height: 6),
             Text('Docker Volume: file_storage (/data/pcos/storage)',
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary)),
-            SizedBox(height: 16),
-            LinearProgressIndicator(
+                    color: AppTheme.textPrimaryColor(context))),
+            const SizedBox(height: 16),
+            const LinearProgressIndicator(
                 value: 0.15,
                 backgroundColor: Colors.white10,
                 color: AppTheme.primary),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text('Unlimited Quota (Self-Hosted Instance)',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
           ],
         ),
         actions: [
@@ -423,25 +424,26 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
-          backgroundColor: AppTheme.surface,
+          backgroundColor: AppTheme.surfaceColor(context),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(children: [
-            Icon(Icons.auto_awesome_rounded, color: AppTheme.primary),
-            SizedBox(width: 10),
+          title: Row(children: [
+            const Icon(Icons.auto_awesome_rounded, color: AppTheme.primary),
+            const SizedBox(width: 10),
             Text('AI Provider Configuration',
-                style: TextStyle(color: AppTheme.textPrimary)),
+                style: TextStyle(color: AppTheme.textPrimaryColor(context))),
           ]),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Selected Provider',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+              Text('Selected Provider',
+                  style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: provider,
-                dropdownColor: AppTheme.surface,
+                dropdownColor: AppTheme.surfaceColor(context),
+                style: TextStyle(color: AppTheme.textPrimaryColor(context)),
                 items: const [
                   DropdownMenuItem(
                       value: 'Local Ollama',

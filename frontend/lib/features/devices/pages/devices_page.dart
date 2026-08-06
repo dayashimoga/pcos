@@ -110,7 +110,7 @@ class _DevicesContent extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              backgroundColor: AppTheme.surface,
+              backgroundColor: AppTheme.surfaceColor(context),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20)),
               child: Container(
@@ -125,13 +125,14 @@ class _DevicesContent extends StatelessWidget {
                       Text('Register Device',
                           style: Theme.of(context).textTheme.headlineMedium),
                       const SizedBox(height: 8),
-                      const Text('Add a new device to your cloud',
+                      Text('Add a new device to your cloud',
                           style: TextStyle(
-                              color: AppTheme.textMuted, fontSize: 13)),
+                              color: AppTheme.textMutedColor(context), fontSize: 13)),
                       const SizedBox(height: 24),
                       TextFormField(
                         key: const Key('device_name_field'),
                         controller: nameController,
+                        style: TextStyle(color: AppTheme.textPrimaryColor(context)),
                         decoration: const InputDecoration(
                             labelText: 'Device Name',
                             hintText: 'e.g. My Laptop'),
@@ -144,7 +145,8 @@ class _DevicesContent extends StatelessWidget {
                         value: selectedType,
                         decoration:
                             const InputDecoration(labelText: 'Device Type'),
-                        dropdownColor: AppTheme.surfaceLight,
+                        dropdownColor: AppTheme.surfaceColor(context),
+                        style: TextStyle(color: AppTheme.textPrimaryColor(context)),
                         items: const [
                           DropdownMenuItem(
                               value: 'desktop', child: Text('Desktop')),
@@ -169,7 +171,8 @@ class _DevicesContent extends StatelessWidget {
                         value: selectedOs,
                         decoration: const InputDecoration(
                             labelText: 'Operating System'),
-                        dropdownColor: AppTheme.surfaceLight,
+                        dropdownColor: AppTheme.surfaceColor(context),
+                        style: TextStyle(color: AppTheme.textPrimaryColor(context)),
                         items: const [
                           DropdownMenuItem(
                               value: 'Windows', child: Text('Windows')),
@@ -229,9 +232,9 @@ class _EmptyState extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(48),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: AppTheme.borderColor(context)),
       ),
       child: Column(
         children: [
@@ -245,14 +248,14 @@ class _EmptyState extends StatelessWidget {
                 size: 48, color: AppTheme.primary),
           ),
           const SizedBox(height: 20),
-          const Text('No devices registered',
+          Text('No devices registered',
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary)),
+                  color: AppTheme.textPrimaryColor(context))),
           const SizedBox(height: 8),
-          const Text('Add your first device to start syncing files',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+          Text('Add your first device to start syncing files',
+              style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 14)),
         ],
       ),
     );
@@ -319,9 +322,9 @@ class _DeviceCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: AppTheme.borderColor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,15 +367,15 @@ class _DeviceCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(device['name'] ?? '',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary),
+                      color: AppTheme.textPrimaryColor(context)),
                   overflow: TextOverflow.ellipsis),
               const SizedBox(height: 2),
               Text('${device['os'] ?? ''} · ${device['device_type'] ?? ''}',
                   style:
-                      const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                      TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
             ],
           ),
         ],
