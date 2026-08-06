@@ -10,7 +10,14 @@ final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await setupServiceLocator();
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+  };
+  try {
+    await setupServiceLocator();
+  } catch (e, stack) {
+    debugPrint('Service locator error during startup: $e\n$stack');
+  }
   runApp(const PCOSApp());
 }
 
