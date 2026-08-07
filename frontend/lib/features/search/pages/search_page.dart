@@ -43,7 +43,7 @@ class _SearchPageState extends State<SearchPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Search failed: $e'),
+              content: Text('Search failed: ${ApiClient.formatError(e)}'),
               backgroundColor: AppTheme.error),
         );
       }

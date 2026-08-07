@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/network/api_client.dart';
 import '../repository/file_repository.dart';
 
 // ─── Events ─────────────────────────────────────────────
@@ -168,7 +169,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
         total: result['total'] ?? 0,
       ));
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 
@@ -180,7 +181,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
       emit(const FileActionSuccess('File uploaded successfully'));
       add(FilesLoadRequested(folderId: event.parentId));
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 
@@ -191,7 +192,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
       emit(const FileActionSuccess('Folder created'));
       add(FilesLoadRequested(folderId: event.parentId));
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 
@@ -201,7 +202,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
       await fileRepository.deleteItem(event.itemId);
       emit(const FileActionSuccess('Moved to trash'));
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 
@@ -211,7 +212,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
       await fileRepository.renameItem(event.itemId, event.newName);
       emit(const FileActionSuccess('Renamed'));
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 
@@ -220,7 +221,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
       await fileRepository.moveItem(event.itemId, event.targetFolderId);
       emit(const FileActionSuccess('Moved'));
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 
@@ -230,7 +231,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
       await fileRepository.toggleFavorite(event.itemId);
       emit(const FileActionSuccess('Favorite toggled'));
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 
@@ -240,7 +241,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
       await fileRepository.bulkDelete(event.itemIds);
       emit(FileActionSuccess('${event.itemIds.length} items moved to trash'));
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 
@@ -251,7 +252,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
       final result = await fileRepository.listTrash();
       emit(TrashLoaded(entries: List<Map<String, dynamic>>.from(result)));
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 
@@ -262,7 +263,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
       emit(const FileActionSuccess('Restored'));
       add(const TrashLoadRequested());
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 
@@ -273,7 +274,7 @@ class FileBloc extends Bloc<FileEvent, FileState> {
       emit(const FileActionSuccess('Trash emptied'));
       add(const TrashLoadRequested());
     } catch (e) {
-      emit(FileError(e.toString()));
+      emit(FileError(ApiClient.formatError(e)));
     }
   }
 }

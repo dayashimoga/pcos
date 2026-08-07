@@ -39,7 +39,7 @@ class _GalleryPageState extends State<GalleryPage> {
       setState(() => _loading = false);
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = ApiClient.formatError(e);
         _loading = false;
       });
     }

@@ -151,7 +151,7 @@ class _DoctorPageState extends State<DoctorPage> {
         final idx = _checks.indexWhere((ch) => ch.name == name);
         if (idx >= 0)
           _checks[idx] =
-              c.copyWith(status: _CheckStatus.fail, detail: e.toString());
+              c.copyWith(status: _CheckStatus.fail, detail: ApiClient.formatError(e));
       });
     }
   }

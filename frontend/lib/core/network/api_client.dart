@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../router/app_router.dart';
 
 /// Centralized HTTP client with JWT token management.
 class ApiClient {
@@ -9,6 +10,30 @@ class ApiClient {
   static const String _accessTokenKey = 'pcos_access_token';
   static const String _refreshTokenKey = 'pcos_refresh_token';
   static const String _serverUrlKey = 'pcos_server_url';
+
+  static String formatError(dynamic error) {
+    if (error is DioException) {
+      if (error.response?.statusCode == 401) {
+        return 'Session expired. Please sign in again.';
+      }
+      if (error.response?.statusCode == 403) {
+        return 'Access denied. You do not have permission to access this resource.';
+      }
+      if (error.response?.statusCode == 404) {
+        return 'The requested resource was not found.';
+      }
+      if (error.response?.data is Map && error.response?.data['message'] != null) {
+        return error.response?.data['message'].toString() ?? 'An error occurred';
+      }
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout) {
+        return 'Unable to connect to PCOS server. Please ensure server is running.';
+      }
+    }
+    final str = error.toString();
+    if (str.startsWith('Exception: ')) return str.substring(11);
+    return str;
+  }
 
   static String _resolveBaseUrl() {
     const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
@@ -103,16 +128,26 @@ class ApiClient {
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
-          // Try to refresh the token
-          final refreshed = await _refreshToken();
-          if (refreshed) {
-            // Retry the original request with new token
-            final token = prefs.getString(_accessTokenKey);
-            error.requestOptions.headers['Authorization'] = 'Bearer $token';
-            try {
-              final response = await dio.fetch(error.requestOptions);
-              return handler.resolve(response);
-            } catch (e) {
+          final path = error.requestOptions.path;
+          if (!path.contains('/auth/login') &&
+              !path.contains('/auth/register') &&
+              !path.contains('/auth/refresh')) {
+            // Try to refresh the token
+            final refreshed = await _refreshToken();
+            if (refreshed) {
+              // Retry original request with new token
+              final token = prefs.getString(_accessTokenKey);
+              error.requestOptions.headers['Authorization'] = 'Bearer $token';
+              try {
+                final response = await dio.fetch(error.requestOptions);
+                return handler.resolve(response);
+              } catch (e) {
+                return handler.next(error);
+              }
+            } else {
+              // Session expired & unrefreshable — clear tokens & redirect to login
+              await clearTokens();
+              AppRouter.router.go('/login');
               return handler.next(error);
             }
           }
@@ -140,12 +175,14 @@ class ApiClient {
   Future<void> saveTokens(String accessToken, String refreshToken) async {
     await prefs.setString(_accessTokenKey, accessToken);
     await prefs.setString(_refreshTokenKey, refreshToken);
+    AppRouter.setAuthToken(accessToken);
   }
 
   /// Clear tokens on logout.
   Future<void> clearTokens() async {
     await prefs.remove(_accessTokenKey);
     await prefs.remove(_refreshTokenKey);
+    AppRouter.setAuthToken(null);
   }
 
   /// Check if user has stored tokens.

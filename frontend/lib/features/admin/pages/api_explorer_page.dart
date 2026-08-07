@@ -123,7 +123,7 @@ class _ApiExplorerPageState extends State<ApiExplorerPage> {
     } catch (e) {
       setState(() {
         _statusCode = 0;
-        _responseBody = e.toString();
+        _responseBody = ApiClient.formatError(e);
       });
     }
 

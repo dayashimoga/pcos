@@ -38,7 +38,7 @@ class _AdminPageState extends State<AdminPage> {
       });
     } catch (e) {
       setState(() {
-        _error = 'Admin access denied or failed: $e';
+        _error = ApiClient.formatError(e);
         _loading = false;
       });
     }
@@ -56,7 +56,7 @@ class _AdminPageState extends State<AdminPage> {
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed: $e')));
+            .showSnackBar(SnackBar(content: Text('Failed: ${ApiClient.formatError(e)}')));
     }
   }
 

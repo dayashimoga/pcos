@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/network/api_client.dart';
 import '../repository/device_repository.dart';
 
 // ─── Events ─────────────────────────────────────────────
@@ -94,7 +95,7 @@ class DeviceBloc extends Bloc<DeviceEvent, DeviceState> {
         total: result['total'],
       ));
     } catch (e) {
-      emit(DeviceError(e.toString()));
+      emit(DeviceError(ApiClient.formatError(e)));
     }
   }
 
@@ -111,7 +112,7 @@ class DeviceBloc extends Bloc<DeviceEvent, DeviceState> {
       emit(const DeviceActionSuccess('Device registered successfully'));
       add(const DevicesLoadRequested());
     } catch (e) {
-      emit(DeviceError(e.toString()));
+      emit(DeviceError(ApiClient.formatError(e)));
     }
   }
 
@@ -122,7 +123,7 @@ class DeviceBloc extends Bloc<DeviceEvent, DeviceState> {
       emit(const DeviceActionSuccess('Device removed'));
       add(const DevicesLoadRequested());
     } catch (e) {
-      emit(DeviceError(e.toString()));
+      emit(DeviceError(ApiClient.formatError(e)));
     }
   }
 }
