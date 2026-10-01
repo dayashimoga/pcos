@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
@@ -266,7 +265,8 @@ class _SettingsPageState extends State<SettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Auto-Sync Interval',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
+                  style: TextStyle(
+                      fontSize: 13, color: AppTheme.textMutedColor(context))),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: interval,
@@ -288,10 +288,12 @@ class _SettingsPageState extends State<SettingsPage> {
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text('Wi-Fi Only Sync',
-                    style:
-                        TextStyle(color: AppTheme.textPrimaryColor(context), fontSize: 14)),
+                    style: TextStyle(
+                        color: AppTheme.textPrimaryColor(context),
+                        fontSize: 14)),
                 subtitle: Text('Sync only when connected to Wi-Fi',
-                    style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 12)),
+                    style: TextStyle(
+                        color: AppTheme.textMutedColor(context), fontSize: 12)),
                 value: wifiOnly,
                 activeColor: AppTheme.primary,
                 onChanged: (v) => setDlgState(() => wifiOnly = v),
@@ -334,7 +336,8 @@ class _SettingsPageState extends State<SettingsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Storage Volume',
-                style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
+                style: TextStyle(
+                    fontSize: 13, color: AppTheme.textMutedColor(context))),
             const SizedBox(height: 6),
             Text('Docker Volume: file_storage (/data/pcos/storage)',
                 style: TextStyle(
@@ -348,7 +351,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 color: AppTheme.primary),
             const SizedBox(height: 8),
             Text('Unlimited Quota (Self-Hosted Instance)',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
+                style: TextStyle(
+                    fontSize: 12, color: AppTheme.textMutedColor(context))),
           ],
         ),
         actions: [
@@ -438,7 +442,8 @@ class _SettingsPageState extends State<SettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Selected Provider',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
+                  style: TextStyle(
+                      fontSize: 13, color: AppTheme.textMutedColor(context))),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: provider,

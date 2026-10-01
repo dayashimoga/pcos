@@ -55,8 +55,8 @@ class _AdminPageState extends State<AdminPage> {
             .showSnackBar(SnackBar(content: Text('Role updated to $newRole')));
     } catch (e) {
       if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed: ${ApiClient.formatError(e)}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed: ${ApiClient.formatError(e)}')));
     }
   }
 
@@ -111,10 +111,13 @@ class _AdminPageState extends State<AdminPage> {
                     'Storage',
                     _formatBytes(_systemStats!['total_storage_bytes'] ?? 0),
                     Icons.storage_rounded),
-                _statCard(context, 'Shares', '${_systemStats!['total_active_shares']}',
+                _statCard(
+                    context,
+                    'Shares',
+                    '${_systemStats!['total_active_shares']}',
                     Icons.share_rounded),
-                _statCard(context, 'Devices', '${_systemStats!['total_devices']}',
-                    Icons.devices_rounded),
+                _statCard(context, 'Devices',
+                    '${_systemStats!['total_devices']}', Icons.devices_rounded),
                 _statCard(context, 'Version', '${_systemStats!['version']}',
                     Icons.info_rounded),
               ]),
@@ -135,7 +138,8 @@ class _AdminPageState extends State<AdminPage> {
                             leading: CircleAvatar(
                               backgroundColor: u['role'] == 'admin'
                                   ? AppTheme.primary
-                                  : AppTheme.textMutedColor(context).withOpacity(0.2),
+                                  : AppTheme.textMutedColor(context)
+                                      .withOpacity(0.2),
                               child: Icon(
                                   u['role'] == 'admin'
                                       ? Icons.shield_rounded
@@ -153,7 +157,8 @@ class _AdminPageState extends State<AdminPage> {
                             subtitle: Text(
                                 '${u['email']} • ${u['role']}${u['totp_enabled'] == true ? ' • 🔐 MFA' : ''}',
                                 style: TextStyle(
-                                    fontSize: 12, color: AppTheme.textMutedColor(context))),
+                                    fontSize: 12,
+                                    color: AppTheme.textMutedColor(context))),
                             trailing:
                                 Row(mainAxisSize: MainAxisSize.min, children: [
                               PopupMenuButton<String>(
@@ -167,8 +172,10 @@ class _AdminPageState extends State<AdminPage> {
                                     label: Text(u['role'],
                                         style: TextStyle(
                                             fontSize: 11,
-                                            color: AppTheme.textPrimaryColor(context))),
-                                    backgroundColor: AppTheme.surfaceColor(context)),
+                                            color: AppTheme.textPrimaryColor(
+                                                context))),
+                                    backgroundColor:
+                                        AppTheme.surfaceColor(context)),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline_rounded,
@@ -326,7 +333,8 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
-  Widget _statCard(BuildContext context, String label, String value, IconData icon) {
+  Widget _statCard(
+      BuildContext context, String label, String value, IconData icon) {
     return Container(
       width: 160,
       padding: const EdgeInsets.all(16),
@@ -344,7 +352,8 @@ class _AdminPageState extends State<AdminPage> {
                 color: AppTheme.textPrimaryColor(context))),
         const SizedBox(height: 4),
         Text(label,
-            style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
+            style: TextStyle(
+                fontSize: 12, color: AppTheme.textMutedColor(context))),
       ]),
     );
   }

@@ -95,7 +95,8 @@ class _TrashContent extends StatelessWidget {
                                       fontSize: 14)),
                               subtitle: Text(e['entry_type'] ?? '',
                                   style: TextStyle(
-                                      color: AppTheme.textMutedColor(context), fontSize: 12)),
+                                      color: AppTheme.textMutedColor(context),
+                                      fontSize: 12)),
                               trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [

@@ -22,8 +22,10 @@ class ApiClient {
       if (error.response?.statusCode == 404) {
         return 'The requested resource was not found.';
       }
-      if (error.response?.data is Map && error.response?.data['message'] != null) {
-        return error.response?.data['message'].toString() ?? 'An error occurred';
+      if (error.response?.data is Map &&
+          error.response?.data['message'] != null) {
+        return error.response?.data['message'].toString() ??
+            'An error occurred';
       }
       if (error.type == DioExceptionType.connectionError ||
           error.type == DioExceptionType.connectionTimeout) {

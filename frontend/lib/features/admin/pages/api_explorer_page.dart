@@ -257,7 +257,8 @@ class _ApiExplorerPageState extends State<ApiExplorerPage> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppTheme.borderColor(context)))),
+              border: Border(
+                  bottom: BorderSide(color: AppTheme.borderColor(context)))),
           child: Row(children: [
             const Icon(Icons.terminal_rounded,
                 size: 18, color: AppTheme.primary),
@@ -315,7 +316,9 @@ class _ApiExplorerPageState extends State<ApiExplorerPage> {
             padding: const EdgeInsets.all(32),
             child: Center(
                 child: Text('Select an endpoint to send a request',
-                    style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 14))),
+                    style: TextStyle(
+                        color: AppTheme.textMutedColor(context),
+                        fontSize: 14))),
           )
         else
           Container(

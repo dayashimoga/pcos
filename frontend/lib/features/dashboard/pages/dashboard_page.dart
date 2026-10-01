@@ -215,7 +215,8 @@ class _StatusRow extends StatelessWidget {
   Widget build(BuildContext context) =>
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(label,
-            style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
+            style: TextStyle(
+                fontSize: 13, color: AppTheme.textMutedColor(context))),
         Text(value,
             style: TextStyle(
                 fontSize: 13,
@@ -357,7 +358,8 @@ class _RecentFilesWidgetState extends State<_RecentFilesWidget> {
             border: Border.all(color: AppTheme.borderColor(context))),
         child: Center(
             child: Text('No recent files',
-                style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 13))),
+                style: TextStyle(
+                    color: AppTheme.textMutedColor(context), fontSize: 13))),
       );
     }
     return Container(
@@ -372,11 +374,13 @@ class _RecentFilesWidgetState extends State<_RecentFilesWidget> {
                         size: 20, color: AppTheme.primary),
                     title: Text(f['name'] ?? '',
                         style: TextStyle(
-                            fontSize: 13, color: AppTheme.textPrimaryColor(context)),
+                            fontSize: 13,
+                            color: AppTheme.textPrimaryColor(context)),
                         overflow: TextOverflow.ellipsis),
                     subtitle: Text(formatFileSize(f['size_bytes'] ?? 0),
                         style: TextStyle(
-                            fontSize: 11, color: AppTheme.textMutedColor(context))),
+                            fontSize: 11,
+                            color: AppTheme.textMutedColor(context))),
                     dense: true,
                   ))
               .toList()),

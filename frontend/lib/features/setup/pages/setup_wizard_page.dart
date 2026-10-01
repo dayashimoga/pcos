@@ -148,7 +148,8 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                       color: AppTheme.textPrimaryColor(context))),
               const SizedBox(height: 8),
               Text('Personal Cloud OS — Setup Wizard',
-                  style: TextStyle(fontSize: 14, color: AppTheme.textMutedColor(context))),
+                  style: TextStyle(
+                      fontSize: 14, color: AppTheme.textMutedColor(context))),
               const SizedBox(height: 32),
 
               // Step indicator
@@ -161,7 +162,9 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                 Container(
                     width: 40,
                     height: 2,
-                    color: _step > 0 ? AppTheme.primary : AppTheme.borderColor(context)),
+                    color: _step > 0
+                        ? AppTheme.primary
+                        : AppTheme.borderColor(context)),
                 _StepDot(
                     label: '2',
                     title: 'Account',
@@ -170,7 +173,9 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                 Container(
                     width: 40,
                     height: 2,
-                    color: _step > 1 ? AppTheme.primary : AppTheme.borderColor(context)),
+                    color: _step > 1
+                        ? AppTheme.primary
+                        : AppTheme.borderColor(context)),
                 _StepDot(
                     label: '3', title: 'Done', active: _step == 2, done: false),
               ]),
@@ -216,7 +221,8 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                 color: AppTheme.textPrimaryColor(context))),
         const SizedBox(height: 8),
         Text('Verifying connection to your PCOS backend server.',
-            style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
+            style: TextStyle(
+                fontSize: 13, color: AppTheme.textMutedColor(context))),
         const SizedBox(height: 20),
         if (_loading)
           const Center(

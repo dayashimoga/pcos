@@ -127,12 +127,14 @@ class _DevicesContent extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text('Add a new device to your cloud',
                           style: TextStyle(
-                              color: AppTheme.textMutedColor(context), fontSize: 13)),
+                              color: AppTheme.textMutedColor(context),
+                              fontSize: 13)),
                       const SizedBox(height: 24),
                       TextFormField(
                         key: const Key('device_name_field'),
                         controller: nameController,
-                        style: TextStyle(color: AppTheme.textPrimaryColor(context)),
+                        style: TextStyle(
+                            color: AppTheme.textPrimaryColor(context)),
                         decoration: const InputDecoration(
                             labelText: 'Device Name',
                             hintText: 'e.g. My Laptop'),
@@ -146,7 +148,8 @@ class _DevicesContent extends StatelessWidget {
                         decoration:
                             const InputDecoration(labelText: 'Device Type'),
                         dropdownColor: AppTheme.surfaceColor(context),
-                        style: TextStyle(color: AppTheme.textPrimaryColor(context)),
+                        style: TextStyle(
+                            color: AppTheme.textPrimaryColor(context)),
                         items: const [
                           DropdownMenuItem(
                               value: 'desktop', child: Text('Desktop')),
@@ -172,7 +175,8 @@ class _DevicesContent extends StatelessWidget {
                         decoration: const InputDecoration(
                             labelText: 'Operating System'),
                         dropdownColor: AppTheme.surfaceColor(context),
-                        style: TextStyle(color: AppTheme.textPrimaryColor(context)),
+                        style: TextStyle(
+                            color: AppTheme.textPrimaryColor(context)),
                         items: const [
                           DropdownMenuItem(
                               value: 'Windows', child: Text('Windows')),
@@ -255,7 +259,8 @@ class _EmptyState extends StatelessWidget {
                   color: AppTheme.textPrimaryColor(context))),
           const SizedBox(height: 8),
           Text('Add your first device to start syncing files',
-              style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 14)),
+              style: TextStyle(
+                  color: AppTheme.textMutedColor(context), fontSize: 14)),
         ],
       ),
     );
@@ -374,8 +379,8 @@ class _DeviceCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis),
               const SizedBox(height: 2),
               Text('${device['os'] ?? ''} · ${device['device_type'] ?? ''}',
-                  style:
-                      TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
+                  style: TextStyle(
+                      fontSize: 12, color: AppTheme.textMutedColor(context))),
             ],
           ),
         ],

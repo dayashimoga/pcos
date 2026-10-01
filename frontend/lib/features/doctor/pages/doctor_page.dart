@@ -150,8 +150,8 @@ class _DoctorPageState extends State<DoctorPage> {
       setState(() {
         final idx = _checks.indexWhere((ch) => ch.name == name);
         if (idx >= 0)
-          _checks[idx] =
-              c.copyWith(status: _CheckStatus.fail, detail: ApiClient.formatError(e));
+          _checks[idx] = c.copyWith(
+              status: _CheckStatus.fail, detail: ApiClient.formatError(e));
       });
     }
   }
@@ -221,7 +221,8 @@ class _DoctorPageState extends State<DoctorPage> {
                     ),
                     Text('$passed/$total checks passed',
                         style: TextStyle(
-                            fontSize: 13, color: AppTheme.textMutedColor(context))),
+                            fontSize: 13,
+                            color: AppTheme.textMutedColor(context))),
                   ])),
             ]),
           ),
@@ -237,7 +238,9 @@ class _DoctorPageState extends State<DoctorPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppTheme.borderColor(context)))),
+                  border: Border(
+                      bottom:
+                          BorderSide(color: AppTheme.borderColor(context)))),
               child: Row(children: [
                 Expanded(
                     flex: 3,
@@ -262,8 +265,9 @@ class _DoctorPageState extends State<DoctorPage> {
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   decoration: BoxDecoration(
                       border: Border(
-                          bottom:
-                              BorderSide(color: AppTheme.borderColor(context), width: 0.5))),
+                          bottom: BorderSide(
+                              color: AppTheme.borderColor(context),
+                              width: 0.5))),
                   child: Row(children: [
                     Expanded(
                         flex: 3,
@@ -274,10 +278,12 @@ class _DoctorPageState extends State<DoctorPage> {
                                   style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
-                                      color: AppTheme.textPrimaryColor(context))),
+                                      color:
+                                          AppTheme.textPrimaryColor(context))),
                               Text(c.description,
                                   style: TextStyle(
-                                      fontSize: 11, color: AppTheme.textMutedColor(context))),
+                                      fontSize: 11,
+                                      color: AppTheme.textMutedColor(context))),
                             ])),
                     Expanded(
                         flex: 4,

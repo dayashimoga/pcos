@@ -177,7 +177,8 @@ class _GalleryPageState extends State<GalleryPage> {
                     const SizedBox(width: 8),
                     Text('${group.value.length} photos',
                         style: TextStyle(
-                            fontSize: 12, color: AppTheme.textMutedColor(context))),
+                            fontSize: 12,
+                            color: AppTheme.textMutedColor(context))),
                   ]),
                 )),
                 SliverPadding(

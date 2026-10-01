@@ -130,7 +130,8 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
               // Pairing code
               if (_onboardingCode != null) ...[
                 Text('Or enter this code manually:',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context))),
+                    style: TextStyle(
+                        fontSize: 13, color: AppTheme.textMutedColor(context))),
                 const SizedBox(height: 12),
                 GestureDetector(
                   onTap: () {
@@ -171,7 +172,8 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
                   const SizedBox(width: 4),
                   Text('Expires in ${_expirySeconds ~/ 60} min',
                       style: TextStyle(
-                          fontSize: 12, color: AppTheme.textMutedColor(context))),
+                          fontSize: 12,
+                          color: AppTheme.textMutedColor(context))),
                 ]),
               ],
 

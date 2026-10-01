@@ -8,7 +8,8 @@ class TransferStatusIndicator extends StatefulWidget {
   const TransferStatusIndicator({super.key, this.compact = false});
 
   @override
-  State<TransferStatusIndicator> createState() => _TransferStatusIndicatorState();
+  State<TransferStatusIndicator> createState() =>
+      _TransferStatusIndicatorState();
 }
 
 class _TransferStatusIndicatorState extends State<TransferStatusIndicator>

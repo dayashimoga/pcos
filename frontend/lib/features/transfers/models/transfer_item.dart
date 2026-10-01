@@ -68,7 +68,9 @@ class TransferItem {
   }
 
   String get formattedEta {
-    if (status != TransferStatus.inProgress || etaSeconds == null || etaSeconds! <= 0) {
+    if (status != TransferStatus.inProgress ||
+        etaSeconds == null ||
+        etaSeconds! <= 0) {
       return '';
     }
     if (etaSeconds! < 60) return '${etaSeconds}s remaining';

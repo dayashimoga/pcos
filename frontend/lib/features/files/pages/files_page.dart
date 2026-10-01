@@ -324,8 +324,7 @@ class _FilesContentState extends State<_FilesContent> {
                               color: AppTheme.primary.withOpacity(0.2),
                               blurRadius: 24)
                         ]),
-                    child:
-                        Column(mainAxisSize: MainAxisSize.min, children: [
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
                       const Icon(Icons.cloud_upload_rounded,
                           size: 56, color: AppTheme.primary),
                       const SizedBox(height: 16),
@@ -337,7 +336,8 @@ class _FilesContentState extends State<_FilesContent> {
                       const SizedBox(height: 4),
                       Text('Files will be uploaded to current folder',
                           style: TextStyle(
-                              fontSize: 14, color: AppTheme.textMutedColor(context))),
+                              fontSize: 14,
+                              color: AppTheme.textMutedColor(context))),
                     ]),
                   ),
                 ),
@@ -385,7 +385,8 @@ class _FilesContentState extends State<_FilesContent> {
                 size: 14,
                 color: AppTheme.textMutedColor(context)),
             dropdownColor: AppTheme.surfaceColor(context),
-            style: TextStyle(fontSize: 13, color: AppTheme.textPrimaryColor(context)),
+            style: TextStyle(
+                fontSize: 13, color: AppTheme.textPrimaryColor(context)),
             items: const [
               DropdownMenuItem(value: 'name', child: Text('Name')),
               DropdownMenuItem(value: 'size', child: Text('Size')),
@@ -521,7 +522,8 @@ class _FilesContentState extends State<_FilesContent> {
                 color: AppTheme.textPrimaryColor(context))),
         const SizedBox(height: 8),
         Text(message,
-            style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 14),
+            style: TextStyle(
+                color: AppTheme.textMutedColor(context), fontSize: 14),
             textAlign: TextAlign.center),
         const SizedBox(height: 20),
         ElevatedButton.icon(

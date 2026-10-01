@@ -186,7 +186,8 @@ class _TransferCenterDialogState extends State<TransferCenterDialog> {
                           style: TextStyle(fontSize: 12, color: textMuted)),
                       dropdownColor: surfaceColor,
                       style: TextStyle(fontSize: 12, color: textPrimary),
-                      icon: Icon(Icons.speed_rounded, size: 16, color: textMuted),
+                      icon:
+                          Icon(Icons.speed_rounded, size: 16, color: textMuted),
                       items: const [
                         DropdownMenuItem(
                           value: null,
@@ -251,7 +252,8 @@ class _TransferCenterDialogState extends State<TransferCenterDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                color:
+                    isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                 border: Border(bottom: BorderSide(color: borderColor)),
               ),
               child: Row(
@@ -384,7 +386,8 @@ class _TransferCenterDialogState extends State<TransferCenterDialog> {
                                                 color: textMuted,
                                               ),
                                             ),
-                                            if (item.formattedSpeed.isNotEmpty) ...[
+                                            if (item
+                                                .formattedSpeed.isNotEmpty) ...[
                                               const SizedBox(width: 8),
                                               Text('•',
                                                   style: TextStyle(
@@ -400,7 +403,8 @@ class _TransferCenterDialogState extends State<TransferCenterDialog> {
                                                 ),
                                               ),
                                             ],
-                                            if (item.formattedEta.isNotEmpty) ...[
+                                            if (item
+                                                .formattedEta.isNotEmpty) ...[
                                               const SizedBox(width: 8),
                                               Text('•',
                                                   style: TextStyle(
@@ -461,7 +465,8 @@ class _TransferCenterDialogState extends State<TransferCenterDialog> {
                                   ] else if (item.status ==
                                       TransferStatus.paused) ...[
                                     IconButton(
-                                      icon: const Icon(Icons.play_arrow_rounded),
+                                      icon:
+                                          const Icon(Icons.play_arrow_rounded),
                                       tooltip: 'Resume',
                                       iconSize: 18,
                                       color: AppTheme.primary,

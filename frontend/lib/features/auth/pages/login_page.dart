@@ -272,7 +272,8 @@ class _LoginPageState extends State<LoginPage>
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: AppTheme.surfaceColor(context),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(children: [
             const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.primary),
             const SizedBox(width: 10),
@@ -286,7 +287,8 @@ class _LoginPageState extends State<LoginPage>
             children: [
               Text(
                 'Enter your PCOS server IP address (e.g. http://192.168.1.50 or http://192.168.1.50:8080):',
-                style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context)),
+                style: TextStyle(
+                    fontSize: 13, color: AppTheme.textMutedColor(context)),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -314,7 +316,9 @@ class _LoginPageState extends State<LoginPage>
                   padding: const EdgeInsets.all(10),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: (testSuccess == true ? AppTheme.success : AppTheme.error)
+                    color: (testSuccess == true
+                            ? AppTheme.success
+                            : AppTheme.error)
                         .withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
@@ -376,7 +380,8 @@ class _LoginPageState extends State<LoginPage>
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 final newUrl = ctrl.text.trim();

@@ -104,8 +104,8 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                style:
-                    TextStyle(fontSize: 15, color: AppTheme.textPrimaryColor(context)),
+                style: TextStyle(
+                    fontSize: 15, color: AppTheme.textPrimaryColor(context)),
               ),
             ),
             Divider(color: AppTheme.borderColor(context), height: 1),
@@ -119,11 +119,13 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                               Icon(p.$2, size: 20, color: AppTheme.primary),
                           title: Text(p.$1,
                               style: TextStyle(
-                                  fontSize: 14, color: AppTheme.textPrimaryColor(context))),
+                                  fontSize: 14,
+                                  color: AppTheme.textPrimaryColor(context))),
                           trailing: Text('Go',
                               style: TextStyle(
                                   fontSize: 11,
-                                  color: AppTheme.textMutedColor(context).withOpacity(0.6))),
+                                  color: AppTheme.textMutedColor(context)
+                                      .withOpacity(0.6))),
                           dense: true,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8)),
@@ -143,7 +145,8 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: AppTheme.borderColor(context)))),
+                  border: Border(
+                      top: BorderSide(color: AppTheme.borderColor(context)))),
               child: Row(children: [
                 Container(
                   padding:
@@ -159,7 +162,8 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                 ),
                 const SizedBox(width: 6),
                 Text('to close',
-                    style: TextStyle(fontSize: 11, color: AppTheme.textMutedColor(context))),
+                    style: TextStyle(
+                        fontSize: 11, color: AppTheme.textMutedColor(context))),
                 const Spacer(),
                 Container(
                   padding:
@@ -553,7 +557,8 @@ class _TabletShell extends StatelessWidget {
               .map((item) => NavigationRailDestination(
                     icon: Tooltip(
                         message: item.label,
-                        child: Icon(item.icon, color: AppTheme.textMutedColor(context))),
+                        child: Icon(item.icon,
+                            color: AppTheme.textMutedColor(context))),
                     selectedIcon:
                         Icon(item.activeIcon, color: AppTheme.primary),
                     label:
@@ -561,7 +566,8 @@ class _TabletShell extends StatelessWidget {
                   ))
               .toList(),
         ),
-        VerticalDivider(thickness: 1, width: 1, color: AppTheme.borderColor(context)),
+        VerticalDivider(
+            thickness: 1, width: 1, color: AppTheme.borderColor(context)),
         Expanded(child: child),
       ]),
     );
@@ -625,7 +631,8 @@ class _MobileShell extends StatelessWidget {
       body: child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: AppTheme.borderColor(context)))),
+            border:
+                Border(top: BorderSide(color: AppTheme.borderColor(context)))),
         child: NavigationBar(
           selectedIndex: mobileIdx,
           backgroundColor: AppTheme.surfaceColor(context),

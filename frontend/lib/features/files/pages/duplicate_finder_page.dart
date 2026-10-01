@@ -160,7 +160,8 @@ class _DuplicateFinderPageState extends State<DuplicateFinderPage> {
               const SizedBox(height: 8),
               Text(
                   'Compares file names and sizes to identify potential duplicates',
-                  style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 14),
+                  style: TextStyle(
+                      color: AppTheme.textMutedColor(context), fontSize: 14),
                   textAlign: TextAlign.center),
               const SizedBox(height: 24),
               FilledButton.icon(
@@ -182,7 +183,8 @@ class _DuplicateFinderPageState extends State<DuplicateFinderPage> {
                       color: AppTheme.textPrimaryColor(context))),
               const SizedBox(height: 8),
               Text('Comparing file sizes and names',
-                  style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 14)),
+                  style: TextStyle(
+                      color: AppTheme.textMutedColor(context), fontSize: 14)),
             ],
             if (_scanned) ...[
               Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
@@ -241,7 +243,8 @@ class _DuplicateFinderPageState extends State<DuplicateFinderPage> {
                       color: AppTheme.textPrimaryColor(context))),
               const SizedBox(height: 4),
               Text('Your files are organized without duplicates',
-                  style: TextStyle(color: AppTheme.textMutedColor(context), fontSize: 14)),
+                  style: TextStyle(
+                      color: AppTheme.textMutedColor(context), fontSize: 14)),
             ]),
           ),
 
@@ -265,7 +268,8 @@ class _DuplicateFinderPageState extends State<DuplicateFinderPage> {
                           horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                           border: Border(
-                              bottom: BorderSide(color: AppTheme.borderColor(context)))),
+                              bottom: BorderSide(
+                                  color: AppTheme.borderColor(context)))),
                       child: Row(children: [
                         Container(
                           padding: const EdgeInsets.all(8),
@@ -284,11 +288,13 @@ class _DuplicateFinderPageState extends State<DuplicateFinderPage> {
                                   style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: AppTheme.textPrimaryColor(context)),
+                                      color:
+                                          AppTheme.textPrimaryColor(context)),
                                   overflow: TextOverflow.ellipsis),
                               Text('${group.length} copies · $size each',
                                   style: TextStyle(
-                                      fontSize: 12, color: AppTheme.textMutedColor(context))),
+                                      fontSize: 12,
+                                      color: AppTheme.textMutedColor(context))),
                             ])),
                       ]),
                     ),
@@ -383,6 +389,7 @@ class _StatCard extends StatelessWidget {
             style: TextStyle(
                 fontSize: 18, fontWeight: FontWeight.w700, color: color)),
         Text(label,
-            style: TextStyle(fontSize: 11, color: AppTheme.textMutedColor(context))),
+            style: TextStyle(
+                fontSize: 11, color: AppTheme.textMutedColor(context))),
       ]);
 }
