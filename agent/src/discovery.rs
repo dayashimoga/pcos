@@ -51,7 +51,8 @@ impl LanDiscovery {
 
     /// Start broadcasting and listening for peers.
     pub async fn start(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let socket = match tokio::net::UdpSocket::bind(format!("0.0.0.0:{}", DISCOVERY_PORT)).await {
+        let socket = match tokio::net::UdpSocket::bind(format!("0.0.0.0:{}", DISCOVERY_PORT)).await
+        {
             Ok(s) => s,
             Err(_) => tokio::net::UdpSocket::bind("0.0.0.0:0").await?,
         };
@@ -71,9 +72,19 @@ impl LanDiscovery {
             let mut interval = tokio::time::interval(BROADCAST_INTERVAL);
             loop {
                 interval.tick().await;
-                let msg = format!("{}|{}|{}|{}", 
-                    String::from_utf8_lossy(MAGIC), device_id, hostname, port);
-                let _ = sock_tx.send_to(msg.as_bytes(), format!("255.255.255.255:{}", DISCOVERY_PORT)).await;
+                let msg = format!(
+                    "{}|{}|{}|{}",
+                    String::from_utf8_lossy(MAGIC),
+                    device_id,
+                    hostname,
+                    port
+                );
+                let _ = sock_tx
+                    .send_to(
+                        msg.as_bytes(),
+                        format!("255.255.255.255:{}", DISCOVERY_PORT),
+                    )
+                    .await;
             }
         });
 
@@ -89,7 +100,9 @@ impl LanDiscovery {
                         let parts: Vec<&str> = msg.split('|').collect();
                         if parts.len() == 4 && parts[0] == String::from_utf8_lossy(MAGIC) {
                             let peer_id = parts[1].to_string();
-                            if peer_id == my_id { continue; } // Skip self
+                            if peer_id == my_id {
+                                continue;
+                            } // Skip self
                             let peer = Peer {
                                 id: peer_id.clone(),
                                 hostname: parts[2].to_string(),
@@ -128,13 +141,16 @@ mod tests {
         let disc = LanDiscovery::new("test-device".to_string(), 8080);
         {
             let mut map = disc.peers.write().unwrap();
-            map.insert("peer-1".to_string(), Peer {
-                id: "peer-1".to_string(),
-                hostname: "laptop".to_string(),
-                ip: "192.168.1.100".parse().unwrap(),
-                port: 8080,
-                last_seen: std::time::SystemTime::now(),
-            });
+            map.insert(
+                "peer-1".to_string(),
+                Peer {
+                    id: "peer-1".to_string(),
+                    hostname: "laptop".to_string(),
+                    ip: "192.168.1.100".parse().unwrap(),
+                    port: 8080,
+                    last_seen: std::time::SystemTime::now(),
+                },
+            );
         }
         assert_eq!(disc.peers().len(), 1);
         assert_eq!(disc.peers()[0].hostname, "laptop");

@@ -40,13 +40,21 @@ impl LocalDb {
                 created_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
             CREATE INDEX IF NOT EXISTS idx_file_cache_status ON file_cache(status);
-            CREATE INDEX IF NOT EXISTS idx_sync_log_created ON sync_log(created_at);"
+            CREATE INDEX IF NOT EXISTS idx_sync_log_created ON sync_log(created_at);",
         )?;
 
-        Ok(Self { conn: Arc::new(Mutex::new(conn)) })
+        Ok(Self {
+            conn: Arc::new(Mutex::new(conn)),
+        })
     }
 
-    pub fn upsert_file(&self, path: &str, hash: &str, size: i64, modified: &str) -> anyhow::Result<()> {
+    pub fn upsert_file(
+        &self,
+        path: &str,
+        hash: &str,
+        size: i64,
+        modified: &str,
+    ) -> anyhow::Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
             "INSERT INTO file_cache (path, sha256_hash, size_bytes, modified_at, status) VALUES (?1, ?2, ?3, ?4, 'pending')
@@ -67,9 +75,15 @@ impl LocalDb {
 
     pub fn get_pending(&self) -> anyhow::Result<Vec<(String, String, i64)>> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT path, sha256_hash, size_bytes FROM file_cache WHERE status='pending' LIMIT 100")?;
+        let mut stmt = conn.prepare(
+            "SELECT path, sha256_hash, size_bytes FROM file_cache WHERE status='pending' LIMIT 100",
+        )?;
         let rows = stmt.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, i64>(2)?))
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
         })?;
         Ok(rows.filter_map(|r| r.ok()).collect())
     }
@@ -80,7 +94,13 @@ impl LocalDb {
         Ok(())
     }
 
-    pub fn log_sync(&self, path: &str, action: &str, status: &str, error: Option<&str>) -> anyhow::Result<()> {
+    pub fn log_sync(
+        &self,
+        path: &str,
+        action: &str,
+        status: &str,
+        error: Option<&str>,
+    ) -> anyhow::Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
             "INSERT INTO sync_log (path, action, status, error) VALUES (?1, ?2, ?3, ?4)",
@@ -92,7 +112,14 @@ impl LocalDb {
     pub fn stats(&self) -> anyhow::Result<DbStats> {
         let conn = self.conn.lock().unwrap();
         let total: i64 = conn.query_row("SELECT COUNT(*) FROM file_cache", [], |r| r.get(0))?;
-        let pending: i64 = conn.query_row("SELECT COUNT(*) FROM file_cache WHERE status='pending'", [], |r| r.get(0))?;
-        Ok(DbStats { total_files: total, pending_sync: pending })
+        let pending: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM file_cache WHERE status='pending'",
+            [],
+            |r| r.get(0),
+        )?;
+        Ok(DbStats {
+            total_files: total,
+            pending_sync: pending,
+        })
     }
 }

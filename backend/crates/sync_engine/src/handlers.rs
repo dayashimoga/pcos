@@ -64,7 +64,9 @@ pub async fn sync_websocket(
     })?;
 
     let claims = pcos_common::auth::jwt::validate_token(&token, &state.config.auth.jwt_secret)
-        .map_err(|_| AppError::Unauthorized("Invalid or expired authentication token".to_string()))?;
+        .map_err(|_| {
+            AppError::Unauthorized("Invalid or expired authentication token".to_string())
+        })?;
 
     let user_id = claims.claims.sub;
     Ok(ws.on_upgrade(move |socket| handle_sync_ws(socket, state, user_id)))
@@ -100,7 +102,9 @@ async fn handle_sync_ws(mut socket: WebSocket, state: AppState, user_id: Uuid) {
                             }
                         }
                         "resolve_conflict" => {
-                            if let Ok(req) = serde_json::from_value::<ResolveConflictRequest>(sync_msg.payload) {
+                            if let Ok(req) =
+                                serde_json::from_value::<ResolveConflictRequest>(sync_msg.payload)
+                            {
                                 match service::resolve_conflict(pool, user_id, req).await {
                                     Ok(_) => SyncMessage {
                                         msg_type: "conflict_resolved".to_string(),

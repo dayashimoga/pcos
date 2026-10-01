@@ -76,7 +76,11 @@ fn scan_directory(dir: &Path, db: &LocalDb) -> anyhow::Result<()> {
 fn index_file(path: &Path, db: &LocalDb) -> anyhow::Result<()> {
     let metadata = std::fs::metadata(path)?;
     let size = metadata.len() as i64;
-    let modified = metadata.modified()?.duration_since(std::time::UNIX_EPOCH)?.as_secs().to_string();
+    let modified = metadata
+        .modified()?
+        .duration_since(std::time::UNIX_EPOCH)?
+        .as_secs()
+        .to_string();
 
     // Compute SHA-256
     let data = std::fs::read(path)?;

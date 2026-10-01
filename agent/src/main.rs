@@ -9,7 +9,10 @@ use clap::Parser;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Parser)]
-#[command(name = "pcos-agent", about = "PCOS Device Agent — syncs files with your Personal Cloud")]
+#[command(
+    name = "pcos-agent",
+    about = "PCOS Device Agent — syncs files with your Personal Cloud"
+)]
 struct Cli {
     /// Path to configuration file
     #[arg(short, long, default_value = "~/.pcos/agent.toml")]
@@ -32,8 +35,10 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     // Initialize logging
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| "pcos_agent=info".into()))
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "pcos_agent=info".into()),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
@@ -59,7 +64,8 @@ async fn main() -> anyhow::Result<()> {
 
         tracing::info!(name = %device_name, "Registering device...");
         let client = reqwest::Client::new();
-        let resp = client.post(format!("{}/api/v1/devices", agent_config.server_url))
+        let resp = client
+            .post(format!("{}/api/v1/devices", agent_config.server_url))
             .bearer_auth(&agent_config.auth_token)
             .json(&serde_json::json!({
                 "name": device_name,
@@ -68,7 +74,8 @@ async fn main() -> anyhow::Result<()> {
                 "os_version": "",
                 "agent_version": env!("CARGO_PKG_VERSION"),
             }))
-            .send().await?;
+            .send()
+            .await?;
 
         if resp.status().is_success() {
             let body: serde_json::Value = resp.json().await?;
@@ -122,9 +129,14 @@ async fn main() -> anyhow::Result<()> {
         tokio::spawn(async move {
             loop {
                 let client = reqwest::Client::new();
-                let _ = client.put(format!("{}/api/v1/devices/{}/heartbeat", config.server_url, config.device_id))
+                let _ = client
+                    .put(format!(
+                        "{}/api/v1/devices/{}/heartbeat",
+                        config.server_url, config.device_id
+                    ))
                     .bearer_auth(&config.auth_token)
-                    .send().await;
+                    .send()
+                    .await;
                 tokio::time::sleep(std::time::Duration::from_secs(30)).await;
             }
         })
@@ -155,8 +167,11 @@ async fn main() -> anyhow::Result<()> {
 
 fn detect_device_type() -> &'static str {
     // Simple heuristic
-    if std::env::consts::OS == "android" || std::env::consts::OS == "ios" { "phone" }
-    else { "desktop" }
+    if std::env::consts::OS == "android" || std::env::consts::OS == "ios" {
+        "phone"
+    } else {
+        "desktop"
+    }
 }
 
 fn shellexpand(path: &str) -> String {

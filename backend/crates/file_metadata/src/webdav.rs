@@ -37,7 +37,15 @@ async fn resolve_path(
 ) -> Result<
     (
         Option<Uuid>,
-        Option<(Uuid, String, String, i64, Option<String>, Option<String>, String)>,
+        Option<(
+            Uuid,
+            String,
+            String,
+            i64,
+            Option<String>,
+            Option<String>,
+            String,
+        )>,
     ),
     AppError,
 > {

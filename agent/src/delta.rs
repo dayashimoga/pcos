@@ -3,7 +3,7 @@
 //! Uses a rolling hash (Rabin-like) to split files into variable-size chunks.
 //! On re-upload, only new/modified chunks are sent to the server.
 
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::path::Path;
 
 /// Minimum chunk size: 64 KB
@@ -25,7 +25,9 @@ pub struct ChunkInfo {
 }
 
 /// Split file into content-defined chunks using rolling hash.
-pub async fn compute_chunks(path: &Path) -> Result<Vec<ChunkInfo>, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn compute_chunks(
+    path: &Path,
+) -> Result<Vec<ChunkInfo>, Box<dyn std::error::Error + Send + Sync>> {
     let data = tokio::fs::read(path).await?;
     Ok(split_into_chunks(&data))
 }
@@ -40,12 +42,14 @@ fn split_into_chunks(data: &[u8]) -> Vec<ChunkInfo> {
 
     while offset < data.len() {
         // Update rolling hash (simple Buzhash-style)
-        rolling_hash = rolling_hash.wrapping_mul(31).wrapping_add(data[offset] as u32);
+        rolling_hash = rolling_hash
+            .wrapping_mul(31)
+            .wrapping_add(data[offset] as u32);
         let chunk_len = offset - chunk_start;
 
         // Check for chunk boundary
-        let is_boundary = (chunk_len >= MIN_CHUNK && (rolling_hash & MASK) == 0)
-            || chunk_len >= MAX_CHUNK;
+        let is_boundary =
+            (chunk_len >= MIN_CHUNK && (rolling_hash & MASK) == 0) || chunk_len >= MAX_CHUNK;
 
         if is_boundary || offset == data.len() - 1 {
             let end = if is_boundary { offset } else { offset + 1 };
@@ -77,11 +81,11 @@ fn split_into_chunks(data: &[u8]) -> Vec<ChunkInfo> {
 /// Compare local chunks against server-known chunks.
 /// Returns indices of chunks that need to be uploaded.
 pub fn diff_chunks(local: &[ChunkInfo], server: &[ChunkInfo]) -> Vec<usize> {
-    let server_hashes: std::collections::HashSet<&str> = server.iter()
-        .map(|c| c.hash.as_str())
-        .collect();
+    let server_hashes: std::collections::HashSet<&str> =
+        server.iter().map(|c| c.hash.as_str()).collect();
 
-    local.iter()
+    local
+        .iter()
         .filter(|c| !server_hashes.contains(c.hash.as_str()))
         .map(|c| c.index)
         .collect()
@@ -134,7 +138,9 @@ mod tests {
     async fn test_file_hash() {
         let temp_dir = std::env::temp_dir();
         let temp_file = temp_dir.join("pcos_test_hash.txt");
-        tokio::fs::write(&temp_file, b"pcos-hash-test").await.unwrap();
+        tokio::fs::write(&temp_file, b"pcos-hash-test")
+            .await
+            .unwrap();
         let hash = file_hash(&temp_file).await.unwrap();
         assert_eq!(hash.len(), 64);
         tokio::fs::remove_file(&temp_file).await.ok();

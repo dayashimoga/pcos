@@ -24,7 +24,8 @@ pub async fn sync_loop(config: &AgentConfig, db: &LocalDb) {
                             tracing::info!(path = %path, remote_id = %remote_id, "File synced successfully");
                         }
                         Err(e) => {
-                            db.log_sync(path, "upload", "failed", Some(&e.to_string())).ok();
+                            db.log_sync(path, "upload", "failed", Some(&e.to_string()))
+                                .ok();
                             tracing::error!(path = %path, error = %e, "Sync failed");
                         }
                     }
@@ -53,7 +54,8 @@ async fn upload_file(
     }
 
     // Compute content-defined chunks
-    let chunks = delta::compute_chunks(file_path).await
+    let chunks = delta::compute_chunks(file_path)
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to compute chunks: {e}"))?;
 
     tracing::debug!(
@@ -103,7 +105,10 @@ async fn upload_file(
 
         // Complete chunked upload
         let complete_resp = client
-            .post(format!("{}/api/v1/files/upload/complete", config.server_url))
+            .post(format!(
+                "{}/api/v1/files/upload/complete",
+                config.server_url
+            ))
             .bearer_auth(&config.auth_token)
             .json(&serde_json::json!({
                 "upload_id": upload_id.to_string(),
@@ -120,10 +125,7 @@ async fn upload_file(
         }
 
         let body: serde_json::Value = complete_resp.json().await?;
-        let remote_id = body["file"]["id"]
-            .as_str()
-            .unwrap_or("unknown")
-            .to_string();
+        let remote_id = body["file"]["id"].as_str().unwrap_or("unknown").to_string();
 
         return Ok(remote_id);
     }
@@ -150,10 +152,7 @@ async fn upload_file(
     }
 
     let body: serde_json::Value = resp.json().await?;
-    let remote_id = body["file"]["id"]
-        .as_str()
-        .unwrap_or("unknown")
-        .to_string();
+    let remote_id = body["file"]["id"].as_str().unwrap_or("unknown").to_string();
 
     Ok(remote_id)
 }

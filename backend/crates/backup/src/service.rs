@@ -350,7 +350,8 @@ pub async fn restore_backup(
     // 1. Restore and verify payload files
     if let Some(files) = manifest["files"].as_array() {
         for file in files {
-            if let (Some(fid), Some(rel_path)) = (file["id"].as_str(), file["storage_path"].as_str())
+            if let (Some(fid), Some(rel_path)) =
+                (file["id"].as_str(), file["storage_path"].as_str())
             {
                 let src = format!("{}/payloads/{}", backup_dir, fid);
                 let dst = format!("{}/{}", base_path, rel_path);
@@ -595,11 +596,7 @@ pub async fn enforce_retention(pool: &PgPool, user_id: Uuid, keep_count: i64) ->
 }
 
 /// Verify a backup by checking manifest integrity and cryptographic SHA-256 validation of every file payload.
-pub async fn verify_backup(
-    pool: &PgPool,
-    user_id: Uuid,
-    id: Uuid,
-) -> AppResult<serde_json::Value> {
+pub async fn verify_backup(pool: &PgPool, user_id: Uuid, id: Uuid) -> AppResult<serde_json::Value> {
     let backup = get_backup(pool, user_id, id).await?;
     let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
         .unwrap_or_else(|_| "/data/pcos/storage".to_string());
@@ -607,10 +604,7 @@ pub async fn verify_backup(
     verify_backup_dir(id, &backup_dir).await
 }
 
-pub async fn verify_backup_dir(
-    id: Uuid,
-    backup_dir: &str,
-) -> AppResult<serde_json::Value> {
+pub async fn verify_backup_dir(id: Uuid, backup_dir: &str) -> AppResult<serde_json::Value> {
     let manifest_path = format!("{}/manifest.json", backup_dir);
     let manifest_exists = fs::metadata(&manifest_path).await.is_ok();
     let db_dump_exists = fs::metadata(format!("{}/database.sql", backup_dir))
@@ -689,7 +683,9 @@ mod tests {
         hasher.update(content);
         let expected_hash = hex::encode(hasher.finalize());
 
-        tokio::fs::write(format!("{}/{}", payloads_dir, file_id), content).await.unwrap();
+        tokio::fs::write(format!("{}/{}", payloads_dir, file_id), content)
+            .await
+            .unwrap();
 
         let manifest = serde_json::json!({
             "backup_id": "00000000-0000-0000-0000-000000000001",
@@ -705,7 +701,9 @@ mod tests {
         tokio::fs::write(
             format!("{}/manifest.json", backup_dir),
             serde_json::to_string_pretty(&manifest).unwrap(),
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         let res = verify_backup_dir(Uuid::new_v4(), backup_dir).await.unwrap();
         assert_eq!(res["healthy"], true);
@@ -730,7 +728,9 @@ mod tests {
         let original_hash = hex::encode(hasher.finalize());
 
         // Write corrupted byte payload to disk
-        tokio::fs::write(format!("{}/{}", payloads_dir, file_id), b"Corrupted Data").await.unwrap();
+        tokio::fs::write(format!("{}/{}", payloads_dir, file_id), b"Corrupted Data")
+            .await
+            .unwrap();
 
         let manifest = serde_json::json!({
             "backup_id": "00000000-0000-0000-0000-000000000002",
@@ -746,7 +746,9 @@ mod tests {
         tokio::fs::write(
             format!("{}/manifest.json", backup_dir),
             serde_json::to_string(&manifest).unwrap(),
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         let res = verify_backup_dir(Uuid::new_v4(), backup_dir).await.unwrap();
         assert_eq!(res["healthy"], false);
@@ -774,7 +776,9 @@ mod tests {
         tokio::fs::write(
             format!("{}/manifest.json", backup_dir),
             serde_json::to_string(&manifest).unwrap(),
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         let res = verify_backup_dir(Uuid::new_v4(), backup_dir).await.unwrap();
         assert_eq!(res["healthy"], false);

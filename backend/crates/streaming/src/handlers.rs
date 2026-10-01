@@ -188,8 +188,8 @@ pub async fn play_with_token(
         None => return Ok(StatusCode::NOT_FOUND.into_response()),
     };
 
-    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
-        .unwrap_or_else(|_| "/data/pcos/storage".into());
+    let base_path =
+        std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".into());
 
     let abs_path = match storage_path {
         Some(p) => PathBuf::from(base_path).join(p),

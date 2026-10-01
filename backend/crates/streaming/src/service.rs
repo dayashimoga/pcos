@@ -158,8 +158,8 @@ pub async fn execute_transcode(pool: &PgPool, job_id: Uuid) -> AppResult<Transco
         .fetch_one(pool)
         .await?;
 
-    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
-        .unwrap_or_else(|_| "/data/pcos/storage".into());
+    let base_path =
+        std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".into());
 
     let abs_input = PathBuf::from(&base_path).join(&job.input_path);
     let abs_output = PathBuf::from(&base_path).join(&job.output_dir);
@@ -186,7 +186,10 @@ pub async fn execute_transcode(pool: &PgPool, job_id: Uuid) -> AppResult<Transco
                 "-hls_playlist_type",
                 "vod",
                 "-hls_segment_filename",
-                abs_output.join("segment_%03d.ts").to_str().unwrap_or_default(),
+                abs_output
+                    .join("segment_%03d.ts")
+                    .to_str()
+                    .unwrap_or_default(),
                 master_m3u8.to_str().unwrap_or_default(),
             ])
             .output()
@@ -244,8 +247,8 @@ pub async fn execute_transcode(pool: &PgPool, job_id: Uuid) -> AppResult<Transco
 
 /// Probe media file metadata via local ffprobe, Docker container, or fallback metadata.
 pub async fn probe_media(file_path: &str) -> AppResult<MediaInfo> {
-    let base_path = std::env::var("PCOS_STORAGE__BASE_PATH")
-        .unwrap_or_else(|_| "/data/pcos/storage".into());
+    let base_path =
+        std::env::var("PCOS_STORAGE__BASE_PATH").unwrap_or_else(|_| "/data/pcos/storage".into());
     let abs_path = PathBuf::from(&base_path).join(file_path);
 
     // Try local ffprobe
@@ -299,14 +302,8 @@ pub async fn probe_media(file_path: &str) -> AppResult<MediaInfo> {
         .unwrap_or("")
         .to_lowercase();
 
-    let is_video = matches!(
-        ext.as_str(),
-        "mp4" | "mkv" | "webm" | "avi" | "mov" | "m4v"
-    );
-    let is_audio = matches!(
-        ext.as_str(),
-        "mp3" | "flac" | "wav" | "ogg" | "aac" | "m4a"
-    );
+    let is_video = matches!(ext.as_str(), "mp4" | "mkv" | "webm" | "avi" | "mov" | "m4v");
+    let is_audio = matches!(ext.as_str(), "mp3" | "flac" | "wav" | "ogg" | "aac" | "m4a");
 
     Ok(MediaInfo {
         duration_secs: 0.0,
