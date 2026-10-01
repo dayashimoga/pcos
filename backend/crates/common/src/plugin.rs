@@ -61,6 +61,7 @@ impl Default for HookResult {
 
 /// Plugin trait — implement this for custom plugins.
 #[async_trait]
+#[allow(clippy::double_must_use)]
 pub trait Plugin: Send + Sync {
     /// Plugin manifest (name, version, hooks).
     fn manifest(&self) -> &PluginManifest;
@@ -153,6 +154,7 @@ mod tests {
     }
 
     #[async_trait]
+    #[allow(clippy::double_must_use)]
     impl Plugin for TestPlugin {
         fn manifest(&self) -> &PluginManifest {
             &self.manifest

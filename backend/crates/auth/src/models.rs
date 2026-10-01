@@ -103,6 +103,7 @@ mod tests {
             email: "test@example.com".into(),
             display_name: "Test User".into(),
             password: "SecureP@ss1".into(),
+            setup_token: None,
         };
         assert!(valid.validate().is_ok());
 
@@ -110,6 +111,7 @@ mod tests {
             email: "not-an-email".into(),
             display_name: "Test".into(),
             password: "SecureP@ss1".into(),
+            setup_token: None,
         };
         assert!(invalid_email.validate().is_err());
 
@@ -117,6 +119,7 @@ mod tests {
             email: "test@example.com".into(),
             display_name: "Test".into(),
             password: "short".into(),
+            setup_token: None,
         };
         assert!(short_password.validate().is_err());
     }

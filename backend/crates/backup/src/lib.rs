@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 pub mod handlers;
 pub mod service;
 

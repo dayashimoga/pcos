@@ -402,7 +402,7 @@ pub async fn restore_backup(
                 }
             }
 
-            for entry in folders.into_iter().chain(non_folders.into_iter()) {
+            for entry in folders.into_iter().chain(non_folders) {
                 let _ = sqlx::query(
                     r#"
                     INSERT INTO file_entries (id, user_id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, storage_path, is_trashed, created_at, updated_at)

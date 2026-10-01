@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 pub mod handlers;
 pub mod models;
 pub mod s3_compat;
