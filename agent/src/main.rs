@@ -130,6 +130,17 @@ async fn main() -> anyhow::Result<()> {
         })
     };
 
+    // Start LAN P2P discovery
+    let discovery = discovery::LanDiscovery::new(agent_config.device_id.clone(), 8080);
+    let discovery_handle = {
+        let disc = discovery.clone();
+        tokio::spawn(async move {
+            if let Err(e) = disc.start().await {
+                tracing::warn!(error = %e, "LAN peer discovery disabled or unavailable");
+            }
+        })
+    };
+
     // Wait for shutdown signal
     tokio::signal::ctrl_c().await?;
     tracing::info!("Shutting down...");
@@ -137,6 +148,7 @@ async fn main() -> anyhow::Result<()> {
     watcher_handle.abort();
     sync_handle.abort();
     heartbeat_handle.abort();
+    discovery_handle.abort();
 
     Ok(())
 }

@@ -55,15 +55,21 @@ if [ ! -f "$ENV_PATH" ]; then
         # Generate random secrets
         JWT_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
         DB_PASS=$(openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | xxd -p)
+        GRAFANA_PASS=$(openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | xxd -p)
+        BOOTSTRAP_TOKEN=$(openssl rand -hex 24 2>/dev/null || head -c 24 /dev/urandom | xxd -p)
         
         if [[ "$OSTYPE" == "darwin"* ]]; then
             sed -i '' "s/CHANGE-ME-TO-A-SECURE-RANDOM-STRING.*/$JWT_SECRET/" "$ENV_PATH"
             sed -i '' "s/change-me-to-a-strong-database-password/$DB_PASS/" "$ENV_PATH"
+            sed -i '' "s/CHANGE-ME-TO-A-SECURE-GRAFANA-PASSWORD/$GRAFANA_PASS/" "$ENV_PATH"
+            sed -i '' "s/CHANGE-ME-TO-A-SECURE-ADMIN-SETUP-TOKEN/$BOOTSTRAP_TOKEN/" "$ENV_PATH"
         else
             sed -i "s/CHANGE-ME-TO-A-SECURE-RANDOM-STRING.*/$JWT_SECRET/" "$ENV_PATH"
             sed -i "s/change-me-to-a-strong-database-password/$DB_PASS/" "$ENV_PATH"
+            sed -i "s/CHANGE-ME-TO-A-SECURE-GRAFANA-PASSWORD/$GRAFANA_PASS/" "$ENV_PATH"
+            sed -i "s/CHANGE-ME-TO-A-SECURE-ADMIN-SETUP-TOKEN/$BOOTSTRAP_TOKEN/" "$ENV_PATH"
         fi
-        write_ok "Generated unique secure JWT secret and database password."
+        write_ok "Generated unique secure JWT secret, database password, Grafana credentials, and setup token."
     else
         write_err ".env.example not found!"
         exit 1

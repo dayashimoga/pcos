@@ -111,6 +111,7 @@ async fn main() -> anyhow::Result<()> {
         .merge(pcos_worker::router())
         .merge(pcos_backup::router())
         .merge(pcos_analytics::router())
+        .merge(pcos_streaming::router())
         // Middleware layers (order matters — outermost first)
         .layer(DefaultBodyLimit::max(upload_limit))
         .layer(TraceLayer::new_for_http())

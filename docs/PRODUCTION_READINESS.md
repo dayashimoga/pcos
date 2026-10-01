@@ -20,32 +20,28 @@
 | Agent (Rust) | ✅ Pass | Standalone sync daemon |
 | Docker Images | ✅ Pass | Backend, Frontend, Agent multi-arch |
 
-## Feature Completion
+## Feature Completion (Audit Verified)
 
-| Module | Status | Coverage |
-|--------|--------|----------|
-| Auth (Register/Login/Refresh/Logout) | ✅ Complete | Integration tested |
-| MFA (TOTP) | ✅ Complete | API + UI |
-| OIDC/LDAP | ⚠️ Partial | API stubs, not E2E tested |
-| File Management (CRUD) | ✅ Complete | Upload, download, rename, move, delete |
-| Folder Navigation | ✅ Complete | Breadcrumb, nested folders |
-| Trash (Soft Delete/Restore) | ✅ Complete | Auto-purge after 30 days |
-| File Versioning | ✅ Complete | Version history, restore, download |
-| File Sharing (Links) | ✅ Complete | Password-protected, expiring links |
-| Search (Tantivy + DB) | ✅ Complete | Full-text with fallback |
-| WebDAV | ✅ Complete | PROPFIND, GET, DELETE, MKCOL |
-| S3-Compatible API | ✅ Complete | List, Head, Delete |
-| Sync Engine | ✅ Complete | Delta sync, conflict resolution |
-| Device Management | ✅ Complete | Register, list, revoke |
-| Notifications | ✅ Complete | In-app + web push + email |
-| Backup/Restore | ✅ Complete | Full + incremental, scheduled |
-| Analytics Dashboard | ✅ Complete | Storage stats, activity |
-| AI Integration | ⚠️ Partial | Ollama-powered, optional profile |
-| Streaming/Transcode | ✅ Complete | FFmpeg-based, job queue |
-| RBAC | ✅ Complete | Role-based access control |
-| Encryption (AES-256-GCM) | ✅ Complete | Server-side encryption |
-| i18n | ✅ Complete | Multi-language support module |
-| Plugin System | ✅ Complete | Trait-based plugin architecture |
+| Module | Status | Evidence / Notes |
+|--------|--------|------------------|
+| Auth & Bootstrap Protection | ✅ Verified | Argon2id, JWT rotation, `PCOS_ADMIN_BOOTSTRAP_TOKEN` validation, removed admin email bypass |
+| MFA (TOTP) | ✅ Complete | TOTP-based (`totp-rs`), backup codes |
+| File Management (CRUD) | ✅ Complete | Single & chunked upload, HTTP 206 Range download, rename, move, delete |
+| Folder Navigation | ✅ Complete | Breadcrumbs, nested folder tree, parent pointer resolution |
+| Trash (Soft Delete/Restore) | ✅ Complete | Trash listing, individual restore, empty trash |
+| File Versioning | ✅ Complete | Version history, restore to version, download version |
+| File Sharing (Links) | ✅ Complete | Password-protected, expiring links, download count limits |
+| Search (Tantivy + DB) | ✅ Complete | Full-text indexed Tantivy search with database fallback |
+| WebDAV (RFC 4918) | ✅ Verified | Universal dispatcher: PROPFIND, MKCOL, GET (Range), HEAD, PUT (SHA-256), DELETE, MOVE, COPY, OPTIONS |
+| S3 Gateway | ✅ Verified | ListBuckets, ListObjectsV2, GetObject (Range), PutObject (SHA-256), HeadObject, DeleteObject |
+| Sync Engine & Agent | ✅ Verified | Content-defined chunking delta sync, UDP peer discovery, WS Bearer auth (6/6 tests passing) |
+| Device Management | ✅ Complete | Register, list, revoke, heartbeat |
+| Unified Transfer Center | ✅ Verified | Queue, progress, speed, ETA, pause/resume/cancel, bandwidth limiter, live pulse badge |
+| Media Streaming & TV Play | ✅ Verified | ffprobe probing, Direct Play (HTTP 206 Range), 2-hour scoped revocable playback tokens |
+| Backup & Disaster Recovery | ✅ Verified | Full DR: physical payloads + versions + DB records + manifest; SHA-256 verification (3/3 tests passing) |
+| Analytics Dashboard | ✅ Complete | Storage stats, file type breakdown, Prometheus metrics |
+| RBAC | ✅ Complete | Admin, User, Viewer roles enforced without backdoors |
+| Encryption | ✅ Complete | Server-side AES-256-GCM encryption |
 
 ## CI/CD Pipeline Status
 

@@ -21,6 +21,7 @@ pcos-notification = { path = "../notification" }
 pcos-worker = { path = "../worker" }
 pcos-backup = { path = "../backup" }
 pcos-analytics = { path = "../analytics" }
+pcos-streaming = { path = "../streaming" }
 axum.workspace = true
 tower.workspace = true
 tower-http.workspace = true

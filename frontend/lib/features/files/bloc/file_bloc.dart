@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/network/api_client.dart';
+import '../../transfers/models/transfer_item.dart';
+import '../../transfers/services/transfer_manager.dart';
 import '../repository/file_repository.dart';
 
 // ─── Events ─────────────────────────────────────────────
@@ -175,12 +177,26 @@ class FileBloc extends Bloc<FileEvent, FileState> {
 
   Future<void> _onUpload(
       FileUploadRequested event, Emitter<FileState> emit) async {
+    final transfer = TransferManager().createTransfer(
+      name: event.filename,
+      type: TransferType.upload,
+      sizeBytes: event.bytes.length,
+    );
     try {
       await fileRepository.uploadFile(
-          event.filename, event.bytes, event.parentId);
+        event.filename,
+        event.bytes,
+        event.parentId,
+        onProgress: (sent, total) {
+          TransferManager().updateProgress(transfer.id, sent, total);
+        },
+        cancelToken: transfer.cancelToken,
+      );
+      TransferManager().markCompleted(transfer.id);
       emit(const FileActionSuccess('File uploaded successfully'));
       add(FilesLoadRequested(folderId: event.parentId));
     } catch (e) {
+      TransferManager().markFailed(transfer.id, ApiClient.formatError(e));
       emit(FileError(ApiClient.formatError(e)));
     }
   }

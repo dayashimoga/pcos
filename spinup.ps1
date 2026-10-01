@@ -42,7 +42,7 @@ if (-not (Test-Path $envPath)) {
         Copy-Item $envExamplePath $envPath
         Write-Ok "Created .env from .env.example"
         
-        # Generate random secure passwords
+        # Generate random secure credentials
         $bytes = New-Object byte[] 32
         (New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes($bytes)
         $jwtSecret = [System.BitConverter]::ToString($bytes) -replace '-',''
@@ -51,9 +51,19 @@ if (-not (Test-Path $envPath)) {
         (New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes($passBytes)
         $dbPass = [System.BitConverter]::ToString($passBytes) -replace '-',''
 
+        $grafanaBytes = New-Object byte[] 16
+        (New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes($grafanaBytes)
+        $grafanaPass = [System.BitConverter]::ToString($grafanaBytes) -replace '-',''
+
+        $tokenBytes = New-Object byte[] 24
+        (New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes($tokenBytes)
+        $bootstrapToken = [System.BitConverter]::ToString($tokenBytes) -replace '-',''
+
         (Get-Content $envPath) -replace 'CHANGE-ME-TO-A-SECURE-RANDOM-STRING.*', $jwtSecret `
-                               -replace 'change-me-to-a-strong-database-password', $dbPass | Set-Content $envPath
-        Write-Ok "Generated unique secure JWT secret and database password."
+                               -replace 'change-me-to-a-strong-database-password', $dbPass `
+                               -replace 'CHANGE-ME-TO-A-SECURE-GRAFANA-PASSWORD', $grafanaPass `
+                               -replace 'CHANGE-ME-TO-A-SECURE-ADMIN-SETUP-TOKEN', $bootstrapToken | Set-Content $envPath
+        Write-Ok "Generated unique secure JWT secret, database password, Grafana credentials, and setup token."
     } else {
         Write-Err ".env.example not found!"
         exit 1

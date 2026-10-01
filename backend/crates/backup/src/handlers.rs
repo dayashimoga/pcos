@@ -45,8 +45,8 @@ pub async fn restore_backup(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
-    let msg = service::restore_backup(s.db.pool(), auth.claims.sub, id).await?;
-    Ok(Json(serde_json::json!({ "message": msg })))
+    let res = service::restore_backup(s.db.pool(), auth.claims.sub, id).await?;
+    Ok(Json(res))
 }
 pub async fn list_schedules(
     State(s): State<AppState>,

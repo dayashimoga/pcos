@@ -42,13 +42,24 @@ pub async fn register(
     let password_hash = hash_password(&req.password)
         .map_err(|e| AppError::Internal(format!("Password hashing failed: {e}")))?;
 
-    // First user or admin email automatically gets admin role
+    // Determine role: Only the initial account can claim admin, with optional bootstrap token validation
     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
         .fetch_one(pool)
         .await
         .unwrap_or(0);
 
-    let role = if count == 0 || email.starts_with("admin") {
+    let role = if count == 0 {
+        if let Ok(expected_token) = std::env::var("PCOS_ADMIN_BOOTSTRAP_TOKEN") {
+            let expected_trimmed = expected_token.trim();
+            if !expected_trimmed.is_empty() {
+                let provided = req.setup_token.as_deref().unwrap_or_default().trim();
+                if provided != expected_trimmed {
+                    return Err(AppError::Unauthorized(
+                        "Valid PCOS_ADMIN_BOOTSTRAP_TOKEN is required to register initial admin account".to_string(),
+                    ));
+                }
+            }
+        }
         "admin"
     } else {
         "user"

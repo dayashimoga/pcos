@@ -1,7 +1,7 @@
 //! Video/Audio adaptive streaming crate.
 //!
-//! Provides HLS adaptive bitrate streaming via Docker-based FFmpeg transcoding.
-//! No local FFmpeg install required — all transcoding runs in the `pcos-transcoder` container.
+//! Provides HLS adaptive bitrate streaming, playback token issuance,
+//! and Range-based direct media streaming for client-compatible players.
 
 pub mod handlers;
 pub mod service;
@@ -14,9 +14,17 @@ use pcos_common::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/transcode", post(handlers::transcode))
-        .route("/jobs", get(handlers::list_jobs))
-        .route("/jobs/:id", get(handlers::get_job))
-        .route("/stream/:id", get(handlers::stream_url))
-        .route("/probe/:file_id", post(handlers::probe))
+        .route("/api/v1/streaming/transcode", post(handlers::transcode))
+        .route("/api/v1/streaming/jobs", get(handlers::list_jobs))
+        .route("/api/v1/streaming/jobs/:id", get(handlers::get_job))
+        .route("/api/v1/streaming/stream/:id", get(handlers::stream_url))
+        .route("/api/v1/streaming/probe/:file_id", post(handlers::probe))
+        .route(
+            "/api/v1/streaming/token/:file_id",
+            post(handlers::generate_playback_token),
+        )
+        .route(
+            "/api/v1/streaming/play/:token",
+            get(handlers::play_with_token),
+        )
 }

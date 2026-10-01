@@ -52,17 +52,17 @@
 
 | Feature | Backend | Status |
 |---------|---------|--------|
-| WebDAV (PROPFIND, MKCOL, DELETE, MOVE) | ✅ | ✅ |
-| S3-compatible API (ListBuckets, ListObjects, HeadObject, DeleteObject) | ✅ | ✅ |
+| WebDAV RFC 4918 (PROPFIND, MKCOL, GET Range, HEAD, PUT SHA-256, DELETE, MOVE, COPY, OPTIONS) | ✅ | ✅ |
+| S3 Gateway (ListBuckets, ListObjectsV2, GetObject Range, PutObject SHA-256, HeadObject, DeleteObject) | ✅ | ✅ |
 | SMB/CIFS bridge | 🔌 | 🔌 |
 
 ## Sync & Sharing
 
 | Feature | Backend | Agent | Status |
 |---------|---------|-------|--------|
-| WebSocket sync (JWT auth, change tracking) | ✅ | ✅ | ✅ |
-| Delta sync (content-defined chunking) | — | ✅ | ✅ |
-| LAN/P2P discovery (UDP broadcast) | — | ✅ | ✅ |
+| WebSocket sync (Bearer / subprotocol auth, change tracking) | ✅ | ✅ | ✅ |
+| Delta sync (content-defined chunking + chunked upload) | ✅ | ✅ | ✅ |
+| LAN/P2P peer discovery (UDP broadcast port 38472) | — | ✅ | ✅ |
 | Share links (password, expiry, download limits) | ✅ | — | ✅ |
 | File versioning (list, restore, download) | ✅ | — | ✅ |
 
@@ -70,20 +70,32 @@
 
 | Feature | Backend | Status |
 |---------|---------|--------|
-| HLS adaptive bitrate (360p/720p/1080p) | ✅ | ✅ |
-| Audio extraction (HLS + MP3) | ✅ | ✅ |
-| Thumbnail + sprite generation | ✅ | ✅ |
-| Media probing (ffprobe) | ✅ | ✅ |
+| Scoped revocable playback tokens (2h, user/file/device-scoped) | ✅ | ✅ |
+| Direct Play (HTTP 206 Partial Content Range streaming) | ✅ | ✅ |
+| ffprobe probing (codecs, bitrate, dimensions, audio tracks) | ✅ | ✅ |
+| HLS adaptive bitrate (360p/720p/1080p) & hardware acceleration | ✅ | ✅ |
+| Audio extraction & thumbnails | ✅ | ✅ |
 
-## Backup & Recovery
+## Backup & Disaster Recovery
 
 | Feature | Backend | Status |
 |---------|---------|--------|
-| Backup with file copy + manifest | ✅ | ✅ |
-| Backup restore with file restore | ✅ | ✅ |
-| Backup retention policy | ✅ | ✅ |
-| Backup verification (integrity check) | ✅ | ✅ |
-| Scheduled pg_dump container | ✅ | ✅ |
+| Full DR Backup (raw payloads, versions, manifest.json, metadata) | ✅ | ✅ |
+| Full DR Restore (payload copy, relational DB hierarchy, verify) | ✅ | ✅ |
+| Cryptographic Verification (SHA-256 integrity check of all files) | ✅ | ✅ |
+| Automated Retention Policies & Schedules | ✅ | ✅ |
+| Standalone verification test suite (100% passing) | ✅ | ✅ |
+
+## Frontend & Transfers
+
+| Feature | Frontend | Status |
+|---------|----------|--------|
+| Unified Transfer Center (queue, progress, speed, ETA) | ✅ | ✅ |
+| Transfer lifecycle (pause, resume, retry, cancel, clear) | ✅ | ✅ |
+| Bandwidth throttling / rate limiting | ✅ | ✅ |
+| Live status indicator & pulse badge in Shell layout | ✅ | ✅ |
+| Global Command Palette (Ctrl+K) & Transfers shortcut (Ctrl+T) | ✅ | ✅ |
+
 
 ## Email & Notifications
 

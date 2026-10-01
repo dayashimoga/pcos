@@ -66,19 +66,17 @@ pub fn router() -> Router<AppState> {
         )
         // Allow large uploads (10 GB default)
         .layer(DefaultBodyLimit::max(10 * 1024 * 1024 * 1024))
-        // WebDAV compatibility routes
-        .route("/webdav", get(webdav::propfind))
-        .route(
-            "/webdav/*path",
-            get(webdav::propfind)
-                .post(webdav::mkcol)
-                .delete(webdav::webdav_delete),
-        )
+        // WebDAV compatibility routes with universal method dispatch
+        .route("/webdav", axum::routing::any(webdav::dispatch_root))
+        .route("/webdav/*path", axum::routing::any(webdav::dispatch_path))
         // S3-compatible routes
         .route("/s3", get(s3_compat::list_buckets))
         .route("/s3/pcos-files", get(s3_compat::list_objects))
         .route(
-            "/s3/pcos-files/:key",
-            get(s3_compat::head_object).delete(s3_compat::delete_object),
+            "/s3/pcos-files/*key",
+            get(s3_compat::get_object)
+                .head(s3_compat::head_object)
+                .put(s3_compat::put_object)
+                .delete(s3_compat::delete_object),
         )
 }

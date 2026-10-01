@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-10-01
+
+### Zero-Assumption Production Hardening, Media Streaming & Transfer Center
+
+#### Security & Auth Hardening
+- **Eliminated Privilege Escalation**: Removed arbitrary `email.starts_with("admin")` bypass in `backend/crates/auth/src/service.rs`.
+- **First-Registration Bootstrap Protection**: Added `PCOS_ADMIN_BOOTSTRAP_TOKEN` validation during initial empty deployment registration to prevent unauthorized takeovers on exposed instances.
+- **WebSocket Ingress Protection**: Updated `pcos-sync-engine` to authenticate via `Authorization: Bearer <token>` and `Sec-WebSocket-Protocol: bearer, <token>` subprotocol headers, ending token exposure in query params and access logs.
+- **Credential Sanitization**: Removed default `admin/admin` Grafana credentials; updated `spinup.ps1` and `spinup.sh` to auto-generate unique cryptographically secure secrets.
+
+#### WebDAV RFC 4918 Universal Dispatcher & S3 Gateway
+- **RFC 4918 WebDAV Engine**: Built universal method dispatchers (`PROPFIND`, `MKCOL`, `GET` HTTP 206 Range, `HEAD`, `PUT` streamed with SHA-256 calculation, `DELETE`, `MOVE`, `COPY`, `OPTIONS`).
+- **S3-Compatible Gateway**: Implemented `ListBuckets`, `ListObjectsV2` with prefix pagination, `GetObject` with HTTP Range streaming, `PutObject` with streamed SHA-256, `HeadObject`, and `DeleteObject`.
+
+#### Media Streaming & Revocable Scoped Playback Tokens
+- **Revocable Scoped Tokens**: Added 2-hour HMAC-SHA256 tokens scoped strictly to `user_id`, `file_id`, and `device_id` (`POST /api/v1/streaming/:file_id/token`), allowing Smart TVs and mobile browsers to stream securely without exposing user session keys.
+- **Direct Play Range Streaming**: Implemented `GET /api/v1/streaming/play` with HTTP 206 Partial Content Range streaming for zero-CPU remux direct playback.
+- **Container & Codec Probing**: Added ffprobe execution with audio/video codec extraction and dimensions.
+
+#### Comprehensive Full Disaster Recovery (DR) & Verification Engine
+- **Full Payload & State Archival**: Updated `pcos-backup` to archive physical file payloads, version payloads, and relational database records (`file_entries`, `file_versions`, `share_links`) into `manifest.json`.
+- **True Restoration**: Restores file payloads to active storage, restores database records preserving folder trees, and verifies SHA-256 integrity.
+- **Cryptographic Verification**: Automated test suite (`3/3 tests passing`) proving detection of corrupted bytes and missing payloads.
+
+#### Device Agent Delta Sync & Peer Discovery
+- **Content-Defined Delta Sync**: Wired `delta::compute_chunks` and chunked upload into `agent/src/sync.rs`.
+- **LAN Peer Discovery**: Wired `LanDiscovery` UDP broadcast daemon on port 38472 with lifecycle tracking (`6/6 tests passing`).
+
+#### Frontend Unified Transfer Center & UX
+- **TransferManager Service**: Created singleton service tracking active and queued transfers, calculating aggregate transfer speeds and estimated time of arrival (ETA).
+- **TransferCenterDialog**: Built full modal UI with queue overview, active transfers badge, type filtering (Uploads, Downloads, Sync, Backup, Transcode), pause/resume/cancel controls, and bandwidth throttling (Unlimited, 2 MB/s, 5 MB/s, 20 MB/s).
+- **Live Shell Indicator**: Added pulsing activity badge and status widget in Desktop, Tablet, and Mobile shells.
+- **Keyboard Shortcuts**: Added `Ctrl+T` shortcut for Transfer Center and integrated Transfer Center into global `Ctrl+K` quick search.
+- **Flutter 3.27+ Compatibility**: Upgraded `google_fonts` to `^6.3.3`, fixed `CardThemeData` type mismatch, verified all 17 unit/BLoC tests pass.
+
+---
+
 ## [1.5.0] - 2026-08-04
 
 ### Advanced Features & Production Readiness

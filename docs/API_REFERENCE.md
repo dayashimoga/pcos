@@ -196,15 +196,19 @@ All authenticated endpoints require: `Authorization: Bearer <access_token>`
 
 ---
 
-## WebDAV (Compatibility Layer)
+## WebDAV (RFC 4918 Compatibility Layer)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| PROPFIND | /webdav | Yes | List root directory (XML) |
-| PROPFIND | /webdav/*path | Yes | List directory contents |
-| MKCOL | /webdav/:name | Yes | Create folder |
-| DELETE | /webdav/*path | Yes | Delete file/folder (trash) |
-| MOVE | /webdav/*path | Yes | Rename/move (Destination header) |
-| OPTIONS | /webdav | No | Advertise DAV capabilities |
+| PROPFIND | /webdav | Yes | List root directory hierarchy (XML multistatus) |
+| PROPFIND | /webdav/*path | Yes | List directory contents or file properties |
+| MKCOL | /webdav/*path | Yes | Create folder collection |
+| GET | /webdav/*path | Yes | Download file (supports HTTP 206 Range streaming) |
+| HEAD | /webdav/*path | Yes | Query file headers (Content-Length, Content-Type, ETag) |
+| PUT | /webdav/*path | Yes | Stream file upload with real-time SHA-256 calculation |
+| DELETE | /webdav/*path | Yes | Move file or folder collection to trash |
+| MOVE | /webdav/*path | Yes | Rename or move file/folder (supports `Destination` header) |
+| COPY | /webdav/*path | Yes | Copy file or directory collection (`Destination` header) |
+| OPTIONS | /webdav, /webdav/*path | No | Advertise DAV: 1, 2 capabilities and allowed methods |
 
 ---
 
@@ -212,11 +216,23 @@ All authenticated endpoints require: `Authorization: Bearer <access_token>`
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | /s3 | Yes | ListBuckets (XML) |
-| GET | /s3/pcos-files | Yes | ListObjectsV2 (XML, prefix/max-keys) |
-| HEAD | /s3/pcos-files/:key | Yes | HeadObject (size, type, modified) |
-| DELETE | /s3/pcos-files/:key | Yes | DeleteObject (trash) |
+| GET | /s3/:bucket | Yes | ListObjectsV2 (XML, prefix/max-keys pagination) |
+| GET | /s3/:bucket/*key | Yes | GetObject (supports HTTP 206 Range streaming) |
+| PUT | /s3/:bucket/*key | Yes | PutObject (streamed upload with SHA-256 calculation) |
+| HEAD | /s3/:bucket/*key | Yes | HeadObject (size, ETag, Content-Type, Last-Modified) |
+| DELETE | /s3/:bucket/*key | Yes | DeleteObject (moves object to trash) |
 
-> Compatible with aws-cli, rclone, s3cmd.
+> Compatible with aws-cli, rclone, Cyberduck, and s3cmd.
+
+---
+
+## Media Streaming (Direct Play & Scoped Tokens)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /api/v1/streaming/:file_id/token | Yes | Issue short-lived (2h) user/file/device-scoped playback token |
+| GET | /api/v1/streaming/play?token=... | Scoped Token | Stream media via HTTP 206 Range for TVs/browsers (no leaked user session) |
+| GET | /api/v1/streaming/:file_id/stream | Yes | Direct authenticated HTTP 206 Partial Content Range streaming |
+| GET | /api/v1/streaming/:file_id/probe | Yes | ffprobe metadata extraction (codecs, bitrate, dimensions, audio tracks) |
 
 ---
 
@@ -237,10 +253,19 @@ All authenticated endpoints require: `Authorization: Bearer <access_token>`
 
 ---
 
-## Backup (Extended)
+## Backup & Disaster Recovery (Full System & Payloads)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | /api/v1/backups/:id/verify | Yes | Verify backup integrity (manifest + file check) |
-| POST | /api/v1/backups/retention | Yes | Enforce retention policy (delete old backups) |
+| GET | /api/v1/backups | Yes | List user backups with metadata |
+| POST | /api/v1/backups | Yes | Create full backup (payloads + versions + metadata + manifest) |
+| GET | /api/v1/backups/:id | Yes | Get backup details and storage location |
+| DELETE | /api/v1/backups/:id | Yes | Delete backup archive and payloads |
+| POST | /api/v1/backups/:id/restore | Yes | Full DR restore: payloads, file entries, versions, shares + verification |
+| GET | /api/v1/backups/:id/verify | Yes | Cryptographic SHA-256 integrity validation of all backup payloads |
+| POST | /api/v1/backups/retention | Yes | Enforce retention policy (keep N most recent backups) |
+| GET | /api/v1/backups/schedules | Yes | List automated backup cron schedules |
+| POST | /api/v1/backups/schedules | Yes | Create automated backup schedule |
+| DELETE | /api/v1/backups/schedules/:id | Yes | Delete backup schedule |
 
-**Total: 90+ endpoints**
+**Total: 100+ endpoints**
+

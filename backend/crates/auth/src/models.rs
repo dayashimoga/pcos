@@ -38,6 +38,8 @@ pub struct RegisterRequest {
 
     #[validate(length(min = 8, max = 128, message = "Password must be 8-128 characters"))]
     pub password: String,
+
+    pub setup_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Validate)]

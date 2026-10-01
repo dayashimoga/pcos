@@ -129,4 +129,14 @@ mod tests {
         let diff = diff_chunks(&chunks, &chunks);
         assert!(diff.is_empty(), "Same data should produce no diff");
     }
+
+    #[tokio::test]
+    async fn test_file_hash() {
+        let temp_dir = std::env::temp_dir();
+        let temp_file = temp_dir.join("pcos_test_hash.txt");
+        tokio::fs::write(&temp_file, b"pcos-hash-test").await.unwrap();
+        let hash = file_hash(&temp_file).await.unwrap();
+        assert_eq!(hash.len(), 64);
+        tokio::fs::remove_file(&temp_file).await.ok();
+    }
 }

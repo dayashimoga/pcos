@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../transfers/widgets/transfer_center_dialog.dart';
+import '../../transfers/widgets/transfer_status_indicator.dart';
 
 /// Responsive shell layout: full sidebar (desktop ≥1100), compact rail (tablet ≥700), bottom nav (mobile).
 class ShellLayout extends StatelessWidget {
@@ -44,6 +46,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
     ('Admin', Icons.admin_panel_settings_rounded, '/admin'),
     ('API Explorer', Icons.api_rounded, '/admin/api'),
     ('Duplicates', Icons.find_replace_rounded, '/duplicates'),
+    ('Transfer Center', Icons.swap_vert_rounded, '__transfers__'),
     ('Settings', Icons.settings_rounded, '/settings'),
   ];
 
@@ -127,7 +130,11 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
                           hoverColor: AppTheme.primary.withOpacity(0.08),
                           onTap: () {
                             Navigator.pop(context);
-                            context.go(p.$3);
+                            if (p.$3 == '__transfers__') {
+                              TransferCenterDialog.show(context);
+                            } else {
+                              context.go(p.$3);
+                            }
                           },
                         ))
                     .toList(),
@@ -247,6 +254,8 @@ class _DesktopShellState extends State<_DesktopShell> {
               control: true): () => context.go(_navItems[i].path),
         const SingleActivator(LogicalKeyboardKey.keyK, control: true): () =>
             _showQuickSearch(context),
+        const SingleActivator(LogicalKeyboardKey.keyT, control: true): () =>
+            TransferCenterDialog.show(context),
       },
       child: Focus(
         autofocus: true,
@@ -452,6 +461,12 @@ class _DesktopShellState extends State<_DesktopShell> {
                     ),
                   ),
                 ),
+                // Transfer Status indicator
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: _collapsed ? 8 : 16, vertical: 4),
+                  child: TransferStatusIndicator(compact: _collapsed),
+                ),
 
                 // Storage indicator
                 if (!_collapsed)
@@ -518,13 +533,20 @@ class _TabletShell extends StatelessWidget {
           labelType: NavigationRailLabelType.all,
           leading: Padding(
             padding: const EdgeInsets.only(bottom: 12, top: 8),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.cloud_rounded,
-                  color: Colors.white, size: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.cloud_rounded,
+                      color: Colors.white, size: 20),
+                ),
+                const SizedBox(height: 8),
+                const TransferStatusIndicator(compact: true),
+              ],
             ),
           ),
           destinations: _navItems
@@ -578,6 +600,7 @@ class _MobileShell extends StatelessWidget {
                   color: AppTheme.textPrimaryColor(context))),
         ]),
         actions: [
+          const TransferStatusIndicator(compact: true),
           IconButton(
             icon: Icon(Icons.search_rounded,
                 size: 22, color: AppTheme.textMutedColor(context)),

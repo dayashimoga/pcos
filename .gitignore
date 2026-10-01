@@ -58,7 +58,10 @@ htmlcov/
 tarpaulin-report.html
 
 # ─── Build artifacts ────────────────────────────────────
+build/
+*.apk
 *.exe
 *.dll
 *.so
 *.dylib
+frontend/ios/Flutter/ephemeral/

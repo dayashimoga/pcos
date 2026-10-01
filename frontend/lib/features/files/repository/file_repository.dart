@@ -18,12 +18,18 @@ class FileRepository {
   }
 
   Future<Map<String, dynamic>> uploadFile(
-      String filename, List<int> bytes, String? parentId) async {
+      String filename, List<int> bytes, String? parentId,
+      {ProgressCallback? onProgress, CancelToken? cancelToken}) async {
     final formData = FormData.fromMap({
       'file': MultipartFile.fromBytes(bytes, filename: filename),
       if (parentId != null) 'parent_id': parentId,
     });
-    final r = await apiClient.dio.post('/api/v1/files/upload', data: formData);
+    final r = await apiClient.dio.post(
+      '/api/v1/files/upload',
+      data: formData,
+      onSendProgress: onProgress,
+      cancelToken: cancelToken,
+    );
     return r.data;
   }
 

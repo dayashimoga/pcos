@@ -91,6 +91,7 @@ services:
       PCOS_SMTP_PASS: "${PCOS_SMTP_PASS:-}"
       PCOS_SMTP_FROM: "${PCOS_SMTP_FROM:-noreply@pcos.local}"
       PCOS_CORS_ORIGINS: "${PCOS_CORS_ORIGINS:-*}"
+      PCOS_ADMIN_BOOTSTRAP_TOKEN: "${PCOS_ADMIN_BOOTSTRAP_TOKEN:-}"
       RUST_LOG: "${RUST_LOG:-pcos=info,tower_http=info,sqlx=warn}"
     volumes:
       - file_storage:/data/pcos/storage
@@ -151,7 +152,7 @@ services:
     depends_on:
       - prometheus
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-CHANGE-ME-IN-ENV}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
