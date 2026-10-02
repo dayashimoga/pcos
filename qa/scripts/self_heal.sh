@@ -8,6 +8,17 @@ ITERATION=0
 QA_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT_DIR="$(dirname "$QA_DIR")"
 
+COMPOSE_CMD="docker compose"
+if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
+  if command -v podman &>/dev/null && podman info &>/dev/null; then
+    if podman compose version &>/dev/null 2>&1; then
+      COMPOSE_CMD="podman compose"
+    elif command -v podman-compose &>/dev/null; then
+      COMPOSE_CMD="podman-compose"
+    fi
+  fi
+fi
+
 echo "╔══════════════════════════════════════════════════╗"
 echo "║      PCOS Self-Healing Certification Loop        ║"
 echo "║      Max iterations: $MAX_ITERATIONS                          ║"
@@ -48,7 +59,7 @@ while [ "$ITERATION" -lt "$MAX_ITERATIONS" ]; do
     cp "$(dirname "$LATEST_REPORT")/junit/results.xml" "$QA_DIR/reports/latest/" 2>/dev/null || true
     
     # Tear down
-    docker compose -f "$QA_DIR/docker-compose.test.yml" down -v 2>/dev/null || true
+    $COMPOSE_CMD -f "$QA_DIR/docker-compose.test.yml" down -v 2>/dev/null || true
     exit 0
   fi
   
@@ -91,5 +102,5 @@ echo "  ✗ MAX ITERATIONS ($MAX_ITERATIONS) REACHED"
 echo "  Review reports in: $QA_DIR/reports/"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-docker compose -f "$QA_DIR/docker-compose.test.yml" down -v 2>/dev/null || true
+$COMPOSE_CMD -f "$QA_DIR/docker-compose.test.yml" down -v 2>/dev/null || true
 exit 1

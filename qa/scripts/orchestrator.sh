@@ -33,8 +33,19 @@ echo "╚═══════════════════════�
 echo ""
 echo "▸ Phase 1: Provisioning test environment..."
 
-docker compose -f "$COMPOSE_FILE" down -v 2>/dev/null || true
-docker compose -f "$COMPOSE_FILE" up -d --build --wait 2>&1 | tee "$REPORTS_DIR/provision.log"
+COMPOSE_CMD="docker compose"
+if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
+  if command -v podman &>/dev/null && podman info &>/dev/null; then
+    if podman compose version &>/dev/null 2>&1; then
+      COMPOSE_CMD="podman compose"
+    elif command -v podman-compose &>/dev/null; then
+      COMPOSE_CMD="podman-compose"
+    fi
+  fi
+fi
+
+$COMPOSE_CMD -f "$COMPOSE_FILE" down -v 2>/dev/null || true
+$COMPOSE_CMD -f "$COMPOSE_FILE" up -d --build 2>&1 | tee "$REPORTS_DIR/provision.log"
 
 echo "▸ Environment ready. Waiting for health..."
 for i in $(seq 1 30); do
@@ -352,7 +363,7 @@ echo ""
 # ─── Phase 7: Teardown ─────────────────────────────
 if [ "$KEEP_ENV" = false ]; then
   echo "▸ Phase 7: Tearing down test environment..."
-  docker compose -f "$COMPOSE_FILE" down -v 2>/dev/null || true
+  $COMPOSE_CMD -f "$COMPOSE_FILE" down -v 2>/dev/null || true
   echo "  ✓ Environment destroyed"
 fi
 

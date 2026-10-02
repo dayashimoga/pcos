@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS share_links (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     file_entry_id UUID NOT NULL REFERENCES file_entries(id) ON DELETE CASCADE,
     token VARCHAR(64) NOT NULL UNIQUE,
-    permission VARCHAR(20) NOT NULL DEFAULT 'view' CHECK (permission IN ('view', 'download', 'upload')),
+    permission VARCHAR(20) NOT NULL DEFAULT 'view' CHECK (permission IN ('view', 'download')),
     password_hash TEXT,
     expires_at TIMESTAMPTZ,
     max_downloads INTEGER,

@@ -60,10 +60,10 @@ write_ok "Container runtime detected: $RUNTIME ($COMPOSE_CMD)"
 
 if [ "$PURGE" = true ]; then
     write_warn "Step 2: Stopping containers and PURGING all data volumes..."
-    $COMPOSE_CMD down -v
+    $COMPOSE_CMD --profile full down -v
 else
     write_info "Step 2: Stopping container services (preserving data volumes)..."
-    $COMPOSE_CMD down
+    $COMPOSE_CMD --profile full down
 fi
 
 write_ok "All PCOS container services stopped."
@@ -72,6 +72,6 @@ write_header "PCOS Teardown Complete"
 if [ "$PURGE" = true ]; then
     echo -e "  * All database and file storage volumes PURGED."
 else
-    echo -e "  * Data preserved in Docker volumes. Run ./spinup.sh to start again."
+    echo -e "  * Data preserved in $RUNTIME volumes. Run ./spinup.sh to start again."
 fi
 echo ""

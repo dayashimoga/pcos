@@ -67,20 +67,20 @@ Write-Ok "Container runtime detected: $runtime ($composeCmd)"
 if ($PurgeVolumes) {
     Write-Warn "Step 2: Stopping all containers and PURGING persistent data volumes..."
     if ($composeCmd -eq "docker compose") {
-        docker compose down -v --remove-orphans
+        docker compose --profile full down -v --remove-orphans
     } elseif ($composeCmd -eq "podman compose") {
-        podman compose down -v
+        podman compose --profile full down -v
     } else {
-        podman-compose down -v
+        podman-compose --profile full down -v
     }
 } else {
     Write-Info "Step 2: Stopping all container services (preserving data volumes)..."
     if ($composeCmd -eq "docker compose") {
-        docker compose down --remove-orphans
+        docker compose --profile full down --remove-orphans
     } elseif ($composeCmd -eq "podman compose") {
-        podman compose down
+        podman compose --profile full down
     } else {
-        podman-compose down
+        podman-compose --profile full down
     }
 }
 
@@ -95,6 +95,6 @@ Write-Host "  * All container services stopped." -ForegroundColor White
 if ($PurgeVolumes) {
     Write-Host "  * All database and file volumes purged." -ForegroundColor Yellow
 } else {
-    Write-Host "  * Data preserved in Docker volumes. Run .\spinup.ps1 to start again." -ForegroundColor Green
+    Write-Host "  * Data preserved in $runtime volumes. Run .\spinup.ps1 to start again." -ForegroundColor Green
 }
 Write-Host ""

@@ -73,36 +73,39 @@ check_command() {
 }
 
 MISSING=0
-check_command docker || MISSING=1
-check_command docker || MISSING=1
-check_command git    || MISSING=1
+CONTAINER_RUNTIME=""
+COMPOSE_CMD=""
 
-# Check Docker Compose (v2 or v1)
-if docker compose version &>/dev/null 2>&1; then
-  COMPOSE_CMD="docker compose"
-  ok "Docker Compose v2 found"
-elif command -v docker-compose &>/dev/null; then
-  COMPOSE_CMD="docker-compose"
-  ok "Docker Compose v1 found"
-else
-  err "Docker Compose not found"
-  MISSING=1
+if command -v docker &>/dev/null && docker info &>/dev/null; then
+  CONTAINER_RUNTIME="docker"
+  if docker compose version &>/dev/null 2>&1; then
+    COMPOSE_CMD="docker compose"
+  elif command -v docker-compose &>/dev/null; then
+    COMPOSE_CMD="docker-compose"
+  fi
+elif command -v podman &>/dev/null && podman info &>/dev/null; then
+  CONTAINER_RUNTIME="podman"
+  if podman compose version &>/dev/null 2>&1; then
+    COMPOSE_CMD="podman compose"
+  elif command -v podman-compose &>/dev/null; then
+    COMPOSE_CMD="podman-compose"
+  fi
 fi
 
-# Check Docker running
-if docker info &>/dev/null 2>&1; then
-  ok "Docker daemon is running"
-else
-  err "Docker daemon is not running"
-  echo "  Please start Docker and try again."
+if [[ -z "$CONTAINER_RUNTIME" ]] || [[ -z "$COMPOSE_CMD" ]]; then
+  err "Neither Docker nor Podman (with compose provider) is running or accessible."
+  echo "  Please install/start Docker Desktop or Podman (with podman-compose) and try again."
+  echo "  Docker: https://docs.docker.com/get-docker/"
+  echo "  Podman: https://podman.io/"
   exit 1
 fi
 
+ok "Container runtime detected: $CONTAINER_RUNTIME ($COMPOSE_CMD)"
+check_command git || MISSING=1
+
 if [[ $MISSING -eq 1 ]]; then
   echo ""
-  err "Missing prerequisites. Please install them and try again."
-  echo "  Docker: https://docs.docker.com/get-docker/"
-  echo "  Git:    https://git-scm.com/downloads"
+  err "Missing prerequisites. Please install git and try again."
   exit 1
 fi
 
