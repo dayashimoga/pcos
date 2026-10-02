@@ -146,6 +146,26 @@ pub async fn queue_transcode(
     Ok(job)
 }
 
+async fn container_runner() -> &'static str {
+    if tokio::process::Command::new("docker")
+        .arg("--version")
+        .output()
+        .await
+        .is_ok()
+    {
+        "docker"
+    } else if tokio::process::Command::new("podman")
+        .arg("--version")
+        .output()
+        .await
+        .is_ok()
+    {
+        "podman"
+    } else {
+        "docker"
+    }
+}
+
 /// Execute a transcoding job by invoking local ffmpeg or fallback container.
 pub async fn execute_transcode(pool: &PgPool, job_id: Uuid) -> AppResult<TranscodeJob> {
     sqlx::query("UPDATE transcode_jobs SET status = 'processing' WHERE id = $1")
@@ -195,7 +215,8 @@ pub async fn execute_transcode(pool: &PgPool, job_id: Uuid) -> AppResult<Transco
             .output()
             .await
     } else {
-        tokio::process::Command::new("docker")
+        let runner = container_runner().await;
+        tokio::process::Command::new(runner)
             .args([
                 "run",
                 "--rm",
@@ -273,8 +294,9 @@ pub async fn probe_media(file_path: &str) -> AppResult<MediaInfo> {
         }
     }
 
-    // Try Docker ffprobe
-    if let Ok(output) = tokio::process::Command::new("docker")
+    // Try Docker/Podman ffprobe
+    let runner = container_runner().await;
+    if let Ok(output) = tokio::process::Command::new(runner)
         .args([
             "run",
             "--rm",

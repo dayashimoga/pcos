@@ -65,6 +65,7 @@ services:
 
   # ─── Backend API ───────────────────────────────────
   backend:
+    image: localhost/pcos_backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -105,6 +106,7 @@ services:
 
   # ─── Frontend (Flutter Web) ────────────────────────
   frontend:
+    image: localhost/pcos_frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -142,6 +144,8 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=30d'
       - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
     networks:
       - pcos-net
 
@@ -241,10 +245,13 @@ services:
 
   # ─── Transcoder (FFmpeg — media or full profile) ───────
   transcoder:
+    image: localhost/pcos_transcoder:latest
     build:
       context: .
       dockerfile: build/Dockerfile.transcoder
-    restart: "no"
+    restart: unless-stopped
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["echo 'PCOS Transcoder service ready' && tail -f /dev/null"]
     volumes:
       - file_storage:/data/pcos/storage
       - transcode_data:/data/pcos/transcode
