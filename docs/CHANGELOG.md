@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2026-10-02
+
+### Cloudflare Edge Control Plane, Distributed Storage Nodes & Authoritative Pairing
+
+#### Cloudflare Always-Available Edge Control Plane
+- **Workers + D1 + KV + R2 + Durable Objects**: Built always-available serverless control plane (`cloudflare/`) handling routing, identity, presence, command dispatch, and free-tier quota tracking.
+- **Automated Pre-Deployment Provisioning (`cloudflare/scripts/provision.mjs`)**: Auto-provisions D1 database, executes relational `schema.sql`, creates KV namespace, creates R2 bucket, and binds Durable Objects.
+- **Resilient CI/CD (`cloudflare.yml`)**: Automated pipeline verifying Vitest suite, ensuring web assets directory exists before dry-run, building production Flutter web bundle, and deploying to Cloudflare Workers & Pages.
+- **Free-Tier Guard ($0 Hard Budget Mode)**: Real-time quota enforcement (100k requests/day, 5M reads/mo, 100k writes/day, 10GB R2 storage) with automated cutoff preventing unexpected cloud costs.
+
+#### Authoritative Device Pairing & Zero-Trust Candidate Approval
+- **Cryptographic Ephemeral Pairing**: Server-authoritative 5-minute CSPRNG 6-digit codes and 32-byte hex tokens in `PairingStore`.
+- **Eliminated Fake Fallback Codes**: Fully removed insecure client-only fallback codes; all pairings require authoritative edge verification.
+- **Owner Candidate Approval**: Unenrolled devices request pairing and await explicit confirmation on the user's authenticated dashboard before credentials are exchanged.
+- **Brute-Force Lockout**: 5 failed attempt threshold locks pairing sessions against automated guessing.
+- **Mobile QR Scanning**: Integrated native camera QR scanning using `mobile_scanner` with runtime permissions.
+
+#### Outbound Storage Node Agent (`pcos-agent`)
+- **Outbound-Only Tunneling**: User PCs/NAS/servers connect outbound over TLS/WSS; zero open ports, NAT traversal, or UPnP configuration required.
+- **Built-in Diagnostics (`pcos-agent doctor`)**: Validates storage read/write, DNS resolution, CGNAT detection, edge latency, and FFmpeg hardware acceleration.
+- **Dynamic Route Resolution**: Direct LAN (<20ms latency) -> WireGuard P2P -> Encrypted Relay.
+- **Cross-Platform Remote Commands**: Dispatch `play_on_tv` and `send_to_device` over active WebSocket channels.
+
+---
+
 ## [1.6.0] - 2026-10-01
 
 ### Zero-Assumption Production Hardening, Media Streaming & Transfer Center
