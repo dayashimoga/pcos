@@ -111,8 +111,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         final api = getIt<ApiClient>();
                         await api.dio.put('/api/v1/users/me',
                             data: {'display_name': nameCtrl.text.trim()});
-                        if (mounted)
+                        if (mounted) {
                           setState(() => _displayName = nameCtrl.text.trim());
+                        }
                         if (ctx.mounted) Navigator.pop(ctx);
                         messenger.showSnackBar(
                           const SnackBar(

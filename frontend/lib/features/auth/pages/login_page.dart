@@ -443,6 +443,7 @@ class _LoginPageState extends State<LoginPage>
             FilledButton(
               onPressed: () async {
                 final messenger = ScaffoldMessenger.of(context);
+                final router = GoRouter.of(context);
                 final newUrl = ctrl.text.trim();
                 final code = codeCtrl.text.trim();
 
@@ -459,13 +460,14 @@ class _LoginPageState extends State<LoginPage>
                           Text('Device paired successfully! Welcome to PCOS.'),
                       backgroundColor: AppTheme.success,
                     ));
-                    if (mounted) context.go('/dashboard');
+                    router.go('/dashboard');
                     return;
                   } catch (e) {
                     setDialogState(() {
                       testing = false;
                       testSuccess = false;
-                      testResult = 'Pairing failed: ${ApiClient.formatError(e)}';
+                      testResult =
+                          'Pairing failed: ${ApiClient.formatError(e)}';
                     });
                     return;
                   }

@@ -19,7 +19,6 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
   String? _onboardingCode;
   String? _enrollmentToken;
   String? _qrData;
-  String? _serverUrl;
   bool _loading = false;
   String? _error;
   bool _isAuthError = false;

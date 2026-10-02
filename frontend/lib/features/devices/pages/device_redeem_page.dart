@@ -123,11 +123,14 @@ class _DeviceRedeemPageState extends State<DeviceRedeemPage> {
                     Text(
                       _success
                           ? 'Device Paired!'
-                          : (_pairing ? 'Pairing Device...' : 'Connect to PCOS'),
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textPrimaryColor(context),
-                          ),
+                          : (_pairing
+                              ? 'Pairing Device...'
+                              : 'Connect to PCOS'),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimaryColor(context),
+                              ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -192,7 +195,8 @@ class _DeviceRedeemPageState extends State<DeviceRedeemPage> {
                         children: [
                           TextButton.icon(
                             onPressed: () async {
-                              final data = await Clipboard.getData('text/plain');
+                              final data =
+                                  await Clipboard.getData('text/plain');
                               final text = data?.text?.trim() ?? '';
                               if (text.isNotEmpty) {
                                 if (text.contains('code=')) {

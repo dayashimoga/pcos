@@ -40,7 +40,8 @@ class _FreeTierBudgetCardState extends State<FreeTierBudgetCard> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load cloud budget: ${e.toString().replaceAll("Exception: ", "")}';
+          _error =
+              'Could not load cloud budget: ${e.toString().replaceAll("Exception: ", "")}';
           _isLoading = false;
         });
       }
@@ -185,7 +186,8 @@ class _FreeTierBudgetCardState extends State<FreeTierBudgetCard> {
                 ),
                 child: Text(
                   _error!,
-                  style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.error),
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.error),
                 ),
               )
             else if (_budgetData != null) ...[
@@ -193,32 +195,41 @@ class _FreeTierBudgetCardState extends State<FreeTierBudgetCard> {
               _buildMetricRow(
                 context: context,
                 label: 'Workers Requests',
-                pct: (_budgetData!['worker_requests']?['pct'] as num?)?.toInt() ?? 0,
-                detail: '${_budgetData!['worker_requests']?['used'] ?? 0} / ${_budgetData!['worker_requests']?['limit'] ?? 100000}',
+                pct: (_budgetData!['worker_requests']?['pct'] as num?)
+                        ?.toInt() ??
+                    0,
+                detail:
+                    '${_budgetData!['worker_requests']?['used'] ?? 0} / ${_budgetData!['worker_requests']?['limit'] ?? 100000}',
               ),
               _buildMetricRow(
                 context: context,
                 label: 'D1 Reads',
                 pct: (_budgetData!['d1_reads']?['pct'] as num?)?.toInt() ?? 0,
-                detail: '${_budgetData!['d1_reads']?['used'] ?? 0} / ${_budgetData!['d1_reads']?['limit'] ?? 5000000}',
+                detail:
+                    '${_budgetData!['d1_reads']?['used'] ?? 0} / ${_budgetData!['d1_reads']?['limit'] ?? 5000000}',
               ),
               _buildMetricRow(
                 context: context,
                 label: 'D1 Writes',
                 pct: (_budgetData!['d1_writes']?['pct'] as num?)?.toInt() ?? 0,
-                detail: '${_budgetData!['d1_writes']?['used'] ?? 0} / ${_budgetData!['d1_writes']?['limit'] ?? 100000}',
+                detail:
+                    '${_budgetData!['d1_writes']?['used'] ?? 0} / ${_budgetData!['d1_writes']?['limit'] ?? 100000}',
               ),
               _buildMetricRow(
                 context: context,
                 label: 'Durable Objects',
-                pct: (_budgetData!['do_requests']?['pct'] as num?)?.toInt() ?? 0,
-                detail: '${_budgetData!['do_requests']?['used'] ?? 0} / ${_budgetData!['do_requests']?['limit'] ?? 100000}',
+                pct:
+                    (_budgetData!['do_requests']?['pct'] as num?)?.toInt() ?? 0,
+                detail:
+                    '${_budgetData!['do_requests']?['used'] ?? 0} / ${_budgetData!['do_requests']?['limit'] ?? 100000}',
               ),
               _buildMetricRow(
                 context: context,
                 label: 'R2 Cloud Cache',
-                pct: (_budgetData!['r2_storage_gb']?['pct'] as num?)?.toInt() ?? 0,
-                detail: '${_budgetData!['r2_storage_gb']?['used'] ?? 0.0} GB / ${_budgetData!['r2_storage_gb']?['limit'] ?? 10} GB',
+                pct: (_budgetData!['r2_storage_gb']?['pct'] as num?)?.toInt() ??
+                    0,
+                detail:
+                    '${_budgetData!['r2_storage_gb']?['used'] ?? 0.0} GB / ${_budgetData!['r2_storage_gb']?['limit'] ?? 10} GB',
               ),
 
               const Divider(height: 24),
@@ -246,7 +257,8 @@ class _FreeTierBudgetCardState extends State<FreeTierBudgetCard> {
                     ],
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: _hardBudgetEnabled
                           ? Colors.green.shade50
@@ -259,7 +271,9 @@ class _FreeTierBudgetCardState extends State<FreeTierBudgetCard> {
                       ),
                     ),
                     child: Text(
-                      _hardBudgetEnabled ? 'Hard Budget = \$0 (Active)' : 'Flexible',
+                      _hardBudgetEnabled
+                          ? 'Hard Budget = \$0 (Active)'
+                          : 'Flexible',
                       style: theme.textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: _hardBudgetEnabled

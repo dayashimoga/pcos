@@ -484,9 +484,9 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                         icon: const Icon(Icons.arrow_back_rounded,
                             color: Colors.white),
                       ),
-                      Text(
+                      const Text(
                         'Scan PCOS QR Code',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

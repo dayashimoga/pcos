@@ -73,7 +73,8 @@ class _SendToDeviceSheetState extends State<SendToDeviceSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Failed to load devices: ${e.toString().replaceAll("Exception: ", "")}';
+          _error =
+              'Failed to load devices: ${e.toString().replaceAll("Exception: ", "")}';
           _isLoading = false;
         });
       }
@@ -84,7 +85,10 @@ class _SendToDeviceSheetState extends State<SendToDeviceSheet> {
     final mime = widget.mimeType;
     if (mime != null && mime.startsWith('video/')) return true;
     final name = widget.fileName.toLowerCase();
-    return name.endsWith('.mp4') || name.endsWith('.mkv') || name.endsWith('.mov') || name.endsWith('.webm');
+    return name.endsWith('.mp4') ||
+        name.endsWith('.mkv') ||
+        name.endsWith('.mov') ||
+        name.endsWith('.webm');
   }
 
   Future<void> _dispatchCommand(String command) async {
@@ -126,7 +130,8 @@ class _SendToDeviceSheetState extends State<SendToDeviceSheet> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed: ${e.toString().replaceAll("Exception: ", "")}'),
+            content:
+                Text('Failed: ${e.toString().replaceAll("Exception: ", "")}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -192,7 +197,8 @@ class _SendToDeviceSheetState extends State<SendToDeviceSheet> {
                   color: colorScheme.secondaryContainer.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.cast_connected_outlined, color: colorScheme.secondary),
+                child: Icon(Icons.cast_connected_outlined,
+                    color: colorScheme.secondary),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -257,7 +263,8 @@ class _SendToDeviceSheetState extends State<SendToDeviceSheet> {
               final id = dev['id']?.toString() ?? '';
               final name = dev['name']?.toString() ?? 'Unnamed Device';
               final type = dev['device_type']?.toString() ?? 'device';
-              final isOnline = dev['is_online'] == true || dev['is_online'] == 1;
+              final isOnline =
+                  dev['is_online'] == true || dev['is_online'] == 1;
               final isSelected = _selectedDeviceId == id;
 
               return InkWell(
@@ -269,7 +276,8 @@ class _SendToDeviceSheetState extends State<SendToDeviceSheet> {
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   margin: const EdgeInsets.symmetric(vertical: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? colorScheme.primaryContainer.withOpacity(0.25)
@@ -286,7 +294,9 @@ class _SendToDeviceSheetState extends State<SendToDeviceSheet> {
                     children: [
                       Icon(
                         _getDeviceIcon(type),
-                        color: isOnline ? colorScheme.primary : colorScheme.outline,
+                        color: isOnline
+                            ? colorScheme.primary
+                            : colorScheme.outline,
                         size: 24,
                       ),
                       const SizedBox(width: 12),
@@ -297,13 +307,17 @@ class _SendToDeviceSheetState extends State<SendToDeviceSheet> {
                             Text(
                               name,
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
                               ),
                             ),
                             Text(
                               isOnline ? 'Online' : 'Offline',
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: isOnline ? Colors.green.shade600 : colorScheme.outline,
+                                color: isOnline
+                                    ? Colors.green.shade600
+                                    : colorScheme.outline,
                               ),
                             ),
                           ],
@@ -332,7 +346,9 @@ class _SendToDeviceSheetState extends State<SendToDeviceSheet> {
                 if (_isVideo) ...[
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: _isSending ? null : () => _dispatchCommand('play_on_tv'),
+                      onPressed: _isSending
+                          ? null
+                          : () => _dispatchCommand('play_on_tv'),
                       icon: const Icon(Icons.tv, size: 18),
                       label: const Text('Play on TV'),
                       style: FilledButton.styleFrom(
@@ -347,7 +363,9 @@ class _SendToDeviceSheetState extends State<SendToDeviceSheet> {
                 ],
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _isSending ? null : () => _dispatchCommand('send_to_device'),
+                    onPressed: _isSending
+                        ? null
+                        : () => _dispatchCommand('send_to_device'),
                     icon: const Icon(Icons.send_to_mobile, size: 18),
                     label: const Text('Send to Device'),
                     style: OutlinedButton.styleFrom(

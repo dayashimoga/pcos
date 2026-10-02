@@ -102,7 +102,8 @@ class _FileAvailabilitySheetState extends State<FileAvailabilitySheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _statusMessage = 'Error: ${e.toString().replaceAll("Exception: ", "")}';
+          _statusMessage =
+              'Error: ${e.toString().replaceAll("Exception: ", "")}';
           _isSaving = false;
           _isReplicating = false;
         });
@@ -159,7 +160,8 @@ class _FileAvailabilitySheetState extends State<FileAvailabilitySheet> {
                   color: colorScheme.primaryContainer.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.cloud_sync_outlined, color: colorScheme.primary),
+                child:
+                    Icon(Icons.cloud_sync_outlined, color: colorScheme.primary),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -200,7 +202,8 @@ class _FileAvailabilitySheetState extends State<FileAvailabilitySheet> {
             ),
             child: Row(
               children: [
-                Icon(Icons.shield_outlined, size: 18, color: colorScheme.tertiary),
+                Icon(Icons.shield_outlined,
+                    size: 18, color: colorScheme.tertiary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -262,8 +265,9 @@ class _FileAvailabilitySheetState extends State<FileAvailabilitySheet> {
                           Text(
                             tier.label,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight:
-                                  isSelected ? FontWeight.bold : FontWeight.w500,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
                               color: isSelected
                                   ? colorScheme.primary
                                   : colorScheme.onSurface,
@@ -289,7 +293,8 @@ class _FileAvailabilitySheetState extends State<FileAvailabilitySheet> {
             const SizedBox(height: 8),
             Text(
               _statusMessage!,
-              style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.error),
+              style:
+                  theme.textTheme.bodySmall?.copyWith(color: colorScheme.error),
             ),
           ],
 
@@ -334,7 +339,9 @@ class _FileAvailabilitySheetState extends State<FileAvailabilitySheet> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            Text(_isReplicating ? 'Replicating...' : 'Saving...'),
+                            Text(_isReplicating
+                                ? 'Replicating...'
+                                : 'Saving...'),
                           ],
                         )
                       : const Text('Apply Policy'),
