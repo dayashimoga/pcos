@@ -384,16 +384,15 @@ class _LoginPageState extends State<LoginPage>
                 child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 final newUrl = ctrl.text.trim();
                 await api.setServerUrl(newUrl);
-                setState(() {});
+                if (mounted) setState(() {});
                 if (ctx.mounted) Navigator.pop(ctx);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Server connected: ${api.currentServerUrl}'),
-                    backgroundColor: AppTheme.success,
-                  ));
-                }
+                messenger.showSnackBar(SnackBar(
+                  content: Text('Server connected: ${api.currentServerUrl}'),
+                  backgroundColor: AppTheme.success,
+                ));
               },
               child: const Text('Save & Connect'),
             ),

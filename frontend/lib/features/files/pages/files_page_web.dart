@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,6 +6,7 @@ import '../bloc/file_bloc.dart';
 
 /// Web-specific file picker using dart:html.
 void pickAndUploadFiles(BuildContext context, String? parentFolderId) {
+  final bloc = context.read<FileBloc>();
   final input = html.FileUploadInputElement()
     ..accept = '*/*'
     ..multiple = true;
@@ -17,11 +19,11 @@ void pickAndUploadFiles(BuildContext context, String? parentFolderId) {
       reader.readAsArrayBuffer(file);
       reader.onLoadEnd.listen((_) {
         final bytes = (reader.result as List<int>);
-        context.read<FileBloc>().add(FileUploadRequested(
-              filename: file.name,
-              bytes: bytes,
-              parentId: parentFolderId,
-            ));
+        bloc.add(FileUploadRequested(
+          filename: file.name,
+          bytes: bytes,
+          parentId: parentFolderId,
+        ));
       });
     }
   });

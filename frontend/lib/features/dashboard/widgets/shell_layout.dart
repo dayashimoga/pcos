@@ -341,7 +341,7 @@ class _DesktopShellState extends State<_DesktopShell> {
                               decoration: BoxDecoration(
                                   color: AppTheme.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(4)),
-                              child: Text('⌘K',
+                              child: const Text('⌘K',
                                   style: TextStyle(
                                       fontSize: 10,
                                       color: AppTheme.primary,

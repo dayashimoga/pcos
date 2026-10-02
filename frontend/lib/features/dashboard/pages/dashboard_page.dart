@@ -182,7 +182,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   label: 'Total Backups',
                   value: '${_stats['total_backups'] ?? 0}'),
               Divider(color: AppTheme.borderColor(context), height: 24),
-              _StatusRow(
+              const _StatusRow(
                   label: 'Server Status',
                   value: 'Online',
                   valueColor: AppTheme.success),

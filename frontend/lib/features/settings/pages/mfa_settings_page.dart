@@ -47,9 +47,10 @@ class _MfaSettingsPageState extends State<MfaSettingsPage> {
         _provisioningUri = resp.data['provisioning_uri'];
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Setup failed: $e')));
+      }
     }
   }
 
@@ -65,13 +66,15 @@ class _MfaSettingsPageState extends State<MfaSettingsPage> {
         _provisioningUri = null;
       });
       _codeController.clear();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('MFA enabled successfully!')));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid code. Try again.')));
+      }
     }
   }
 
@@ -104,13 +107,15 @@ class _MfaSettingsPageState extends State<MfaSettingsPage> {
       setState(() {
         _mfaEnabled = false;
       });
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('MFA disabled')));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Failed — invalid code')));
+      }
     }
   }
 

@@ -131,7 +131,8 @@ class _DoctorPageState extends State<DoctorPage> {
     });
 
     // 11. PCOS Connect & Network Diagnostics
-    await _runCheck('PCOS Connect', 'Network, NAT/CGNAT and Remote Reachability', () async {
+    await _runCheck(
+        'PCOS Connect', 'Network, NAT/CGNAT and Remote Reachability', () async {
       final resp = await api.dio.get('/api/v1/doctor/connectivity');
       if (resp.data is Map) {
         final d = Map<String, dynamic>.from(resp.data as Map);
@@ -145,7 +146,8 @@ class _DoctorPageState extends State<DoctorPage> {
     });
 
     // 12. Media Streaming Engine
-    await _runCheck('Media Server', 'Direct-play Range streaming and playback', () async {
+    await _runCheck('Media Server', 'Direct-play Range streaming and playback',
+        () async {
       final resp = await api.dio.get('/api/v1/media/history');
       final count = resp.data is List ? (resp.data as List).length : 0;
       return 'Media Engine online ($count sessions)';
@@ -166,15 +168,17 @@ class _DoctorPageState extends State<DoctorPage> {
       final detail = await check();
       setState(() {
         final idx = _checks.indexWhere((ch) => ch.name == name);
-        if (idx >= 0)
+        if (idx >= 0) {
           _checks[idx] = c.copyWith(status: _CheckStatus.pass, detail: detail);
+        }
       });
     } catch (e) {
       setState(() {
         final idx = _checks.indexWhere((ch) => ch.name == name);
-        if (idx >= 0)
+        if (idx >= 0) {
           _checks[idx] = c.copyWith(
               status: _CheckStatus.fail, detail: ApiClient.formatError(e));
+        }
       });
     }
   }
@@ -261,9 +265,11 @@ class _DoctorPageState extends State<DoctorPage> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
             ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                const Icon(Icons.cloud_sync_rounded, color: AppTheme.primary, size: 24),
+                const Icon(Icons.cloud_sync_rounded,
+                    color: AppTheme.primary, size: 24),
                 const SizedBox(width: 10),
                 Text(
                   'PCOS Connect — Zero-Config Remote Access',
@@ -275,14 +281,17 @@ class _DoctorPageState extends State<DoctorPage> {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.primary.withOpacity(0.4)),
+                    border:
+                        Border.all(color: AppTheme.primary.withOpacity(0.4)),
                   ),
                   child: Text(
-                    _connectDiag!['recommended_provider'] as String? ?? 'Automatic',
+                    _connectDiag!['recommended_provider'] as String? ??
+                        'Automatic',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -293,17 +302,27 @@ class _DoctorPageState extends State<DoctorPage> {
               ]),
               const SizedBox(height: 16),
               Wrap(spacing: 20, runSpacing: 12, children: [
-                _buildInfoBadge('LAN IP', _connectDiag!['lan_ip']?.toString() ?? 'Unknown', context),
-                _buildInfoBadge('Hostname', _connectDiag!['hostname']?.toString() ?? 'pcos-server', context),
+                _buildInfoBadge('LAN IP',
+                    _connectDiag!['lan_ip']?.toString() ?? 'Unknown', context),
+                _buildInfoBadge(
+                    'Hostname',
+                    _connectDiag!['hostname']?.toString() ?? 'pcos-server',
+                    context),
                 _buildInfoBadge(
                   'NAT / CGNAT',
-                  _connectDiag!['is_cgnat'] == true ? 'CGNAT (Inbound Blocked)' : 'Standard LAN / Route',
+                  _connectDiag!['is_cgnat'] == true
+                      ? 'CGNAT (Inbound Blocked)'
+                      : 'Standard LAN / Route',
                   context,
-                  color: _connectDiag!['is_cgnat'] == true ? AppTheme.warning : AppTheme.success,
+                  color: _connectDiag!['is_cgnat'] == true
+                      ? AppTheme.warning
+                      : AppTheme.success,
                 ),
                 _buildInfoBadge(
                   'TLS Encryption',
-                  _connectDiag!['tls_enabled'] == true ? 'HTTPS Active' : 'Automatic Caddy Proxy',
+                  _connectDiag!['tls_enabled'] == true
+                      ? 'HTTPS Active'
+                      : 'Automatic Caddy Proxy',
                   context,
                   color: AppTheme.success,
                 ),
@@ -322,18 +341,21 @@ class _DoctorPageState extends State<DoctorPage> {
                 ...(_connectDiag!['recommendations'] as List).map(
                   (rec) => Padding(
                     padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('• ', style: TextStyle(color: AppTheme.primary)),
-                      Expanded(
-                        child: Text(
-                          rec.toString(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textPrimaryColor(context),
+                    child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• ',
+                              style: TextStyle(color: AppTheme.primary)),
+                          Expanded(
+                            child: Text(
+                              rec.toString(),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textPrimaryColor(context),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ]),
+                        ]),
                   ),
                 ),
               ],
@@ -436,7 +458,8 @@ class _DoctorPageState extends State<DoctorPage> {
     );
   }
 
-  Widget _buildInfoBadge(String label, String value, BuildContext context, {Color? color}) {
+  Widget _buildInfoBadge(String label, String value, BuildContext context,
+      {Color? color}) {
     final effectiveColor = color ?? AppTheme.textPrimaryColor(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

@@ -105,27 +105,25 @@ class _SettingsPageState extends State<SettingsPage> {
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
                       try {
                         final api = getIt<ApiClient>();
                         await api.dio.put('/api/v1/users/me',
                             data: {'display_name': nameCtrl.text.trim()});
-                        setState(() => _displayName = nameCtrl.text.trim());
+                        if (mounted)
+                          setState(() => _displayName = nameCtrl.text.trim());
                         if (ctx.mounted) Navigator.pop(ctx);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Profile updated'),
-                                backgroundColor: AppTheme.success),
-                          );
-                        }
+                        messenger.showSnackBar(
+                          const SnackBar(
+                              content: Text('Profile updated'),
+                              backgroundColor: AppTheme.success),
+                        );
                       } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text('Failed: $e'),
-                                backgroundColor: AppTheme.error),
-                          );
-                        }
+                        messenger.showSnackBar(
+                          SnackBar(
+                              content: Text('Failed: $e'),
+                              backgroundColor: AppTheme.error),
+                        );
                       }
                     },
                     child: const Text('Save'),
@@ -209,6 +207,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         );
                         return;
                       }
+                      final messenger = ScaffoldMessenger.of(context);
                       try {
                         final api = getIt<ApiClient>();
                         await api.dio.put('/api/v1/users/me/password', data: {
@@ -216,21 +215,17 @@ class _SettingsPageState extends State<SettingsPage> {
                           'new_password': newCtrl.text,
                         });
                         if (ctx.mounted) Navigator.pop(ctx);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Password changed'),
-                                backgroundColor: AppTheme.success),
-                          );
-                        }
+                        messenger.showSnackBar(
+                          const SnackBar(
+                              content: Text('Password changed'),
+                              backgroundColor: AppTheme.success),
+                        );
                       } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text('Failed: $e'),
-                                backgroundColor: AppTheme.error),
-                          );
-                        }
+                        messenger.showSnackBar(
+                          SnackBar(
+                              content: Text('Failed: $e'),
+                              backgroundColor: AppTheme.error),
+                        );
                       }
                     },
                     child: const Text('Change Password'),
@@ -390,22 +385,19 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 try {
                   final api = getIt<ApiClient>();
                   await api.dio.post('/api/v1/backups',
                       data: {'name': 'Manual Snapshot'});
                   if (ctx.mounted) Navigator.pop(ctx);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Backup triggered successfully!'),
-                        backgroundColor: AppTheme.success));
-                  }
+                  messenger.showSnackBar(const SnackBar(
+                      content: Text('Backup triggered successfully!'),
+                      backgroundColor: AppTheme.success));
                 } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('Backup failed: $e'),
-                        backgroundColor: AppTheme.error));
-                  }
+                  messenger.showSnackBar(SnackBar(
+                      content: Text('Backup failed: $e'),
+                      backgroundColor: AppTheme.error));
                 }
               },
               icon: const Icon(Icons.play_arrow_rounded, size: 18),

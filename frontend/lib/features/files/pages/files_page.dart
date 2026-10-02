@@ -750,6 +750,8 @@ class _FilesContentState extends State<_FilesContent> {
                           onPressed: creating
                               ? null
                               : () async {
+                                  final messenger =
+                                      ScaffoldMessenger.of(context);
                                   setDialogState(() => creating = true);
                                   try {
                                     final api = getIt<ApiClient>();
@@ -781,14 +783,11 @@ class _FilesContentState extends State<_FilesContent> {
                                     });
                                   } catch (e) {
                                     setDialogState(() => creating = false);
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                            content: Text('Failed: $e'),
-                                            backgroundColor: AppTheme.error),
-                                      );
-                                    }
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                          content: Text('Failed: $e'),
+                                          backgroundColor: AppTheme.error),
+                                    );
                                   }
                                 },
                           child: creating
@@ -1341,10 +1340,12 @@ class _FileGridCard extends StatelessWidget {
     if (mime.startsWith('video/')) return Icons.videocam_rounded;
     if (mime.startsWith('audio/')) return Icons.audiotrack_rounded;
     if (mime.contains('pdf')) return Icons.picture_as_pdf_rounded;
-    if (mime.contains('zip') || mime.contains('tar') || mime.contains('rar'))
+    if (mime.contains('zip') || mime.contains('tar') || mime.contains('rar')) {
       return Icons.archive_rounded;
-    if (mime.contains('text') || mime.contains('document'))
+    }
+    if (mime.contains('text') || mime.contains('document')) {
       return Icons.description_rounded;
+    }
     return Icons.insert_drive_file_rounded;
   }
 

@@ -240,7 +240,7 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
               color: AppTheme.success,
               title: 'API Available',
               subtitle: 'Uptime: ${_healthData['uptime_secs'] ?? 0}s'),
-          _StatusItem(
+          const _StatusItem(
               icon: Icons.check_circle_rounded,
               color: AppTheme.success,
               title: 'Database Connected',

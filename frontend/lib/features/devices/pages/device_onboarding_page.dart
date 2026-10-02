@@ -52,8 +52,10 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
       if (res.data != null && res.data['pairing_code'] != null) {
         setState(() {
           _onboardingCode = res.data['pairing_code'] as String;
-          _qrData = res.data['qr_payload'] as String? ?? res.data['pairing_code'] as String;
-          _expirySeconds = (res.data['expires_in_seconds'] as num?)?.toInt() ?? 300;
+          _qrData = res.data['qr_payload'] as String? ??
+              res.data['pairing_code'] as String;
+          _expirySeconds =
+              (res.data['expires_in_seconds'] as num?)?.toInt() ?? 300;
           _loading = false;
         });
       } else {
@@ -226,19 +228,19 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimaryColor(context))),
               const SizedBox(height: 16),
-              _InstructionStep(
+              const _InstructionStep(
                   step: '1',
                   title: 'Install PCOS App',
                   subtitle: 'Download from your app store or use the web app'),
-              _InstructionStep(
+              const _InstructionStep(
                   step: '2',
                   title: 'Scan QR or Enter Code',
                   subtitle: 'Use the camera or enter the 6-digit code'),
-              _InstructionStep(
+              const _InstructionStep(
                   step: '3',
                   title: 'Approve Connection',
                   subtitle: 'Verify the device on this screen'),
-              _InstructionStep(
+              const _InstructionStep(
                   step: '4',
                   title: 'Start Syncing',
                   subtitle: 'Your files are now available on the new device'),

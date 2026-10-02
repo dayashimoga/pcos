@@ -50,13 +50,15 @@ class _AdminPageState extends State<AdminPage> {
       await api.dio.put('/api/v1/admin/users/role',
           data: {'user_id': userId, 'role': newRole});
       _loadData();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Role updated to $newRole')));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed: ${ApiClient.formatError(e)}')));
+      }
     }
   }
 
@@ -252,6 +254,7 @@ class _AdminPageState extends State<AdminPage> {
                     const SizedBox(width: 8),
                     FilledButton(
                       onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
                         try {
                           final api = getIt<ApiClient>();
                           await api.dio.post('/api/v1/auth/register', data: {
@@ -261,21 +264,17 @@ class _AdminPageState extends State<AdminPage> {
                           });
                           if (ctx.mounted) Navigator.pop(ctx);
                           _loadData();
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('User created'),
-                                  backgroundColor: AppTheme.success),
-                            );
-                          }
+                          messenger.showSnackBar(
+                            const SnackBar(
+                                content: Text('User created'),
+                                backgroundColor: AppTheme.success),
+                          );
                         } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text('Failed: $e'),
-                                  backgroundColor: AppTheme.error),
-                            );
-                          }
+                          messenger.showSnackBar(
+                            SnackBar(
+                                content: Text('Failed: $e'),
+                                backgroundColor: AppTheme.error),
+                          );
                         }
                       },
                       child: const Text('Create'),
@@ -304,26 +303,23 @@ class _AdminPageState extends State<AdminPage> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
               try {
                 final api = getIt<ApiClient>();
                 await api.dio.delete('/api/v1/admin/users/$userId');
                 if (ctx.mounted) Navigator.pop(ctx);
                 _loadData();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('User deleted'),
-                        backgroundColor: AppTheme.success),
-                  );
-                }
+                messenger.showSnackBar(
+                  const SnackBar(
+                      content: Text('User deleted'),
+                      backgroundColor: AppTheme.success),
+                );
               } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text('Failed: $e'),
-                        backgroundColor: AppTheme.error),
-                  );
-                }
+                messenger.showSnackBar(
+                  SnackBar(
+                      content: Text('Failed: $e'),
+                      backgroundColor: AppTheme.error),
+                );
               }
             },
             child: const Text('Delete'),

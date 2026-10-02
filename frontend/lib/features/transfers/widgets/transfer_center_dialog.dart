@@ -396,7 +396,7 @@ class _TransferCenterDialogState extends State<TransferCenterDialog> {
                                               const SizedBox(width: 8),
                                               Text(
                                                 item.formattedSpeed,
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.w500,
                                                   color: AppTheme.primary,

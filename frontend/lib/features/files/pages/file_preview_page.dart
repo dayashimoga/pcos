@@ -59,13 +59,18 @@ class FilePreviewPage extends StatelessWidget {
   }
 
   Widget _buildPreview(BuildContext context) {
-    if (_mime.startsWith('image/'))
+    if (_mime.startsWith('image/')) {
       return _ImagePreview(url: _downloadUrl, name: _name);
-    if (_mime == 'application/pdf') return _PdfPreview(url: _downloadUrl);
-    if (_mime.startsWith('video/'))
+    }
+    if (_mime == 'application/pdf') {
+      return _PdfPreview(url: _downloadUrl);
+    }
+    if (_mime.startsWith('video/')) {
       return _VideoPreview(url: _downloadUrl, mime: _mime);
-    if (_mime.startsWith('audio/'))
+    }
+    if (_mime.startsWith('audio/')) {
       return _AudioPreview(url: _downloadUrl, name: _name);
+    }
     if (_mime.startsWith('text/') ||
         _mime.contains('json') ||
         _mime.contains('xml') ||
@@ -284,9 +289,8 @@ class _VideoPreviewState extends State<_VideoPreview> {
             ),
             Expanded(
                 child: SliderTheme(
-              data: SliderThemeData(
-                  thumbShape:
-                      const RoundSliderThumbShape(enabledThumbRadius: 6),
+              data: const SliderThemeData(
+                  thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6),
                   trackHeight: 3,
                   activeTrackColor: AppTheme.primary,
                   inactiveTrackColor: Colors.white12,
@@ -432,9 +436,10 @@ class _TextPreviewState extends State<_TextPreview> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading)
+    if (_loading) {
       return const Center(
           child: CircularProgressIndicator(color: AppTheme.primary));
+    }
     return Container(
       padding: const EdgeInsets.all(20),
       child: SelectableText(
