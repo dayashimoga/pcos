@@ -1,6 +1,6 @@
 use crate::models::*;
 use crate::service;
-use axum::extract::{Path, Query, State};
+use axum::extract::{Multipart, Path, Query, State};
 use axum::http::{header, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
@@ -150,5 +150,87 @@ pub async fn download_shared(
             (header::CONTENT_LENGTH, data.len().to_string()),
         ],
         data,
+    ))
+}
+
+pub async fn upload_shared(
+    State(state): State<AppState>,
+    Path(token): Path<String>,
+    mut multipart: Multipart,
+) -> Result<impl IntoResponse, AppError> {
+    let pool = state.db.pool();
+
+    // Validate share link with upload permission
+    let share = sqlx::query_as::<_, ShareLink>(
+        "SELECT * FROM share_links WHERE token = $1 AND is_active = true AND permission IN ('upload', 'view_upload')"
+    ).bind(&token).fetch_optional(pool).await?
+        .ok_or_else(|| AppError::NotFound("Share link not found or does not permit uploads".to_string()))?;
+
+    // Check expiration
+    if let Some(exp) = share.expires_at {
+        if chrono::Utc::now() > exp {
+            return Err(AppError::Forbidden("Share link expired".to_string()));
+        }
+    }
+
+    // Inspect the target file entry to find destination folder
+    let target = sqlx::query_as::<_, (Uuid, String, Option<Uuid>)>(
+        "SELECT id, entry_type, parent_id FROM file_entries WHERE id = $1",
+    )
+    .bind(share.file_entry_id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Shared destination folder not found".to_string()))?;
+
+    let destination_folder_id = if target.1 == "folder" {
+        Some(target.0)
+    } else {
+        target.2
+    };
+
+    let storage = pcos_file_metadata::storage::StorageEngine::new(&state.config.storage);
+    let mut uploaded_file = None;
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::Validation(e.to_string()))?
+    {
+        let name = field.name().unwrap_or("").to_string();
+        if name == "file" {
+            let filename = field.file_name().unwrap_or("unnamed_upload").to_string();
+            let content_type = field
+                .content_type()
+                .unwrap_or("application/octet-stream")
+                .to_string();
+            let data = field
+                .bytes()
+                .await
+                .map_err(|e| AppError::Internal(format!("Failed to read upload data: {e}")))?;
+
+            let res = pcos_file_metadata::service::upload_file(
+                pool,
+                &storage,
+                share.user_id,
+                destination_folder_id,
+                &filename,
+                &content_type,
+                &data,
+            )
+            .await?;
+
+            uploaded_file = Some(res);
+            break;
+        }
+    }
+
+    let file = uploaded_file
+        .ok_or_else(|| AppError::Validation("No file provided in upload".to_string()))?;
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({
+            "status": "uploaded",
+            "file": file,
+        })),
     ))
 }

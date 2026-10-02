@@ -38,21 +38,22 @@ services:
     networks:
       - pcos-net
 
-  # ─── NATS (Event Bus) ──────────────────────────────
+  # ─── NATS (Event Bus — full profile only) ──────────
   nats:
     image: nats:2-alpine
     restart: unless-stopped
+    profiles: ["full"]
     command: --jetstream --store_dir /data
     volumes:
       - nats_data:/data
     networks:
       - pcos-net
 
-  # ─── Ollama (Local AI — optional, zero cost) ───────
+  # ─── Ollama (Local AI — ai or full profile) ─────────
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
-    profiles: ["ai"]
+    profiles: ["ai", "full"]
     volumes:
       - ollama_data:/root/.ollama
     deploy:
@@ -73,8 +74,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      nats:
-        condition: service_started
     environment:
       PCOS_SERVER__HOST: "0.0.0.0"
       PCOS_SERVER__PORT: "8080"
@@ -130,10 +129,11 @@ services:
     networks:
       - pcos-net
 
-  # ─── Prometheus (Metrics) ──────────────────────────
+  # ─── Prometheus (Metrics — full or monitoring profile) 
   prometheus:
     image: prom/prometheus:v2.52.0
     restart: unless-stopped
+    profiles: ["full", "monitoring"]
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -145,10 +145,11 @@ services:
     networks:
       - pcos-net
 
-  # ─── Grafana (Dashboards) ─────────────────────────
+  # ─── Grafana (Dashboards — full or monitoring profile) ─
   grafana:
     image: grafana/grafana:11.0.0
     restart: unless-stopped
+    profiles: ["full", "monitoring"]
     depends_on:
       - prometheus
     environment:
@@ -165,10 +166,11 @@ services:
     networks:
       - pcos-net
 
-  # ─── Node Exporter (Host Metrics) ─────────────────
+  # ─── Node Exporter (Host Metrics — full or monitoring profile) ─
   node-exporter:
     image: prom/node-exporter:v1.8.0
     restart: unless-stopped
+    profiles: ["full", "monitoring"]
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -181,10 +183,11 @@ services:
     networks:
       - pcos-net
 
-  # ─── PostgreSQL Exporter ──────────────────────────
+  # ─── PostgreSQL Exporter (full or monitoring profile) ─
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     restart: unless-stopped
+    profiles: ["full", "monitoring"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -193,10 +196,11 @@ services:
     networks:
       - pcos-net
 
-  # ─── Redis Exporter ───────────────────────────────
+  # ─── Redis Exporter (full or monitoring profile) ─
   redis-exporter:
     image: oliver006/redis_exporter:v1.61.0
     restart: unless-stopped
+    profiles: ["full", "monitoring"]
     depends_on:
       redis:
         condition: service_healthy
@@ -205,10 +209,11 @@ services:
     networks:
       - pcos-net
 
-  # ─── Backup Scheduler ─────────────────────────────
+  # ─── Backup Scheduler (full or monitoring profile) ─
   backup:
     image: postgres:16-alpine
     restart: unless-stopped
+    profiles: ["full", "monitoring"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -234,7 +239,7 @@ services:
     networks:
       - pcos-net
 
-  # ─── Transcoder (FFmpeg) ──────────────────────────────
+  # ─── Transcoder (FFmpeg — media or full profile) ───────
   transcoder:
     build:
       context: .
@@ -246,7 +251,9 @@ services:
     networks:
       - pcos-net
     profiles:
-      - transcode  # Only starts when explicitly requested: docker compose --profile transcode run transcoder
+      - media
+      - full
+      - transcode
 
 networks:
   pcos-net:

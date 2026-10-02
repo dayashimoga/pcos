@@ -24,6 +24,15 @@ write_info() { echo -e "${CYAN}[INFO]  $1${NC}"; }
 write_warn() { echo -e "${YELLOW}[WARN]  $1${NC}"; }
 write_err()  { echo -e "${RED}[FAIL]  $1${NC}"; }
 
+PROFILE="lite"
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --profile|-p) PROFILE="$2"; shift ;;
+        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+    esac
+    shift
+done
+
 clear 2>/dev/null || true
 write_header "PCOS (Personal Cloud OS) -- Universal One-Click Spin-Up"
 
@@ -105,8 +114,12 @@ rm -rf "$SCRIPT_DIR/frontend/windows/flutter/ephemeral" 2>/dev/null || true
 write_ok "Build context verified."
 
 # 4. Launch Container Compose Stack
-write_info "Step 4: Launching container compose stack ($COMPOSE_CMD)..."
-$COMPOSE_CMD up -d --build
+write_info "Step 4: Launching container compose stack ($COMPOSE_CMD, Profile: $PROFILE)..."
+if [ "$PROFILE" != "lite" ]; then
+    $COMPOSE_CMD --profile "$PROFILE" up -d --build
+else
+    $COMPOSE_CMD up -d --build
+fi
 write_ok "Container compose workloads launched."
 
 # 5. Wait for Backend Health Response
@@ -133,6 +146,7 @@ SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || ipconfig getifaddr en0
 
 # 6. Access Summary
 write_header "PCOS Stack is LIVE & Ready!"
+echo -e "  * Active Profile:    ${YELLOW}${PROFILE}${NC}"
 echo -e "  * Web Frontend:      ${YELLOW}http://localhost${NC} (or http://${SERVER_IP})"
 echo -e "  * Mobile Server URL: ${YELLOW}http://${SERVER_IP}${NC}"
 echo -e "  * Setup Wizard:      ${YELLOW}http://localhost/#/setup${NC}"
@@ -140,6 +154,8 @@ echo -e "  * REST API Backend:  ${YELLOW}http://localhost/health${NC}"
 echo -e "  * API Explorer:      ${YELLOW}http://localhost/#/admin/api${NC}"
 echo -e "  * PCOS Doctor:       ${YELLOW}http://localhost/#/doctor${NC}"
 echo -e "  * Duplicate Finder:  ${YELLOW}http://localhost/#/duplicates${NC}"
-echo -e "  * Grafana Dashboard: ${YELLOW}http://localhost:3001${NC}  (admin / admin)"
-echo -e "  * Prometheus:        ${YELLOW}http://localhost:9090${NC}"
+if [ "$PROFILE" == "full" ]; then
+    echo -e "  * Grafana Dashboard: ${YELLOW}http://localhost:3001${NC}  (admin / admin)"
+    echo -e "  * Prometheus:        ${YELLOW}http://localhost:9090${NC}"
+fi
 echo -e "\nTo shut down all services, run: ${CYAN}./bringdown.sh${NC}\n"

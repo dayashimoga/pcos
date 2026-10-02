@@ -418,3 +418,21 @@ All notable changes to this project will be documented in this file.
 ### Tests
 - 15 backend unit tests (JWT, password, error, storage, validation)
 - 9 frontend BLoC tests (auth, files)
+
+## [0.4.0] - 2026-10-02
+
+### Added — PCOS Connect & Zero-Config Remote Access
+- **Dual Container Engine Support**: First-class support for both Docker and rootless Podman across `spinup.ps1`, `spinup.sh`, `bringdown.ps1`, and `bringdown.sh`. Automatic unprivileged rootless port binding for Caddy (ports 80/443).
+- **Deployment Profiles**: Introduced formal profiles (`lite`, `media`, `ai`, `full`). `PCOS Lite` defaults to minimal idle resource footprint (~250MB RAM) without requiring NATS, Ollama, or Prometheus.
+- **PCOS Doctor Diagnostics Endpoint**: Implemented `GET /api/v1/doctor/connectivity` detecting LAN IPs, NAT/CGNAT classification (RFC 6598), TLS status, and remote access recommendations. Added rich diagnostic UI card in Flutter Web Doctor page.
+- **One-Scan Device Enrollment**: Full backend implementation of `POST /api/v1/devices/pair` and `POST /api/v1/devices/pair/redeem` using short-lived 5-minute rate-limited enrollment tokens and OTP codes. Updated frontend pairing console to consume live tokens.
+- **Recipient File Upload Sharing**: Added `POST /api/v1/shared/:token/upload` supporting permission `'upload'` for anonymous recipient uploads into designated user folders without requiring a PCOS account.
+- **Media Playback Resume Tracking**: Added `POST /api/v1/streaming/progress/:file_id`, `GET /api/v1/streaming/progress/:file_id`, and `GET /api/v1/streaming/resume` (`/api/v1/media/history`) backed by `playback_progress` table for seamless Continue Watching across devices.
+
+### Performance & Memory Hardening
+- **O(1) Streaming & Large Download Memory**: Replaced whole-file memory buffering in `pcos-streaming` and `pcos-file-metadata` with `tokio::fs::File`, `AsyncSeekExt`, and `tokio_util::io::ReaderStream` for HTTP 206 Range streaming and full downloads. Eliminates OOM crashes on multi-gigabyte media.
+
+### Tests & Verification
+- 32 backend workspace unit tests passing with zero failures.
+- Zero Clippy warnings (`cargo clippy -- -D warnings`).
+- Clean code formatting (`cargo fmt --check`).

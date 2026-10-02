@@ -1,7 +1,7 @@
-# ==============================================================================
-# PCOS — One-Click Spin-Up Script for Windows (PowerShell)
-# Usage: .\spinup.ps1
-# ==============================================================================
+param(
+    [ValidateSet("lite", "media", "ai", "full")]
+    [string]$Profile = "lite"
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -66,6 +66,13 @@ if (-not $composeCmd) {
 
 Write-Ok "Container runtime detected: $runtime ($composeCmd)"
 
+if ($runtime -eq "podman") {
+    # Ensure unprivileged ports (<1024) are permitted in rootless Podman machine for Caddy (ports 80/443)
+    try {
+        $null = podman machine ssh "sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80" 2>&1
+    } catch {}
+}
+
 # 2. Check and provision .env file with secure secrets
 Write-Info "Step 2: Checking environment configuration (.env)..."
 $envPath = Join-Path $PSScriptRoot ".env"
@@ -115,14 +122,19 @@ if (Test-Path $ephemeralPath) {
 }
 
 # 4. Launch Container Compose Stack
-Write-Info "Step 4: Launching container compose stack ($composeCmd)..."
+Write-Info "Step 4: Launching container compose stack ($composeCmd, Profile: $Profile)..."
 try {
+    $profileArgs = if ($Profile -ne "lite") { @("--profile", $Profile) } else { @() }
     if ($composeCmd -eq "docker compose") {
-        docker compose up -d --build
+        docker compose @profileArgs up -d --build
     } elseif ($composeCmd -eq "podman compose") {
-        podman compose up -d --build
+        podman compose @profileArgs up -d --build
     } else {
-        podman-compose up -d --build
+        if ($profileArgs.Count -gt 0) {
+            podman-compose --profile $Profile up -d --build
+        } else {
+            podman-compose up -d --build
+        }
     }
     if ($LASTEXITCODE -ne 0) {
         throw "Container compose command failed with exit code $LASTEXITCODE"
@@ -162,14 +174,27 @@ if ($healthy) {
 # 6. Display Service Access Summary
 Write-Header "PCOS Stack is LIVE & Ready!"
 
+Write-Host "  * Active Profile:    " -NoNewline; Write-Host "$Profile" -ForegroundColor Yellow -NoNewline
+if ($Profile -eq "lite") {
+    Write-Host " (core cloud: minimal CPU & RAM footprint)" -ForegroundColor Gray
+} elseif ($Profile -eq "media") {
+    Write-Host " (+ FFmpeg transcoding engine)" -ForegroundColor Gray
+} elseif ($Profile -eq "ai") {
+    Write-Host " (+ Ollama local LLM engine)" -ForegroundColor Gray
+} else {
+    Write-Host " (+ JetStream + Prometheus + Grafana full telemetry)" -ForegroundColor Gray
+}
+
 Write-Host "  * Web Frontend:      " -NoNewline; Write-Host "http://localhost" -ForegroundColor Yellow
 Write-Host "  * Setup Wizard:      " -NoNewline; Write-Host "http://localhost/#/setup" -ForegroundColor Yellow
 Write-Host "  * REST API Backend:  " -NoNewline; Write-Host "http://localhost/health" -ForegroundColor Yellow
 Write-Host "  * API Explorer:      " -NoNewline; Write-Host "http://localhost/#/admin/api" -ForegroundColor Yellow
 Write-Host "  * PCOS Doctor:       " -NoNewline; Write-Host "http://localhost/#/doctor" -ForegroundColor Yellow
 Write-Host "  * Duplicate Finder:  " -NoNewline; Write-Host "http://localhost/#/duplicates" -ForegroundColor Yellow
-Write-Host "  * Grafana Dashboard: " -NoNewline; Write-Host "http://localhost:3001" -ForegroundColor Yellow -NoNewline; Write-Host "  (admin / admin)" -ForegroundColor Gray
-Write-Host "  * Prometheus:        " -NoNewline; Write-Host "http://localhost:9090" -ForegroundColor Yellow
+if ($Profile -eq "full") {
+    Write-Host "  * Grafana Dashboard: " -NoNewline; Write-Host "http://localhost:3001" -ForegroundColor Yellow -NoNewline; Write-Host "  (admin / admin)" -ForegroundColor Gray
+    Write-Host "  * Prometheus:        " -NoNewline; Write-Host "http://localhost:9090" -ForegroundColor Yellow
+}
 
 Write-Host "`nTo shut down all services, run: " -NoNewline
 Write-Host ".\bringdown.ps1`n" -ForegroundColor Cyan

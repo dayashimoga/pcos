@@ -15,6 +15,11 @@ pub fn router() -> Router<AppState> {
             "/api/v1/devices",
             post(handlers::register_device).get(handlers::list_devices),
         )
+        .route("/api/v1/devices/pair", post(handlers::create_pairing))
+        .route(
+            "/api/v1/devices/pair/redeem",
+            post(handlers::redeem_pairing),
+        )
         .route("/api/v1/devices/:id", delete(handlers::remove_device))
         .route("/api/v1/devices/:id/heartbeat", put(handlers::heartbeat))
 }

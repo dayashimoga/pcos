@@ -198,6 +198,35 @@ pub async fn download_file(
     Ok((entry, data))
 }
 
+/// Open a file handle for streaming download with O(1) memory usage.
+pub async fn open_file_for_download(
+    pool: &PgPool,
+    storage: &StorageEngine,
+    user_id: Uuid,
+    file_id: Uuid,
+) -> AppResult<(FileEntry, tokio::fs::File, u64)> {
+    let entry = verify_ownership(pool, user_id, file_id).await?;
+    if entry.entry_type != "file" {
+        return Err(AppError::Validation("Cannot download a folder".to_string()));
+    }
+    let path = entry
+        .storage_path
+        .as_ref()
+        .ok_or_else(|| AppError::Internal("File has no storage path".to_string()))?;
+
+    let file = storage
+        .open_file(path)
+        .await
+        .map_err(|e| AppError::Internal(format!("File open failed: {e}")))?;
+
+    let meta = file
+        .metadata()
+        .await
+        .map_err(|e| AppError::Internal(format!("File metadata failed: {e}")))?;
+
+    Ok((entry, file, meta.len()))
+}
+
 /// Rename a file or folder.
 pub async fn rename_item(
     pool: &PgPool,

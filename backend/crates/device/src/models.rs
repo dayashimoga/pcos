@@ -79,6 +79,44 @@ pub struct DeviceListResponse {
     pub total: i64,
 }
 
+/// Request to create a new one-time device pairing/enrollment session.
+#[derive(Debug, Deserialize, Default)]
+pub struct CreatePairingRequest {
+    pub expires_in_seconds: Option<u64>,
+}
+
+/// Response containing OTP pairing code and complete provisioning payload.
+#[derive(Debug, Serialize)]
+pub struct PairingSessionResponse {
+    pub pairing_code: String,
+    pub enrollment_token: String,
+    pub expires_at: DateTime<Utc>,
+    pub qr_payload: String,
+}
+
+/// Request from a device to redeem a pairing session.
+#[derive(Debug, Deserialize, Validate)]
+pub struct RedeemPairingRequest {
+    pub pairing_code: Option<String>,
+    pub enrollment_token: Option<String>,
+    #[validate(length(min = 1, max = 100))]
+    pub device_name: String,
+    #[validate(length(min = 1, max = 50))]
+    pub device_type: String,
+    #[validate(length(min = 1, max = 50))]
+    pub os: String,
+    pub os_version: Option<String>,
+    pub agent_version: Option<String>,
+}
+
+/// Provisioning response with minted tokens for device.
+#[derive(Debug, Serialize)]
+pub struct RedeemPairingResponse {
+    pub device: DeviceResponse,
+    pub access_token: String,
+    pub refresh_token: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1999,9 +1999,13 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "chrono",
+ "hex",
+ "once_cell",
  "pcos-common",
+ "rand 0.8.7",
  "serde",
  "serde_json",
+ "sha2",
  "sqlx",
  "thiserror 1.0.69",
  "tokio",
@@ -2131,6 +2135,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "tokio",
+ "tokio-util",
  "tracing",
  "uuid",
 ]

@@ -179,9 +179,14 @@
 - [x] Duplicate file finder: `/duplicates` page scanning by name+size, stats dashboard, one-click duplicate removal
 - [x] REST API explorer: `/admin/api` interactive endpoint browser with 30+ routes grouped by module, one-click execute, JSON response viewer
 - [x] Setup wizard: `/setup` 3-step first-run flow (Server check, Admin account, Completion)
-- [x] PCOS Doctor: `/doctor` diagnostic suite with 10 automated component health checks
-- [x] QR-based device onboarding: `/devices/pair` page with 6-digit code, animated QR display, expiry timer
-- [x] One-command installer: `install.sh` bash script with prerequisite checks, auto .env generation, Docker Compose deployment
+- [x] PCOS Doctor: `/doctor` diagnostic suite with 12 automated component health checks + PCOS Connect network/CGNAT card
+- [x] QR-based device onboarding: `/devices/pair` page with live backend pairing endpoint, OTP code, animated QR display, expiry timer
+- [x] Device enrollment redemption: `POST /api/v1/devices/pair/redeem` burns token and mints device JWT pair
+- [x] One-command installer: `install.sh`, `spinup.ps1`, `spinup.sh` with dual Docker/Podman support and deployment profiles
+- [x] Deployment profiles: `lite` (core cloud, ~250MB RAM), `media` (+ FFmpeg), `ai` (+ Ollama), `full` (+ NATS, Prometheus, Grafana)
+- [x] O(1) constant-memory streaming & download via `tokio::fs::File`, `AsyncSeekExt`, and `tokio_util::io::ReaderStream`
+- [x] Recipient file upload sharing: `POST /api/v1/shared/:token/upload` allowing anonymous recipient uploads without a PCOS account
+- [x] Media resume and playback tracking: `playback_progress` table and endpoints for continue-watching on TV/mobile
 - [x] Dashboard: Recent Files section with 5 most recent files from API
 
 ---

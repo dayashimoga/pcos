@@ -3,7 +3,7 @@ use crate::service;
 use crate::storage::StorageEngine;
 use axum::extract::{Multipart, Path, State};
 use axum::http::{header, StatusCode};
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::Json;
 use pcos_common::auth::middleware::AuthUser;
 use pcos_common::error::AppError;
@@ -192,66 +192,72 @@ pub async fn download_file(
     auth: AuthUser,
     Path(file_id): Path<Uuid>,
     headers: axum::http::HeaderMap,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<Response, AppError> {
     let storage = storage_engine(&state);
-    let (entry, data) =
-        service::download_file(state.db.pool(), &storage, auth.claims.sub, file_id).await?;
+    let (entry, mut file_handle, total_size) =
+        service::open_file_for_download(state.db.pool(), &storage, auth.claims.sub, file_id)
+            .await?;
 
     let content_type = entry
         .mime_type
         .unwrap_or_else(|| "application/octet-stream".to_string());
-    let total_size = data.len();
 
     // Parse Range header if present
     if let Some(range_header) = headers.get(header::RANGE) {
         if let Ok(range_str) = range_header.to_str() {
-            if let Some(range) = parse_range(range_str, total_size) {
-                let (start, end) = range;
-                let slice = data[start..=end].to_vec();
+            if let Some(range) = parse_range(range_str, total_size as usize) {
+                let (start, end) = (range.0 as u64, range.1 as u64);
                 let content_length = end - start + 1;
 
-                return Ok((
-                    StatusCode::PARTIAL_CONTENT,
-                    [
-                        (header::CONTENT_TYPE, content_type),
-                        (
-                            header::CONTENT_DISPOSITION,
-                            format!("attachment; filename=\"{}\"", entry.name),
-                        ),
-                        (header::CONTENT_LENGTH, content_length.to_string()),
-                        (
-                            header::CONTENT_RANGE,
-                            format!("bytes {}-{}/{}", start, end, total_size),
-                        ),
-                        (header::ACCEPT_RANGES, "bytes".to_string()),
-                    ],
-                    slice,
-                )
-                    .into_response());
+                use tokio::io::AsyncSeekExt;
+                file_handle
+                    .seek(std::io::SeekFrom::Start(start))
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Seek failed: {e}")))?;
+
+                use tokio_util::io::ReaderStream;
+                let take_reader = tokio::io::AsyncReadExt::take(file_handle, content_length);
+                let stream = ReaderStream::new(take_reader);
+                let body = axum::body::Body::from_stream(stream);
+
+                return Ok(Response::builder()
+                    .status(StatusCode::PARTIAL_CONTENT)
+                    .header(header::CONTENT_TYPE, content_type)
+                    .header(
+                        header::CONTENT_DISPOSITION,
+                        format!("attachment; filename=\"{}\"", entry.name),
+                    )
+                    .header(header::CONTENT_LENGTH, content_length.to_string())
+                    .header(
+                        header::CONTENT_RANGE,
+                        format!("bytes {}-{}/{}", start, end, total_size),
+                    )
+                    .header(header::ACCEPT_RANGES, "bytes")
+                    .body(body)
+                    .expect("valid 206 response"));
             }
         }
     }
 
-    // No Range header — return full file
-    Ok((
-        StatusCode::OK,
-        [
-            (header::CONTENT_TYPE, content_type),
-            (
-                header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{}\"", entry.name),
-            ),
-            (header::CONTENT_LENGTH, total_size.to_string()),
-            (header::ACCEPT_RANGES, "bytes".to_string()),
-            // ETag for caching
-            (
-                header::ETAG,
-                format!("\"{}\"", entry.sha256_hash.unwrap_or_default()),
-            ),
-        ],
-        data,
-    )
-        .into_response())
+    use tokio_util::io::ReaderStream;
+    let stream = ReaderStream::new(file_handle);
+    let body = axum::body::Body::from_stream(stream);
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", entry.name),
+        )
+        .header(header::CONTENT_LENGTH, total_size.to_string())
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(
+            header::ETAG,
+            format!("\"{}\"", entry.sha256_hash.unwrap_or_default()),
+        )
+        .body(body)
+        .expect("valid 200 response"))
 }
 
 /// Parse HTTP Range header "bytes=START-END"

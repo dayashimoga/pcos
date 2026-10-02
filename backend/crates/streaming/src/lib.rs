@@ -27,4 +27,16 @@ pub fn router() -> Router<AppState> {
             "/api/v1/streaming/play/:token",
             get(handlers::play_with_token),
         )
+        .route(
+            "/api/v1/streaming/progress/:file_id",
+            post(handlers::update_progress).get(handlers::get_progress),
+        )
+        .route(
+            "/api/v1/streaming/resume",
+            get(handlers::list_continue_watching),
+        )
+        .route(
+            "/api/v1/media/history",
+            get(handlers::list_continue_watching),
+        )
 }

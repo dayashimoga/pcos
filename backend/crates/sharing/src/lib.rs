@@ -25,4 +25,8 @@ pub fn router() -> Router<AppState> {
             "/api/v1/shared/:token/download",
             get(handlers::download_shared),
         )
+        .route(
+            "/api/v1/shared/:token/upload",
+            post(handlers::upload_shared),
+        )
 }

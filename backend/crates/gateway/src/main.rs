@@ -7,6 +7,8 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod doctor;
+
 #[derive(Serialize)]
 struct HealthResponse {
     status: String,
@@ -98,6 +100,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(health_check))
         .route("/api/v1/health", get(health_check))
         .route("/api/v1/version", get(version_info))
+        .route(
+            "/api/v1/doctor/connectivity",
+            get(doctor::get_connectivity_diagnostics),
+        )
         // Service routes
         .merge(pcos_auth::router())
         .merge(pcos_user::router())

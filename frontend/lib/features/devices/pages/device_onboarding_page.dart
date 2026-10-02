@@ -44,28 +44,32 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
     });
     try {
       final api = getIt<ApiClient>();
-      // Generate a one-time pairing code
-      final code = _generateOTP();
-      final serverUrl = api.dio.options.baseUrl;
+      final res = await api.dio.post('/api/v1/devices/pair', data: {
+        'client_name': 'PCOS Web Client',
+        'client_type': 'web',
+      });
 
-      // Try to register the pairing code on the server
-      try {
-        await api.dio.post('/api/v1/devices/pair', data: {
-          'pairing_code': code,
-          'expires_in_seconds': _expirySeconds,
+      if (res.data != null && res.data['pairing_code'] != null) {
+        setState(() {
+          _onboardingCode = res.data['pairing_code'] as String;
+          _qrData = res.data['qr_payload'] as String? ?? res.data['pairing_code'] as String;
+          _expirySeconds = (res.data['expires_in_seconds'] as num?)?.toInt() ?? 300;
+          _loading = false;
         });
-      } catch (_) {
-        // If endpoint doesn't exist yet, still generate the QR code for display
+      } else {
+        final code = _generateOTP();
+        setState(() {
+          _onboardingCode = code;
+          _qrData = '${api.dio.options.baseUrl}#pair=$code';
+          _loading = false;
+        });
       }
-
+    } catch (e) {
+      final code = _generateOTP();
       setState(() {
         _onboardingCode = code;
-        _qrData = '$serverUrl#pair=$code';
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
+        _qrData = 'pcos://pair?code=$code';
+        _error = 'Pairing server offline; generated local fallback code.';
         _loading = false;
       });
     }

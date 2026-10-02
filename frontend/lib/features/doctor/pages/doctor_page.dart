@@ -15,6 +15,7 @@ class DoctorPage extends StatefulWidget {
 class _DoctorPageState extends State<DoctorPage> {
   bool _loading = true;
   final List<_Check> _checks = [];
+  Map<String, dynamic>? _connectDiag;
 
   @override
   void initState() {
@@ -26,6 +27,7 @@ class _DoctorPageState extends State<DoctorPage> {
     setState(() {
       _loading = true;
       _checks.clear();
+      _connectDiag = null;
     });
 
     final api = getIt<ApiClient>();
@@ -128,6 +130,27 @@ class _DoctorPageState extends State<DoctorPage> {
       return '$count items in trash';
     });
 
+    // 11. PCOS Connect & Network Diagnostics
+    await _runCheck('PCOS Connect', 'Network, NAT/CGNAT and Remote Reachability', () async {
+      final resp = await api.dio.get('/api/v1/doctor/connectivity');
+      if (resp.data is Map) {
+        final d = Map<String, dynamic>.from(resp.data as Map);
+        setState(() => _connectDiag = d);
+        final ip = d['lan_ip'] ?? 'unknown';
+        final cgnat = d['is_cgnat'] == true ? ' [CGNAT detected]' : '';
+        final provider = d['recommended_provider'] ?? 'Automatic';
+        return 'LAN: $ip$cgnat — Recommended: $provider';
+      }
+      return 'Connected';
+    });
+
+    // 12. Media Streaming Engine
+    await _runCheck('Media Server', 'Direct-play Range streaming and playback', () async {
+      final resp = await api.dio.get('/api/v1/media/history');
+      final count = resp.data is List ? (resp.data as List).length : 0;
+      return 'Media Engine online ($count sessions)';
+    });
+
     setState(() => _loading = false);
   }
 
@@ -228,6 +251,97 @@ class _DoctorPageState extends State<DoctorPage> {
           ),
         const SizedBox(height: 24),
 
+        // PCOS Connect Diagnostics Card
+        if (_connectDiag != null) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor(context),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.cloud_sync_rounded, color: AppTheme.primary, size: 24),
+                const SizedBox(width: 10),
+                Text(
+                  'PCOS Connect — Zero-Config Remote Access',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimaryColor(context),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.primary.withOpacity(0.4)),
+                  ),
+                  child: Text(
+                    _connectDiag!['recommended_provider'] as String? ?? 'Automatic',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 16),
+              Wrap(spacing: 20, runSpacing: 12, children: [
+                _buildInfoBadge('LAN IP', _connectDiag!['lan_ip']?.toString() ?? 'Unknown', context),
+                _buildInfoBadge('Hostname', _connectDiag!['hostname']?.toString() ?? 'pcos-server', context),
+                _buildInfoBadge(
+                  'NAT / CGNAT',
+                  _connectDiag!['is_cgnat'] == true ? 'CGNAT (Inbound Blocked)' : 'Standard LAN / Route',
+                  context,
+                  color: _connectDiag!['is_cgnat'] == true ? AppTheme.warning : AppTheme.success,
+                ),
+                _buildInfoBadge(
+                  'TLS Encryption',
+                  _connectDiag!['tls_enabled'] == true ? 'HTTPS Active' : 'Automatic Caddy Proxy',
+                  context,
+                  color: AppTheme.success,
+                ),
+              ]),
+              if (_connectDiag!['recommendations'] is List &&
+                  (_connectDiag!['recommendations'] as List).isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                Text('Recommendations:',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textMutedColor(context))),
+                const SizedBox(height: 6),
+                ...(_connectDiag!['recommendations'] as List).map(
+                  (rec) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('• ', style: TextStyle(color: AppTheme.primary)),
+                      Expanded(
+                        child: Text(
+                          rec.toString(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textPrimaryColor(context),
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+              ],
+            ]),
+          ),
+          const SizedBox(height: 24),
+        ],
+
         // Checks list
         Container(
           decoration: BoxDecoration(
@@ -319,6 +433,35 @@ class _DoctorPageState extends State<DoctorPage> {
           ]),
         ),
       ]),
+    );
+  }
+
+  Widget _buildInfoBadge(String label, String value, BuildContext context, {Color? color}) {
+    final effectiveColor = color ?? AppTheme.textPrimaryColor(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor(context),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.borderColor(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textMutedColor(context))),
+          const SizedBox(height: 2),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: effectiveColor)),
+        ],
+      ),
     );
   }
 }

@@ -1,4 +1,4 @@
-use crate::models::RegisterDeviceRequest;
+use crate::models::{CreatePairingRequest, RedeemPairingRequest, RegisterDeviceRequest};
 use crate::service;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -55,4 +55,29 @@ pub async fn heartbeat(
 ) -> Result<impl IntoResponse, AppError> {
     service::heartbeat(state.db.pool(), auth.claims.sub, device_id).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/v1/devices/pair
+/// Create a new 5-minute QR pairing session.
+pub async fn create_pairing(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<CreatePairingRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let session =
+        service::create_pairing_session(state.db.pool(), &state, auth.claims.sub, req).await?;
+    Ok((StatusCode::CREATED, Json(session)))
+}
+
+/// POST /api/v1/devices/pair/redeem
+/// Redeem pairing OTP/token from scanning a QR code to enroll device.
+pub async fn redeem_pairing(
+    State(state): State<AppState>,
+    Json(req): Json<RedeemPairingRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    req.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+
+    let response = service::redeem_pairing_session(state.db.pool(), &state, req).await?;
+    Ok((StatusCode::OK, Json(response)))
 }

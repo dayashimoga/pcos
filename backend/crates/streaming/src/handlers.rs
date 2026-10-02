@@ -9,7 +9,6 @@ use pcos_common::error::AppError;
 use pcos_common::AppState;
 use serde::Deserialize;
 use std::path::PathBuf;
-use tokio::fs;
 use uuid::Uuid;
 
 use crate::service::{self, TranscodeProfile};
@@ -196,27 +195,42 @@ pub async fn play_with_token(
         None => return Ok(StatusCode::NOT_FOUND.into_response()),
     };
 
-    let data = fs::read(&abs_path)
+    let mut file_handle = tokio::fs::File::open(&abs_path)
         .await
-        .map_err(|e| AppError::Internal(format!("Failed to read media: {e}")))?;
+        .map_err(|e| AppError::Internal(format!("Failed to open media: {e}")))?;
 
-    let total_size = data.len();
+    let metadata = file_handle
+        .metadata()
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to get media metadata: {e}")))?;
+
+    let total_size = metadata.len();
     let content_type = mime.unwrap_or_else(|| "application/octet-stream".to_string());
 
     // Check Range header
     if let Some(range_header) = headers.get(header::RANGE).and_then(|v| v.to_str().ok()) {
         if let Some(range) = range_header.strip_prefix("bytes=") {
             let parts: Vec<&str> = range.split('-').collect();
-            let start = parts[0].parse::<usize>().unwrap_or(0);
+            let start = parts[0].parse::<u64>().unwrap_or(0);
             let end = parts
                 .get(1)
-                .and_then(|s| s.parse::<usize>().ok())
+                .and_then(|s| s.parse::<u64>().ok())
                 .unwrap_or(total_size.saturating_sub(1));
 
             if start < total_size && start <= end {
                 let end = end.min(total_size.saturating_sub(1));
-                let slice = data[start..=end].to_vec();
                 let length = end - start + 1;
+
+                use tokio::io::AsyncSeekExt;
+                file_handle
+                    .seek(std::io::SeekFrom::Start(start))
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Seek failed: {e}")))?;
+
+                use tokio_util::io::ReaderStream;
+                let take_reader = tokio::io::AsyncReadExt::take(file_handle, length);
+                let stream = ReaderStream::new(take_reader);
+                let body = axum::body::Body::from_stream(stream);
 
                 return Ok(Response::builder()
                     .status(StatusCode::PARTIAL_CONTENT)
@@ -231,11 +245,15 @@ pub async fn play_with_token(
                         header::CONTENT_DISPOSITION,
                         format!("inline; filename=\"{}\"", name),
                     )
-                    .body(axum::body::Body::from(slice))
+                    .body(body)
                     .expect("valid 206 response"));
             }
         }
     }
+
+    use tokio_util::io::ReaderStream;
+    let stream = ReaderStream::new(file_handle);
+    let body = axum::body::Body::from_stream(stream);
 
     Ok(Response::builder()
         .status(StatusCode::OK)
@@ -246,6 +264,100 @@ pub async fn play_with_token(
             header::CONTENT_DISPOSITION,
             format!("inline; filename=\"{}\"", name),
         )
-        .body(axum::body::Body::from(data))
+        .body(body)
         .expect("valid 200 response"))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateProgressRequest {
+    pub position_secs: f64,
+    pub duration_secs: f64,
+    pub completed: Option<bool>,
+}
+
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct PlaybackProgressResponse {
+    pub file_entry_id: Uuid,
+    pub position_secs: f64,
+    pub duration_secs: f64,
+    pub completed: bool,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct ContinueWatchingItem {
+    pub file_entry_id: Uuid,
+    pub name: String,
+    pub position_secs: f64,
+    pub duration_secs: f64,
+    pub completed: bool,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// POST /api/v1/streaming/progress/:file_id — Record playback position and resume state.
+pub async fn update_progress(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(file_id): Path<Uuid>,
+    Json(req): Json<UpdateProgressRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let completed = req
+        .completed
+        .unwrap_or(req.position_secs >= (req.duration_secs * 0.95));
+
+    sqlx::query(
+        r#"INSERT INTO playback_progress (user_id, file_entry_id, position_secs, duration_secs, completed, updated_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (user_id, file_entry_id)
+        DO UPDATE SET position_secs = EXCLUDED.position_secs, duration_secs = EXCLUDED.duration_secs, completed = EXCLUDED.completed, updated_at = NOW()"#
+    )
+    .bind(auth.claims.sub)
+    .bind(file_id)
+    .bind(req.position_secs)
+    .bind(req.duration_secs)
+    .bind(completed)
+    .execute(state.db.pool())
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(StatusCode::OK)
+}
+
+/// GET /api/v1/streaming/progress/:file_id — Get playback progress for resume.
+pub async fn get_progress(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(file_id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    let progress = sqlx::query_as::<_, PlaybackProgressResponse>(
+        "SELECT file_entry_id, position_secs, duration_secs, completed, updated_at FROM playback_progress WHERE user_id = $1 AND file_entry_id = $2"
+    )
+    .bind(auth.claims.sub)
+    .bind(file_id)
+    .fetch_optional(state.db.pool())
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(Json(progress))
+}
+
+/// GET /api/v1/streaming/resume and /api/v1/media/history — List in-progress media for Continue Watching.
+pub async fn list_continue_watching(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<impl IntoResponse, AppError> {
+    let items = sqlx::query_as::<_, ContinueWatchingItem>(
+        r#"SELECT p.file_entry_id, f.name, p.position_secs, p.duration_secs, p.completed, p.updated_at
+        FROM playback_progress p
+        JOIN file_entries f ON p.file_entry_id = f.id
+        WHERE p.user_id = $1 AND p.completed = false AND f.is_trashed = false
+        ORDER BY p.updated_at DESC
+        LIMIT 20"#
+    )
+    .bind(auth.claims.sub)
+    .fetch_all(state.db.pool())
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(Json(items))
 }

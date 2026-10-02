@@ -137,6 +137,12 @@ impl StorageEngine {
         fs::read(&full_path).await
     }
 
+    /// Open file handle for streaming reads (O(1) memory usage).
+    pub async fn open_file(&self, storage_path: &str) -> Result<tokio::fs::File, std::io::Error> {
+        let full_path = self.base_path.join(storage_path);
+        tokio::fs::File::open(&full_path).await
+    }
+
     /// Get the absolute filesystem path for a stored file (for streaming).
     pub fn absolute_path(&self, storage_path: &str) -> PathBuf {
         self.base_path.join(storage_path)
