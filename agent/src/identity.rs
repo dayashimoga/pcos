@@ -16,7 +16,11 @@ pub struct PcosUri {
 
 impl fmt::Display for PcosUri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pcos://cloud/{}/device/{}", self.cloud_id, self.device_id)?;
+        write!(
+            f,
+            "pcos://cloud/{}/device/{}",
+            self.cloud_id, self.device_id
+        )?;
         if let Some(node) = self.node_id {
             write!(f, "/node/{}", node)?;
         }
@@ -40,7 +44,9 @@ impl FromStr for PcosUri {
         let parts: Vec<&str> = rest.split('/').collect();
 
         if parts.len() < 3 || parts[1] != "device" {
-            anyhow::bail!("Invalid PCOS URI format: expected pcos://cloud/<cloud_id>/device/<device_id>");
+            anyhow::bail!(
+                "Invalid PCOS URI format: expected pcos://cloud/<cloud_id>/device/<device_id>"
+            );
         }
 
         let cloud_id = parts[0].to_string();

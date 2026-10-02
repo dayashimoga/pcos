@@ -219,7 +219,14 @@ async fn main() -> anyhow::Result<()> {
 fn print_status(config: &config::AgentConfig, db: &db::LocalDb) -> anyhow::Result<()> {
     println!("PCOS Agent v{}", env!("CARGO_PKG_VERSION"));
     println!("Server: {}", config.server_url);
-    println!("Device ID: {}", if config.device_id.is_empty() { "Not Enrolled" } else { &config.device_id });
+    println!(
+        "Device ID: {}",
+        if config.device_id.is_empty() {
+            "Not Enrolled"
+        } else {
+            &config.device_id
+        }
+    );
     println!("Data dir: {}", config.data_dir);
     println!("Sync folders: {}", config.sync_folders.len());
     for folder in &config.sync_folders {

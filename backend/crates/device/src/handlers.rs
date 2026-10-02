@@ -132,4 +132,3 @@ pub async fn redeem_pairing(
     let response = service::redeem_pairing_session(state.db.pool(), &state, req).await?;
     Ok((StatusCode::OK, Json(response)))
 }
-

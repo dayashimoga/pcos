@@ -56,7 +56,10 @@ pub async fn enroll_node_with_code(
     // 2. If waiting for Web approval, poll status
     if access_token.is_none() {
         println!("Pairing request submitted! Please click [Approve] on your PCOS Web or Desktop screen...");
-        let status_url = format!("{}/api/v1/devices/pair/status?code={}", base_url, clean_code);
+        let status_url = format!(
+            "{}/api/v1/devices/pair/status?code={}",
+            base_url, clean_code
+        );
 
         for _ in 0..60 {
             sleep(Duration::from_secs(2)).await;
@@ -72,7 +75,8 @@ pub async fn enroll_node_with_code(
                         if redeem_resp.status().is_success() {
                             let r_body: serde_json::Value = redeem_resp.json().await?;
                             access_token = r_body["access_token"].as_str().map(|s| s.to_string());
-                            _refresh_token = r_body["refresh_token"].as_str().map(|s| s.to_string());
+                            _refresh_token =
+                                r_body["refresh_token"].as_str().map(|s| s.to_string());
                             device_id = r_body["device"]["id"].as_str().map(|s| s.to_string());
                             break;
                         }

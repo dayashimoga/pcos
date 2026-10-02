@@ -36,7 +36,8 @@ pub async fn get_connectivity_diagnostics(
         .filter(|s| !s.trim().is_empty());
 
     let lan_ip = if let Some(ip) = env_lan_ip {
-        let clean = ip.trim()
+        let clean = ip
+            .trim()
             .trim_start_matches("http://")
             .trim_start_matches("https://");
         let host = clean.split('/').next().unwrap_or(clean);

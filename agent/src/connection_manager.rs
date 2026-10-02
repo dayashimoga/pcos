@@ -92,7 +92,12 @@ impl ConnectionManager {
             if let Some(target_ip) = &resolution.lan_ip {
                 let ping_url = format!("http://{}:8080/health", target_ip);
                 let start = std::time::Instant::now();
-                if let Ok(ping_resp) = client.get(&ping_url).timeout(Duration::from_millis(150)).send().await {
+                if let Ok(ping_resp) = client
+                    .get(&ping_url)
+                    .timeout(Duration::from_millis(150))
+                    .send()
+                    .await
+                {
                     if ping_resp.status().is_success() {
                         let latency = start.elapsed();
                         info!(peer = %peer_device_id, ip = %target_ip, latency_ms = latency.as_millis(), "Direct LAN route confirmed optimal");
@@ -142,7 +147,10 @@ impl ConnectionManager {
                             });
 
                             let _ = client
-                                .post(format!("{}/api/v1/devices/{}/heartbeat", server_url, device_id))
+                                .post(format!(
+                                    "{}/api/v1/devices/{}/heartbeat",
+                                    server_url, device_id
+                                ))
                                 .bearer_auth(&auth_token)
                                 .json(&heartbeat_payload)
                                 .send()
@@ -158,7 +166,8 @@ impl ConnectionManager {
                             Ok(Message::Text(text)) => {
                                 info!(msg = %text, "Received control plane command");
                                 // Handle incoming commands (e.g. Play-on-TV, Send-to-Device)
-                                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
+                                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text)
+                                {
                                     let command = parsed["command"].as_str().unwrap_or("");
                                     match command {
                                         "play_on_tv" => {

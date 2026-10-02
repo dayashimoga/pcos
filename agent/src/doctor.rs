@@ -30,7 +30,10 @@ impl DoctorReport {
         // 1. LAN IP & CGNAT
         let lan_ip = match UdpSocket::bind("0.0.0.0:0") {
             Ok(s) => match s.connect("1.1.1.1:80") {
-                Ok(_) => s.local_addr().map(|a| a.ip().to_string()).unwrap_or_else(|_| "127.0.0.1".into()),
+                Ok(_) => s
+                    .local_addr()
+                    .map(|a| a.ip().to_string())
+                    .unwrap_or_else(|_| "127.0.0.1".into()),
                 Err(_) => "127.0.0.1".into(),
             },
             Err(_) => "127.0.0.1".into(),
@@ -39,7 +42,10 @@ impl DoctorReport {
         let is_cgnat = lan_ip.starts_with("100.") && {
             let parts: Vec<&str> = lan_ip.split('.').collect();
             if parts.len() >= 2 {
-                parts[1].parse::<u8>().map(|b| (64..=127).contains(&b)).unwrap_or(false)
+                parts[1]
+                    .parse::<u8>()
+                    .map(|b| (64..=127).contains(&b))
+                    .unwrap_or(false)
             } else {
                 false
             }
@@ -49,7 +55,8 @@ impl DoctorReport {
         let storage_dir = Path::new(storage_path);
         let _ = fs::create_dir_all(storage_dir);
         let test_file = storage_dir.join(".pcos_doctor_write_test");
-        let storage_writable = fs::write(&test_file, b"PCOS_OK").is_ok() && fs::remove_file(&test_file).is_ok();
+        let storage_writable =
+            fs::write(&test_file, b"PCOS_OK").is_ok() && fs::remove_file(&test_file).is_ok();
 
         // 3. Free disk space
         let storage_free_gb = 50.0; // default estimated fallback
@@ -65,10 +72,11 @@ impl DoctorReport {
             .unwrap();
 
         let health_url = format!("{}/health", server_url.trim_end_matches('/'));
-        let (control_plane_reachable, control_plane_latency_ms) = match client.get(&health_url).send().await {
-            Ok(resp) if resp.status().is_success() => (true, start.elapsed().as_millis()),
-            _ => (false, 0),
-        };
+        let (control_plane_reachable, control_plane_latency_ms) =
+            match client.get(&health_url).send().await {
+                Ok(resp) if resp.status().is_success() => (true, start.elapsed().as_millis()),
+                _ => (false, 0),
+            };
 
         // 6. FFmpeg & Hardware acceleration check
         let (ffmpeg_installed, ffmpeg_hw_accel) = check_ffmpeg();
@@ -96,11 +104,46 @@ impl DoctorReport {
         println!("  Device Hostname : {}", self.hostname);
         println!("  Operating System: {}", self.os);
         println!("  Local LAN IP    : {}", self.lan_ip);
-        println!("  CGNAT Status    : {}", if self.is_cgnat { "DETECTED (RFC 6598) - WireGuard P2P Recommended" } else { "Direct Routing Active" });
-        println!("  Storage Status  : {}", if self.storage_writable { "PASS (Read/Write verified)" } else { "FAIL (Storage directory not writable)" });
-        println!("  DNS Resolution  : {}", if self.dns_healthy { "PASS (Healthy)" } else { "FAIL (DNS resolution failure)" });
-        println!("  Control Plane   : {}", if self.control_plane_reachable { format!("CONNECTED ({}ms latency)", self.control_plane_latency_ms) } else { "OFFLINE / UNREACHABLE".to_string() });
-        println!("  FFmpeg Engine   : {}", if self.ffmpeg_installed { "INSTALLED (Video streaming active)" } else { "NOT FOUND (Transcoding limited)" });
+        println!(
+            "  CGNAT Status    : {}",
+            if self.is_cgnat {
+                "DETECTED (RFC 6598) - WireGuard P2P Recommended"
+            } else {
+                "Direct Routing Active"
+            }
+        );
+        println!(
+            "  Storage Status  : {}",
+            if self.storage_writable {
+                "PASS (Read/Write verified)"
+            } else {
+                "FAIL (Storage directory not writable)"
+            }
+        );
+        println!(
+            "  DNS Resolution  : {}",
+            if self.dns_healthy {
+                "PASS (Healthy)"
+            } else {
+                "FAIL (DNS resolution failure)"
+            }
+        );
+        println!(
+            "  Control Plane   : {}",
+            if self.control_plane_reachable {
+                format!("CONNECTED ({}ms latency)", self.control_plane_latency_ms)
+            } else {
+                "OFFLINE / UNREACHABLE".to_string()
+            }
+        );
+        println!(
+            "  FFmpeg Engine   : {}",
+            if self.ffmpeg_installed {
+                "INSTALLED (Video streaming active)"
+            } else {
+                "NOT FOUND (Transcoding limited)"
+            }
+        );
         if !self.ffmpeg_hw_accel.is_empty() {
             println!("  HW Acceleration : {}", self.ffmpeg_hw_accel.join(", "));
         }
@@ -119,7 +162,12 @@ fn check_ffmpeg() -> (bool, Vec<String>) {
     let mut accels = Vec::new();
     for line in text.lines() {
         let trimmed = line.trim();
-        if trimmed == "cuda" || trimmed == "qsv" || trimmed == "vaapi" || trimmed == "videotoolbox" || trimmed == "d3d11va" {
+        if trimmed == "cuda"
+            || trimmed == "qsv"
+            || trimmed == "vaapi"
+            || trimmed == "videotoolbox"
+            || trimmed == "d3d11va"
+        {
             accels.push(trimmed.to_string());
         }
     }

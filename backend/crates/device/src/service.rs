@@ -57,17 +57,24 @@ impl PairingStore {
     fn insert(&mut self, session: PairingSession) {
         let id = session.id;
         self.code_to_id.insert(session.pairing_code.clone(), id);
-        self.token_to_id.insert(session.enrollment_token.clone(), id);
+        self.token_to_id
+            .insert(session.enrollment_token.clone(), id);
         self.sessions.insert(id, session);
     }
 
     fn get_by_key(&self, key: &str) -> Option<&PairingSession> {
-        let id = self.code_to_id.get(key).or_else(|| self.token_to_id.get(key))?;
+        let id = self
+            .code_to_id
+            .get(key)
+            .or_else(|| self.token_to_id.get(key))?;
         self.sessions.get(id)
     }
 
     fn get_mut_by_key(&mut self, key: &str) -> Option<&mut PairingSession> {
-        let id = *self.code_to_id.get(key).or_else(|| self.token_to_id.get(key))?;
+        let id = *self
+            .code_to_id
+            .get(key)
+            .or_else(|| self.token_to_id.get(key))?;
         self.sessions.get_mut(&id)
     }
 
@@ -83,15 +90,15 @@ impl PairingStore {
 
     #[allow(dead_code)]
     fn remove_by_key(&mut self, key: &str) -> Option<PairingSession> {
-        let id = *self.code_to_id.get(key).or_else(|| self.token_to_id.get(key))?;
+        let id = *self
+            .code_to_id
+            .get(key)
+            .or_else(|| self.token_to_id.get(key))?;
         self.remove(id)
     }
 }
 
-
 static PAIRING_STORE: Lazy<Mutex<PairingStore>> = Lazy::new(|| Mutex::new(PairingStore::new()));
-
-
 
 /// Register a new device for the user.
 pub async fn register_device(
@@ -208,7 +215,10 @@ pub async fn create_pairing_session(
         })
         .unwrap_or_else(|_| "http://localhost".to_string());
 
-    let universal_link = format!("{}/#/pair?code={}&token={}", server_url, pairing_code, enrollment_token);
+    let universal_link = format!(
+        "{}/#/pair?code={}&token={}",
+        server_url, pairing_code, enrollment_token
+    );
 
     let session = PairingSession {
         id: Uuid::new_v4(),
@@ -240,9 +250,7 @@ pub async fn create_pairing_session(
 }
 
 /// Mobile device claims a pairing code and submits candidate device metadata for user approval.
-pub async fn claim_pairing_session(
-    req: ClaimPairingRequest,
-) -> AppResult<PairingStatusResponse> {
+pub async fn claim_pairing_session(req: ClaimPairingRequest) -> AppResult<PairingStatusResponse> {
     let key = req
         .enrollment_token
         .as_deref()
@@ -260,13 +268,17 @@ pub async fn claim_pairing_session(
         .ok_or_else(|| AppError::Unauthorized("Invalid or expired pairing code".to_string()))?;
 
     if sess.expires_at < Utc::now() {
-        return Err(AppError::Unauthorized("Pairing session has expired".to_string()));
+        return Err(AppError::Unauthorized(
+            "Pairing session has expired".to_string(),
+        ));
     }
 
     if sess.failed_attempts >= 5 {
         let id = sess.id;
         store.remove(id);
-        return Err(AppError::Unauthorized("Too many failed attempts. Pairing session invalidated.".to_string()));
+        return Err(AppError::Unauthorized(
+            "Too many failed attempts. Pairing session invalidated.".to_string(),
+        ));
     }
 
     let candidate = CandidateDevice {
@@ -322,11 +334,15 @@ pub async fn approve_pairing_session(
             .ok_or_else(|| AppError::Unauthorized("Invalid or expired pairing code".to_string()))?;
 
         if sess.user_id != user_id {
-            return Err(AppError::Unauthorized("You do not own this pairing session".to_string()));
+            return Err(AppError::Unauthorized(
+                "You do not own this pairing session".to_string(),
+            ));
         }
 
         if sess.expires_at < Utc::now() {
-            return Err(AppError::Unauthorized("Pairing session has expired".to_string()));
+            return Err(AppError::Unauthorized(
+                "Pairing session has expired".to_string(),
+            ));
         }
 
         if !req.approved {
@@ -347,10 +363,19 @@ pub async fn approve_pairing_session(
         }
 
         let cand = sess.candidate_device.clone().ok_or_else(|| {
-            AppError::Validation("No candidate device has claimed this pairing code yet".to_string())
+            AppError::Validation(
+                "No candidate device has claimed this pairing code yet".to_string(),
+            )
         })?;
 
-        (sess.user_id, sess.user_email.clone(), cand, sess.expires_at, sess.pairing_code.clone(), sess.enrollment_token.clone())
+        (
+            sess.user_id,
+            sess.user_email.clone(),
+            cand,
+            sess.expires_at,
+            sess.pairing_code.clone(),
+            sess.enrollment_token.clone(),
+        )
     };
 
     // Database device creation
@@ -424,9 +449,7 @@ pub async fn approve_pairing_session(
 }
 
 /// Check the status of a pairing session.
-pub async fn get_pairing_status(
-    key: &str,
-) -> AppResult<PairingStatusResponse> {
+pub async fn get_pairing_status(key: &str) -> AppResult<PairingStatusResponse> {
     let store = PAIRING_STORE
         .lock()
         .map_err(|e| AppError::Internal(e.to_string()))?;
@@ -482,7 +505,9 @@ pub async fn redeem_pairing_session(
         }
 
         if sess.status == "rejected" {
-            return Err(AppError::Unauthorized("Pairing request was rejected by device owner".to_string()));
+            return Err(AppError::Unauthorized(
+                "Pairing request was rejected by device owner".to_string(),
+            ));
         }
 
         if let Some(result) = sess.redeem_result.clone() {
@@ -497,7 +522,9 @@ pub async fn redeem_pairing_session(
 
     // If candidate device was already claimed but not approved yet:
     if session.status == "pending_approval" {
-        return Err(AppError::Unauthorized("Waiting for device approval on your PCOS Web/Desktop screen".to_string()));
+        return Err(AppError::Unauthorized(
+            "Waiting for device approval on your PCOS Web/Desktop screen".to_string(),
+        ));
     }
 
     // Direct single-step enrollment (provisions device directly)
@@ -609,7 +636,10 @@ mod tests {
         // Verify status was updated through token index
         let retrieved = store.get_by_key(&token).unwrap();
         assert_eq!(retrieved.status, "pending_approval");
-        assert_eq!(retrieved.candidate_device.as_ref().unwrap().device_name, "Pixel 9");
+        assert_eq!(
+            retrieved.candidate_device.as_ref().unwrap().device_name,
+            "Pixel 9"
+        );
 
         // 3. Remove on redemption (single use / replay prevention)
         let removed = store.remove(session_id);
@@ -644,6 +674,3 @@ mod tests {
         assert!(store.get_by_key("999999").is_none());
     }
 }
-
-
-

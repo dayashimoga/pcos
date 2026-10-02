@@ -16,10 +16,7 @@ pub fn router() -> Router<AppState> {
             post(handlers::register_device).get(handlers::list_devices),
         )
         .route("/api/v1/devices/pair", post(handlers::create_pairing))
-        .route(
-            "/api/v1/devices/pair/claim",
-            post(handlers::claim_pairing),
-        )
+        .route("/api/v1/devices/pair/claim", post(handlers::claim_pairing))
         .route(
             "/api/v1/devices/pair/approve",
             post(handlers::approve_pairing),
@@ -35,4 +32,3 @@ pub fn router() -> Router<AppState> {
         .route("/api/v1/devices/:id", delete(handlers::remove_device))
         .route("/api/v1/devices/:id/heartbeat", put(handlers::heartbeat))
 }
-

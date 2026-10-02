@@ -45,7 +45,6 @@ pub struct RegisterDeviceRequest {
 /// Response DTO for device data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceResponse {
-
     pub id: Uuid,
     pub name: String,
     pub device_type: String,
@@ -165,7 +164,6 @@ pub struct RedeemPairingResponse {
     pub access_token: String,
     pub refresh_token: String,
 }
-
 
 #[cfg(test)]
 mod tests {
