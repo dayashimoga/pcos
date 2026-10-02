@@ -12,6 +12,8 @@ const rootDir = path.resolve(__dirname, '..');
 const configPath = path.join(rootDir, 'wrangler.jsonc');
 const schemaPath = path.join(rootDir, 'schema.sql');
 
+const assetsPath = path.resolve(rootDir, '../frontend/build/web');
+
 function run(cmd, allowFail = false) {
   try {
     return execSync(cmd, { cwd: rootDir, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
@@ -23,6 +25,17 @@ function run(cmd, allowFail = false) {
 
 async function provision() {
   console.log('⚡ PCOS Cloudflare Automated Provisioning starting...');
+
+  // Ensure assets directory exists for wrangler binding
+  if (!fs.existsSync(assetsPath)) {
+    console.log(`📁 Creating placeholder assets directory: ${assetsPath}`);
+    fs.mkdirSync(assetsPath, { recursive: true });
+    fs.writeFileSync(
+      path.join(assetsPath, 'index.html'),
+      '<!DOCTYPE html><html><head><title>PCOS Cloud</title></head><body><h1>PCOS Personal Cloud OS</h1></body></html>',
+      'utf8'
+    );
+  }
 
   // 1. D1 Database Provisioning
   console.log('\n📦 Checking D1 Database (pcos-control-db)...');
