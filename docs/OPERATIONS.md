@@ -2,17 +2,19 @@
 
 ## Quick Reference
 
-| Action | Command |
+| Action | Command (Docker or Podman) |
 |--------|---------|
-| Start dev stack | `docker compose up -d` |
-| Start prod stack | `docker compose -f docker-compose.yml up -d` |
-| View logs | `docker compose logs -f backend` |
+| 1-Click Start | `.\spinup.ps1` (Win) or `./spinup.sh` (Linux/Mac) |
+| 1-Click Stop | `.\bringdown.ps1` (Win) or `./bringdown.sh` (Linux/Mac) |
+| Start stack | `docker compose up -d` / `podman compose up -d` |
+| View logs | `docker compose logs -f backend` / `podman compose logs -f backend` |
 | Run migrations | Automatic on startup |
 | Health check | `curl http://localhost:8080/health` |
-| Run unit tests | `cargo test -p pcos-common` |
-| Run integration tests | `cargo test --test integration -- --ignored` |
-| Backend shell | `docker compose exec backend sh` |
+| Run unit tests | `cargo test --all` |
+| Backend shell | `docker compose exec backend sh` / `podman compose exec backend sh` |
 | DB shell | `docker compose exec postgres psql -U pcos -d pcos` |
+
+*(All `docker compose` commands can be run with `podman compose` or `podman-compose`)*
 
 ---
 

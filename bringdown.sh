@@ -32,27 +32,38 @@ fi
 clear 2>/dev/null || true
 write_header "PCOS (Personal Cloud OS) -- Universal Teardown"
 
-write_info "Step 1: Checking Docker availability..."
-if ! command -v docker &> /dev/null; then
-    write_err "Docker is not installed."
+write_info "Step 1: Detecting container runtime (Docker or Podman)..."
+RUNTIME=""
+COMPOSE_CMD=""
+
+if command -v docker &> /dev/null && docker info &> /dev/null; then
+    RUNTIME="docker"
+    if docker compose version &> /dev/null; then
+        COMPOSE_CMD="docker compose"
+    elif command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
+    fi
+elif command -v podman &> /dev/null && podman info &> /dev/null; then
+    RUNTIME="podman"
+    if podman compose version &> /dev/null; then
+        COMPOSE_CMD="podman compose"
+    elif command -v podman-compose &> /dev/null; then
+        COMPOSE_CMD="podman-compose"
+    fi
+fi
+
+if [ -z "$RUNTIME" ] || [ -z "$COMPOSE_CMD" ]; then
+    write_err "Neither Docker nor Podman is accessible."
     exit 1
 fi
-write_ok "Docker engine is running."
+write_ok "Container runtime detected: $RUNTIME ($COMPOSE_CMD)"
 
 if [ "$PURGE" = true ]; then
     write_warn "Step 2: Stopping containers and PURGING all data volumes..."
-    if docker compose version &> /dev/null; then
-        docker compose down -v --remove-orphans
-    else
-        docker-compose down -v --remove-orphans
-    fi
+    $COMPOSE_CMD down -v
 else
     write_info "Step 2: Stopping container services (preserving data volumes)..."
-    if docker compose version &> /dev/null; then
-        docker compose down --remove-orphans
-    else
-        docker-compose down --remove-orphans
-    fi
+    $COMPOSE_CMD down
 fi
 
 write_ok "All PCOS container services stopped."

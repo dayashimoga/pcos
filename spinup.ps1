@@ -18,19 +18,53 @@ function Write-Err  ($text) { Write-Host "[FAIL]  $text" -ForegroundColor Red }
 
 Write-Header "PCOS (Personal Cloud OS) -- One-Click Spin-Up"
 
-# 1. Verify Docker Desktop / Docker Engine is running
-Write-Info "Step 1: Checking Docker availability..."
-try {
-    $dockerInfo = docker info 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Docker engine is not responding."
-    }
-    Write-Ok "Docker engine is running."
-} catch {
-    Write-Err "Docker is not running or not accessible."
-    Write-Warn "Please launch Docker Desktop and try running .\spinup.ps1 again."
+# 1. Verify Docker or Podman is running
+Write-Info "Step 1: Detecting container runtime (Docker or Podman)..."
+$runtime = $null
+$composeCmd = $null
+
+if (Get-Command docker -ErrorAction SilentlyContinue) {
+    try {
+        $null = docker info 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $runtime = "docker"
+            $composeCmd = "docker compose"
+        }
+    } catch {}
+}
+
+if (-not $runtime -and (Get-Command podman -ErrorAction SilentlyContinue)) {
+    try {
+        $null = podman info 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $runtime = "podman"
+            try {
+                $null = podman compose version 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    $composeCmd = "podman compose"
+                }
+            } catch {}
+
+            if (-not $composeCmd -and (Get-Command podman-compose -ErrorAction SilentlyContinue)) {
+                $composeCmd = "podman-compose"
+            }
+        }
+    } catch {}
+}
+
+if (-not $runtime) {
+    Write-Err "Neither Docker nor Podman is running or accessible."
+    Write-Warn "Please launch Docker Desktop or start your Podman machine ('podman machine start') and try again."
     exit 1
 }
+
+if (-not $composeCmd) {
+    Write-Err "$runtime detected, but no compose provider found."
+    Write-Warn "For Podman: install podman-compose via 'pip install podman-compose' or winget."
+    exit 1
+}
+
+Write-Ok "Container runtime detected: $runtime ($composeCmd)"
 
 # 2. Check and provision .env file with secure secrets
 Write-Info "Step 2: Checking environment configuration (.env)..."
@@ -80,16 +114,22 @@ if (Test-Path $ephemeralPath) {
     Write-Ok "Cleaned ephemeral Flutter symlinks."
 }
 
-# 4. Launch Docker Compose Stack
-Write-Info "Step 4: Launching Docker Compose stack (13 services)..."
+# 4. Launch Container Compose Stack
+Write-Info "Step 4: Launching container compose stack ($composeCmd)..."
 try {
-    docker compose up -d --build
-    if ($LASTEXITCODE -ne 0) {
-        throw "Docker compose failed with exit code $LASTEXITCODE"
+    if ($composeCmd -eq "docker compose") {
+        docker compose up -d --build
+    } elseif ($composeCmd -eq "podman compose") {
+        podman compose up -d --build
+    } else {
+        podman-compose up -d --build
     }
-    Write-Ok "Docker Compose workloads launched."
+    if ($LASTEXITCODE -ne 0) {
+        throw "Container compose command failed with exit code $LASTEXITCODE"
+    }
+    Write-Ok "Container workloads launched."
 } catch {
-    Write-Err "Failed to start Docker Compose stack: $_"
+    Write-Err "Failed to start container stack: $_"
     exit 1
 }
 
@@ -116,7 +156,7 @@ Write-Host ""
 if ($healthy) {
     Write-Ok "PCOS Backend is healthy and responding!"
 } else {
-    Write-Warn "Backend is taking longer to start. Check status with: docker compose ps"
+    Write-Warn "Backend is taking longer to start. Check status with: $composeCmd ps"
 }
 
 # 6. Display Service Access Summary

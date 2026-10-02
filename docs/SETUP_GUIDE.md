@@ -21,21 +21,23 @@
 
 ### Prerequisites
 
-- **Docker** and **Docker Compose** installed ([Get Docker](https://docs.docker.com/get-docker/))
-- A server, desktop, or laptop (any OS — Linux, Windows, macOS)
+- **Docker & Docker Compose** OR **Podman & `podman-compose`** installed
+- A server, desktop, or laptop (any OS — Windows, Linux, macOS)
 - At least 2 GB RAM, 10 GB disk space
 
 ### 1-Click Universal Setup (Any Laptop / Desktop / Server)
 
+The spinup scripts auto-detect whether **Docker** or **Podman** is active:
+
 ```powershell
-# Windows (PowerShell)
+# Windows (PowerShell) — Works with Docker or Podman
 .\spinup.ps1
 
 # To stop: .\bringdown.ps1
 ```
 
 ```bash
-# Linux / macOS / Cloud VPS / Server (Bash)
+# Linux / macOS / Cloud VPS / Server (Bash) — Works with Docker or Podman
 chmod +x spinup.sh bringdown.sh
 ./spinup.sh
 

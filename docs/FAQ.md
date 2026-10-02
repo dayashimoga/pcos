@@ -34,10 +34,10 @@ Run the provided PowerShell script in your project root:
 ```
 
 > [!NOTE]
-> `spinup.ps1` verifies Docker Desktop, auto-generates 64-character JWT secrets and database passwords in `.env`, cleans temporary build artifacts, launches all 13 microservices, and verifies backend health at `http://localhost`.
+> `spinup.ps1` automatically detects either **Docker** or **Podman**, auto-generates 64-character JWT secrets and database passwords in `.env`, cleans temporary build artifacts, launches all 13 microservices via the appropriate compose provider, and verifies backend health at `http://localhost`.
 
 ### Q1.2: How do I launch PCOS on Linux, macOS, or a Cloud VPS Server?
-Run the universal bash scripts:
+Run the universal bash scripts (works with Docker or Podman):
 
 ```bash
 # 1-Click Spin Up
@@ -50,6 +50,15 @@ chmod +x spinup.sh bringdown.sh
 # 1-Click Bring Down & Purge Volumes
 ./bringdown.sh --purge
 ```
+
+### Q1.3: Does PCOS work with Podman instead of Docker?
+**YES! 100% supported.** Both `spinup.ps1` (Windows) and `spinup.sh` (Linux/macOS) detect if Podman is active:
+- If Docker is not found, the scripts automatically route commands through `podman compose` or `podman-compose`.
+- To install `podman-compose` if not already installed, simply run:
+  ```bash
+  pip install podman-compose
+  ```
+- All volume mounts, port binds (`80`, `443`, `3001`), networks, and health checks function identically in Podman.
 
 ---
 

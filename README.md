@@ -45,16 +45,33 @@ A **self-hosted personal cloud** built with Rust, Flutter, and PostgreSQL. Own y
 ## Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose
+- **Docker** & Docker Compose **OR** **Podman** & `podman-compose`
 - (Optional) Rust 1.79+ for local development
 - (Optional) Flutter 3.24+ for frontend development
 
-### Docker (3 commands)
+### 1-Click Launch (Docker or Podman)
+PCOS scripts automatically detect whether you are running Docker or Podman:
+```powershell
+# Windows (PowerShell)
+.\spinup.ps1
+```
+```bash
+# Linux / macOS / Cloud Server
+chmod +x spinup.sh bringdown.sh
+./spinup.sh
+```
+
+### Manual Container Launch
 ```bash
 git clone https://github.com/dayashimoga/pcos.git
 cd pcos
 cp .env.example .env     # Edit: change PCOS_JWT_SECRET and POSTGRES_PASSWORD
+
+# If using Docker:
 docker compose up -d
+
+# If using Podman:
+podman compose up -d     # or: podman-compose up -d
 ```
 
 | Service | URL |

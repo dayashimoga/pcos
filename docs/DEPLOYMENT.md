@@ -1,19 +1,35 @@
 # PCOS Deployment Guide
 
 ## Prerequisites
-- Docker Engine 24+ and Docker Compose v2
+- **Docker Engine 24+ and Docker Compose v2** OR **Podman 4+ / 5+ and `podman-compose`**
 - At least 2GB RAM, 10GB disk space
 - A domain name (optional, for HTTPS)
 
 ---
 
-## Quick Start (Docker Compose — 3 commands)
+## Quick Start (Docker or Podman)
 
+### 1-Click Launch (Auto-detects Docker or Podman):
+```powershell
+# Windows:
+.\spinup.ps1
+```
+```bash
+# Linux / macOS:
+./spinup.sh
+```
+
+### Manual Launch:
 ```bash
 git clone https://github.com/dayashimoga/pcos.git
 cd pcos
 cp .env.example .env    # Edit .env — change PCOS_JWT_SECRET and POSTGRES_PASSWORD
+
+# If using Docker:
 docker compose up -d
+
+# If using Podman:
+podman compose up -d    # or: podman-compose up -d
 ```
 
 The stack automatically:

@@ -27,19 +27,40 @@ write_err()  { echo -e "${RED}[FAIL]  $1${NC}"; }
 clear 2>/dev/null || true
 write_header "PCOS (Personal Cloud OS) -- Universal One-Click Spin-Up"
 
-# 1. Check Docker & Docker Compose
-write_info "Step 1: Checking Docker availability..."
-if ! command -v docker &> /dev/null; then
-    write_err "Docker is not installed! Please install Docker before running this script."
+# 1. Check Docker or Podman
+write_info "Step 1: Detecting container runtime (Docker or Podman)..."
+RUNTIME=""
+COMPOSE_CMD=""
+
+if command -v docker &> /dev/null && docker info &> /dev/null; then
+    RUNTIME="docker"
+    if docker compose version &> /dev/null; then
+        COMPOSE_CMD="docker compose"
+    elif command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
+    fi
+elif command -v podman &> /dev/null && podman info &> /dev/null; then
+    RUNTIME="podman"
+    if podman compose version &> /dev/null; then
+        COMPOSE_CMD="podman compose"
+    elif command -v podman-compose &> /dev/null; then
+        COMPOSE_CMD="podman-compose"
+    fi
+fi
+
+if [ -z "$RUNTIME" ]; then
+    write_err "Neither Docker nor Podman is running or accessible!"
+    write_warn "Please launch Docker Desktop or start Podman ('podman machine start') and try again."
     exit 1
 fi
 
-if ! docker info &> /dev/null; then
-    write_err "Docker daemon is not running or current user lacks permissions."
-    write_warn "Try running: sudo ./spinup.sh"
+if [ -z "$COMPOSE_CMD" ]; then
+    write_err "$RUNTIME is detected, but no compose provider was found."
+    write_warn "For Podman: install podman-compose via 'pip install podman-compose' or package manager."
     exit 1
 fi
-write_ok "Docker engine is running."
+
+write_ok "Container runtime detected: $RUNTIME ($COMPOSE_CMD)"
 
 # 2. Check and provision .env configuration
 write_info "Step 2: Checking environment configuration (.env)..."
@@ -83,14 +104,10 @@ write_info "Step 3: Checking build context..."
 rm -rf "$SCRIPT_DIR/frontend/windows/flutter/ephemeral" 2>/dev/null || true
 write_ok "Build context verified."
 
-# 4. Launch Docker Compose Stack
-write_info "Step 4: Launching Docker Compose stack (13 services)..."
-if docker compose version &> /dev/null; then
-    docker compose up -d --build
-else
-    docker-compose up -d --build
-fi
-write_ok "Docker Compose workloads launched."
+# 4. Launch Container Compose Stack
+write_info "Step 4: Launching container compose stack ($COMPOSE_CMD)..."
+$COMPOSE_CMD up -d --build
+write_ok "Container compose workloads launched."
 
 # 5. Wait for Backend Health Response
 write_info "Step 5: Waiting for backend services to initialize..."
@@ -108,7 +125,7 @@ echo ""
 if [ "$HEALTHY" = true ]; then
     write_ok "PCOS Backend is healthy and responding!"
 else
-    write_warn "Backend is initializing. Check status with: docker compose ps"
+    write_warn "Backend is initializing. Check status with: $COMPOSE_CMD ps"
 fi
 
 # Determine Server IP for Mobile Access

@@ -22,26 +22,66 @@ function Write-Err  ($text) { Write-Host "[FAIL]  $text" -ForegroundColor Red }
 
 Write-Header "PCOS (Personal Cloud OS) -- One-Click Teardown"
 
-# 1. Verify Docker availability
-Write-Info "Step 1: Checking Docker availability..."
-try {
-    $dockerInfo = docker info 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Docker engine is not responding."
-    }
-    Write-Ok "Docker engine is running."
-} catch {
-    Write-Err "Docker is not running or not accessible."
+# 1. Verify Docker or Podman availability
+Write-Info "Step 1: Detecting container runtime (Docker or Podman)..."
+$runtime = $null
+$composeCmd = $null
+
+if (Get-Command docker -ErrorAction SilentlyContinue) {
+    try {
+        $null = docker info 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $runtime = "docker"
+            $composeCmd = "docker compose"
+        }
+    } catch {}
+}
+
+if (-not $runtime -and (Get-Command podman -ErrorAction SilentlyContinue)) {
+    try {
+        $null = podman info 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $runtime = "podman"
+            try {
+                $null = podman compose version 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    $composeCmd = "podman compose"
+                }
+            } catch {}
+
+            if (-not $composeCmd -and (Get-Command podman-compose -ErrorAction SilentlyContinue)) {
+                $composeCmd = "podman-compose"
+            }
+        }
+    } catch {}
+}
+
+if (-not $runtime -or -not $composeCmd) {
+    Write-Err "Neither Docker nor Podman is accessible."
     exit 1
 }
 
-# 2. Shut down Docker Compose Stack
+Write-Ok "Container runtime detected: $runtime ($composeCmd)"
+
+# 2. Shut down Container Compose Stack
 if ($PurgeVolumes) {
     Write-Warn "Step 2: Stopping all containers and PURGING persistent data volumes..."
-    docker compose down -v --remove-orphans
+    if ($composeCmd -eq "docker compose") {
+        docker compose down -v --remove-orphans
+    } elseif ($composeCmd -eq "podman compose") {
+        podman compose down -v
+    } else {
+        podman-compose down -v
+    }
 } else {
     Write-Info "Step 2: Stopping all container services (preserving data volumes)..."
-    docker compose down --remove-orphans
+    if ($composeCmd -eq "docker compose") {
+        docker compose down --remove-orphans
+    } elseif ($composeCmd -eq "podman compose") {
+        podman compose down
+    } else {
+        podman-compose down
+    }
 }
 
 if ($LASTEXITCODE -eq 0) {
