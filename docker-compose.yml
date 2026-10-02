@@ -92,6 +92,8 @@ services:
       PCOS_SMTP_FROM: "${PCOS_SMTP_FROM:-noreply@pcos.local}"
       PCOS_CORS_ORIGINS: "${PCOS_CORS_ORIGINS:-*}"
       PCOS_ADMIN_BOOTSTRAP_TOKEN: "${PCOS_ADMIN_BOOTSTRAP_TOKEN:-}"
+      PCOS_LAN_IP: "${PCOS_LAN_IP:-}"
+      PCOS_SERVER_IP: "${PCOS_SERVER_IP:-}"
       RUST_LOG: "${RUST_LOG:-pcos=info,tower_http=info,sqlx=warn}"
     volumes:
       - file_storage:/data/pcos/storage

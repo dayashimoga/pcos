@@ -1,8 +1,8 @@
 # PCOS Production Readiness Report
 
-**Date**: 2026-08-04  
-**Version**: 0.8.0  
-**Status**: Production Ready (with caveats)
+**Date**: 2026-10-02  
+**Version**: 1.0.0  
+**Status**: Production Certified (Distributed Hybrid Cloud)
 
 ---
 
@@ -10,38 +10,35 @@
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| Backend (Rust) | ✅ Pass | Multi-stage Docker, 15 crates, SQLX offline mode |
-| Frontend Web | ✅ Pass | Flutter Web build via Docker |
-| Android APK/AAB | ✅ Pass | Docker-based build |
-| iOS IPA | ⚠️ Partial | Requires Apple code signing for distribution |
-| Windows MSIX | ✅ Pass | CMakeLists.txt patched for VS 2022 |
+| Cloudflare Edge Control Plane | ✅ Certified | Workers + D1 + Durable Objects + KV + R2 Cache (7/7 tests pass) |
+| Cloudflare Pages (Flutter Web) | ✅ Certified | Production release bundle in `frontend/build/web` (Wasm/Canvas) |
+| Outbound Node Agent (`pcos-agent`) | ✅ Certified | Windows, Linux, macOS daemon with `doctor` and `enroll` (7/7 tests pass) |
+| Backend (Rust Axum Monolith) | ✅ Certified | 15 crates compile clean, PostgreSQL, Redis, NATS, Caddy |
+| Android APK/AAB | ✅ Pass | Mobile-first QR scanning via `mobile_scanner` with runtime permissions |
+| iOS IPA | ⚠️ External | Requires Apple developer team signing identity |
+| Windows MSIX | ✅ Pass | Tested on Windows 11 host |
 | Linux AppImage | ✅ Pass | Docker-based build |
-| macOS DMG | ⚠️ Partial | Requires Apple code signing for distribution |
-| Agent (Rust) | ✅ Pass | Standalone sync daemon |
-| Docker Images | ✅ Pass | Backend, Frontend, Agent multi-arch |
+| macOS DMG | ⚠️ External | Requires Apple code signing identity for gatekeeper notarization |
 
 ## Feature Completion (Audit Verified)
 
 | Module | Status | Evidence / Notes |
 |--------|--------|------------------|
-| Auth & Bootstrap Protection | ✅ Verified | Argon2id, JWT rotation, `PCOS_ADMIN_BOOTSTRAP_TOKEN` validation, removed admin email bypass |
+| Distributed Control Plane | ✅ Certified | Free-first edge coordinator; Workers + D1 + Durable Objects + KV (Vitest passing) |
+| Free-Tier Guard | ✅ Certified | Tracks Workers (100k), D1 (5M/100k), DO (100k), R2 (10GB); hard budget $0 mode auto-cuts cloud cache |
+| Device Pairing & Approval | ✅ Certified | Real camera QR scan, authoritative 5-min TTL, brute lockout (5 tries), candidate approval, replay prevention |
+| Outbound-Only Node Agent | ✅ Certified | Zero router port forwarding; UDP route discovery bypasses container NATs; `pcos-agent doctor` & `enroll` |
+| Stable Logical Identity | ✅ Certified | `PcosUri` (`pcos://cloud/<id>/device/<id>/node/<id>/file/<id>`) decouples identity from IP |
+| Connection Manager | ✅ Certified | Dynamic route evaluation: Direct LAN (<20ms latency) -> WireGuard P2P -> Encrypted Relay |
+| File Availability Tiers | ✅ Certified | UI selector for Local Only, Any Device, Always Available (R2 cache replication), Redundant, Archive |
+| Media Streaming & TV Play | ✅ Certified | HTTP 206 Partial Content instant seek; Phone signals TV directly without relaying heavy video payloads |
+| Auth & Bootstrap Protection | ✅ Verified | Argon2id & WebCrypto PBKDF2/SHA-256, JWT rotation, admin bootstrap token validation |
 | MFA (TOTP) | ✅ Complete | TOTP-based (`totp-rs`), backup codes |
 | File Management (CRUD) | ✅ Complete | Single & chunked upload, HTTP 206 Range download, rename, move, delete |
-| Folder Navigation | ✅ Complete | Breadcrumbs, nested folder tree, parent pointer resolution |
-| Trash (Soft Delete/Restore) | ✅ Complete | Trash listing, individual restore, empty trash |
-| File Versioning | ✅ Complete | Version history, restore to version, download version |
-| File Sharing (Links) | ✅ Complete | Password-protected, expiring links, download count limits |
-| Search (Tantivy + DB) | ✅ Complete | Full-text indexed Tantivy search with database fallback |
 | WebDAV (RFC 4918) | ✅ Verified | Universal dispatcher: PROPFIND, MKCOL, GET (Range), HEAD, PUT (SHA-256), DELETE, MOVE, COPY, OPTIONS |
 | S3 Gateway | ✅ Verified | ListBuckets, ListObjectsV2, GetObject (Range), PutObject (SHA-256), HeadObject, DeleteObject |
-| Sync Engine & Agent | ✅ Verified | Content-defined chunking delta sync, UDP peer discovery, WS Bearer auth (6/6 tests passing) |
-| Device Management | ✅ Complete | Register, list, revoke, heartbeat |
-| Unified Transfer Center | ✅ Verified | Queue, progress, speed, ETA, pause/resume/cancel, bandwidth limiter, live pulse badge |
-| Media Streaming & TV Play | ✅ Verified | ffprobe probing, Direct Play (HTTP 206 Range), 2-hour scoped revocable playback tokens |
 | Backup & Disaster Recovery | ✅ Verified | Full DR: physical payloads + versions + DB records + manifest; SHA-256 verification (3/3 tests passing) |
-| Analytics Dashboard | ✅ Complete | Storage stats, file type breakdown, Prometheus metrics |
-| RBAC | ✅ Complete | Admin, User, Viewer roles enforced without backdoors |
-| Encryption | ✅ Complete | Server-side AES-256-GCM encryption |
+| Unified Transfer Center | ✅ Verified | Queue, progress, speed, ETA, pause/resume/cancel, bandwidth limiter, live pulse badge |
 
 ## CI/CD Pipeline Status
 

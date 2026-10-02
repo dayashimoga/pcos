@@ -140,3 +140,25 @@
 | Plugin manifest + registry | ✅ | ✅ |
 | 8 lifecycle hooks | ✅ | ✅ |
 | i18n (10 locales, 16 keys) | ✅ | ✅ |
+
+## Distributed Edge & Hybrid Cloud
+
+| Feature | Cloudflare Edge | Node Agent | Flutter Client | Status |
+|---|---|---|---|---|
+| Cloudflare Workers Control API | ✅ | — | ✅ | ✅ |
+| Cloudflare Pages Static Web hosting | ✅ | — | ✅ | ✅ |
+| Durable Object DevicePresenceHub | ✅ | ✅ | ✅ | ✅ |
+| Durable Object PairingHub | ✅ | ✅ | ✅ | ✅ |
+| D1 Distributed Relational Control Store | ✅ | — | — | ✅ |
+| Authoritative QR / 6-digit Code Pairing | ✅ | ✅ | ✅ | ✅ |
+| Real Camera QR scanning with permissions | — | — | ✅ | ✅ |
+| Candidate Device Approval on Dashboard | ✅ | — | ✅ | ✅ |
+| Single-Use Enrollment Tokens & Lockout | ✅ | ✅ | ✅ | ✅ |
+| Dynamic Route Resolution (LAN / P2P / Relay) | ✅ | ✅ | ✅ | ✅ |
+| Outbound-Only Node Agent (`pcos-agent`) | — | ✅ | — | ✅ |
+| PCOS Node Doctor Diagnostics CLI | — | ✅ | — | ✅ |
+| Free-Tier Guard ($0 Hard Budget Mode) | ✅ | — | ✅ | ✅ |
+| File Availability Tiers | ✅ | ✅ | ✅ | ✅ |
+| Encrypted Cloud Cache Replication (R2) | ✅ | ✅ | ✅ | ✅ |
+| Play-on-TV & Send-to-Device Remote Control | ✅ | ✅ | ✅ | ✅ |
+

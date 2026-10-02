@@ -3,6 +3,7 @@ import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../main.dart' show themeNotifier;
+import '../widgets/free_tier_budget_card.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -557,7 +558,9 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 4),
         Text('Configure your PCOS instance',
             style: Theme.of(context).textTheme.bodyLarge),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
+        FreeTierBudgetCard(apiClient: getIt<ApiClient>()),
+        const SizedBox(height: 24),
         _SettingsSection(title: 'Account', children: [
           _SettingsTile(
             icon: Icons.person_rounded,

@@ -29,16 +29,29 @@ pub struct PortStatus {
 pub async fn get_connectivity_diagnostics(
     State(state): State<AppState>,
 ) -> Json<ConnectivityDiagnostics> {
-    // 1. Determine local LAN IP via UDP routing table lookup
-    let lan_ip = match UdpSocket::bind("0.0.0.0:0") {
-        Ok(socket) => match socket.connect("1.1.1.1:80") {
-            Ok(_) => match socket.local_addr() {
-                Ok(addr) => addr.ip().to_string(),
+    // 1. Determine local LAN IP (prioritize PCOS_LAN_IP env var if passed, else UDP routing)
+    let env_lan_ip = std::env::var("PCOS_LAN_IP")
+        .or_else(|_| std::env::var("PCOS_SERVER_IP"))
+        .ok()
+        .filter(|s| !s.trim().is_empty());
+
+    let lan_ip = if let Some(ip) = env_lan_ip {
+        let clean = ip.trim()
+            .trim_start_matches("http://")
+            .trim_start_matches("https://");
+        let host = clean.split('/').next().unwrap_or(clean);
+        host.split(':').next().unwrap_or(host).to_string()
+    } else {
+        match UdpSocket::bind("0.0.0.0:0") {
+            Ok(socket) => match socket.connect("1.1.1.1:80") {
+                Ok(_) => match socket.local_addr() {
+                    Ok(addr) => addr.ip().to_string(),
+                    Err(_) => "127.0.0.1".to_string(),
+                },
                 Err(_) => "127.0.0.1".to_string(),
             },
             Err(_) => "127.0.0.1".to_string(),
-        },
-        Err(_) => "127.0.0.1".to_string(),
+        }
     };
 
     // 2. Check RFC1918 and RFC6598 (CGNAT 100.64.0.0/10)

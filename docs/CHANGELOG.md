@@ -436,3 +436,18 @@ All notable changes to this project will be documented in this file.
 - 32 backend workspace unit tests passing with zero failures.
 - Zero Clippy warnings (`cargo clippy -- -D warnings`).
 - Clean code formatting (`cargo fmt --check`).
+
+## [1.0.0] - 2026-10-02
+
+### Added — Cloudflare Edge Control Plane & Distributed Personal Cloud
+- **Always-Available Edge Brain**: Implemented Cloudflare Workers + D1 database + Durable Objects (`PairingHub`, `DevicePresenceHub`) + KV config + optional encrypted R2 Cloud Cache. Separates control plane from data plane so heavy computing (FFmpeg, Tantivy, bulk transfers) stays on user-owned nodes.
+- **Strict Free-Tier Guard**: Built usage tracking for Workers requests (100k/day), D1 reads (5M/mo), D1 writes (100k/day), DO requests (100k/day), and R2 storage (10GB). Enforces hard budget=0 mode with automatic cloud cache cutoff to guarantee zero bills. Added `FreeTierBudgetCard` widget on Settings page.
+- **Authoritative Pairing & Complete Removal of Fake Codes**: Removed all client-side fallback pairing code generation. Pairing authority is strictly server-bound with 5-minute TTL, rate-limiting (max 5 failed attempts lockout), explicit user candidate approval on Web/Desktop dashboard (`[Approve] [Decline]`), and single-use token consumption.
+- **Mobile First QR Onboarding**: Implemented real camera QR scanning in Flutter via `mobile_scanner` with runtime camera permission handling, 6-digit OTP code entry, Connect button, Discover Nearby, and Manual Server moved under Advanced only.
+- **Outbound-Only Node Agent (`pcos-agent`)**: Lightweight Rust service enabling Windows, macOS, Linux, and NAS to act as storage nodes without router port forwarding. Implemented `pcos-agent doctor` (storage read/write, DNS, CGNAT, control plane probe, FFmpeg hardware acceleration) and `pcos-agent enroll` (one-command setup).
+- **Stable Logical Identity (`PcosUri`)**: Decoupled device and file identities from IP addresses using format `pcos://cloud/<cloud_id>/device/<device_id>/node/<node_id>/file/<file_id>`. Devices maintain sessions across network and IP changes without re-pairing.
+- **Dynamic Route Resolution (`ConnectionManager`)**: Evaluates caller and target network endpoints, routing through Direct LAN (<20ms latency check) -> WireGuard P2P -> Encrypted Relay.
+- **File Availability Policies & Cloud Cache**: Added `FileAvailabilitySheet` offering Local Only, Any of My Devices, Always Available Remotely (replicated to R2), Keep Redundant Copy, and Archive.
+- **Remote Control (Play-on-TV & Send-to-Device)**: Phone sends lightweight control instructions over open WebSocket channels; TV streams directly from the owning storage node without phone video proxying.
+- **CI/CD Automation (`cloudflare.yml`)**: GitHub Actions workflow running Vitest control plane tests, Flutter web release compilation, and automated deployment to Cloudflare Pages and Workers.
+

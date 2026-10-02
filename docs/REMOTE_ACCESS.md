@@ -22,50 +22,33 @@ PCOS Connect delivers effortless personal cloud connectivity: **install once →
 ```
 
 ## 2. Pluggable Connection Engine (`ConnectionManager`)
-PCOS implements the `RemoteAccessProvider` abstraction across all clients:
+PCOS implements the `ConnectionManager` abstraction across all clients and node agents:
 
-| Provider | Transport | Security | Best For |
+| Route | Transport | Security | Best For |
 |---|---|---|---|
-| **Direct LAN** | HTTP/2 or HTTP/1.1 via local IP | mTLS / JWT session | Home network, highest throughput, 0 internet dependency |
-| **Direct HTTPS** | TLS 1.3 / HTTP/2 via Caddy | Auto-TLS (Let's Encrypt / ZeroSSL) | Public IP, static DNS or dynamic DNS domains |
+| **Direct LAN** | Direct TCP/HTTP/2 via host LAN IP | Local TLS / Token auth | Home network, highest throughput, 0 internet dependency (<20ms latency) |
+| **Direct HTTPS** | TLS 1.3 / HTTP/2 via Cloudflare Pages or Caddy | Automated Edge TLS | Always-available Web access, worldwide edge CDN |
 | **WireGuard / Headscale P2P** | UDP / WireGuard protocol | Curve25519 + ChaCha20-Poly1305 | Behind NAT / CGNAT, direct encrypted peer-to-peer |
-| **NetBird Mesh** | WireGuard + WebRTC ICE/STUN | End-to-end encrypted mesh | Decentralized multi-device mesh topology |
-| **Encrypted Relay Tunnel** | TLS WebSocket / QUIC relay | Ephemeral end-to-end encryption | Strict symmetric NAT / firewalled enterprise networks |
+| **Encrypted Relay Tunnel** | WSS to Durable Object broker | Ephemeral end-to-end encryption | Strict symmetric NAT / firewalled enterprise networks |
 
 ### Connection Selection Logic
-1. **Probe Local Network**: Broadcasts/checks local endpoints using mDNS / local IP lookup. If reachable and TLS fingerprint matches server identity, switch to **Direct LAN**. Local transfers NEVER route over WAN.
-2. **Probe Public Domain**: If public domain is configured with valid TLS certificate and reachable, establish **Direct HTTPS**.
-3. **P2P Fallback**: If behind NAT or Carrier-Grade NAT (CGNAT `100.64.0.0/10`), initialize WireGuard/Headscale ICE hole-punching for zero-latency direct connection.
-4. **Relay Fallback**: If peer-to-peer is prevented by symmetric NAT, route traffic through encrypted relay tunnels.
+1. **Control Plane Handshake**: Devices connect outbound via WSS to the Cloudflare `DevicePresenceHub`.
+2. **Route Resolution (`GET /api/v1/devices/resolve/:id`)**: The edge evaluates caller IP, target IP, and LAN subnets:
+   - If both devices share the same public IP or local subnet -> **Direct LAN** (<20ms latency check).
+   - If peer has active WireGuard keys -> **P2P WireGuard**.
+   - Otherwise -> **Encrypted Relay Tunnel**.
+3. **Data Plane vs Control Plane Separation**: Media streams and 20GB file transfers transfer directly between devices. Only lightweight coordination commands (e.g. `play_on_tv`) flow through Cloudflare.
 
-## 3. Remote Access Configuration UI
-In PCOS Settings and PCOS Doctor, users can select:
-- `[● Automatic - Recommended]`: Discovers and switches between Direct LAN when at home, WireGuard/Direct HTTPS when remote.
-- `[○ Private devices only]`: WireGuard/Headscale peer-to-peer only; never exposes public HTTP ports.
-- `[○ Own domain]`: Uses custom DNS domain with automatic Caddy TLS certificate provisioning.
-- `[○ LAN only]`: Completely disables external access; isolates PCOS to trusted home subnet.
+## 3. Remote Control: Play-on-TV & Send-to-Device
+- **Play-on-TV**: The mobile phone sends a lightweight command to the Control Plane:
+  `POST /api/v1/control/commands { targetDeviceId: tvId, command: "play_on_tv", payload: { file_id } }`
+  The TV receives the command over its open WebSocket tunnel and streams directly from the storage node. The phone never proxies video data.
+- **Send-to-Device**: Instantly transfers files between enrolled devices with automatic resume, checksum verification, and integrity checks.
 
-## 4. PCOS Doctor Network Diagnostics
-The backend exposes `GET /api/v1/doctor/connectivity` which automatically performs:
-- **LAN IP Detection**: Identifies local network routing addresses.
-- **CGNAT Assessment**: Flags RFC 6598 carrier-grade NAT blocks (`100.64.0.0/10`) to inform users that inbound ports are filtered by ISP.
-- **Firewall & Port Availability**: Checks status of ports 80, 443, 51820.
-- **TLS Health**: Verifies reverse proxy certificate status.
-- **Provider Recommendation**: Evaluates conditions and recommends the fastest, safest connection path.
-- **UPnP Rule**: PCOS **never** silently enables UPnP or alters router configuration without explicit user consent.
+## 4. One-Scan Device Provisioning & Approval
+1. Web Console initiates an authoritative pairing session via `POST /api/v1/devices/pair`.
+2. Mobile scans the real camera QR code or enters the 6-digit code.
+3. Mobile claims the session via `POST /api/v1/devices/pair/claim`.
+4. Web Console prompts the owner: "Samsung S24 Ultra wants to connect" `[Approve] [Decline]`.
+5. Upon user approval, mutual trust is established, single-use tokens are consumed, and the device is enrolled.
 
-## 5. One-Scan Device Provisioning
-Device pairing is secured with short-lived, rate-limited enrollment tokens:
-1. User clicks **Connect Device** on Web Console (`/devices/onboarding`).
-2. Server calls `POST /api/v1/devices/pair`, creating an in-memory session with:
-   - 6-digit numeric OTP for TV/keyboard input
-   - 32-byte cryptographic enrollment token
-   - 300-second (5 minute) TTL
-   - Rate limit of 5 pairing attempts per minute
-3. QR code embeds server URL, enrollment token, OTP, and server identity fingerprint.
-4. Mobile or desktop device scans QR, calls `POST /api/v1/devices/pair/redeem`:
-   - Validates enrollment token
-   - Registers new device identity (`client_type`, `client_name`, `client_version`)
-   - Mints initial device-bound JWT token pair
-   - Permanently burns enrollment token (one-time use)
-5. Device is immediately connected with zero manual URL, IP, or credential entry!

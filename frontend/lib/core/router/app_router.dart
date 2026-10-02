@@ -6,8 +6,10 @@ import '../../features/admin/pages/admin_page.dart';
 import '../../features/admin/pages/api_explorer_page.dart';
 import '../../features/dashboard/pages/dashboard_page.dart';
 import '../../features/dashboard/widgets/shell_layout.dart';
+import '../../features/devices/pages/device_connect_page.dart';
 import '../../features/devices/pages/devices_page.dart';
 import '../../features/devices/pages/device_onboarding_page.dart';
+import '../../features/devices/pages/device_redeem_page.dart';
 import '../../features/doctor/pages/doctor_page.dart';
 import '../../features/files/pages/files_page.dart';
 import '../../features/files/pages/duplicate_finder_page.dart';
@@ -36,10 +38,12 @@ class AppRouter {
     redirect: (context, state) {
       final isAuth = _isAuthenticated();
       final isAuthPage = state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
+          state.matchedLocation == '/register' ||
+          state.matchedLocation == '/connect';
       final isSetup = state.matchedLocation == '/setup';
+      final isPair = state.matchedLocation == '/pair';
 
-      if (!isAuth && !isAuthPage && !isSetup) return '/login';
+      if (!isAuth && !isAuthPage && !isSetup && !isPair) return '/login';
       if (isAuth && isAuthPage) return '/dashboard';
       return null;
     },
@@ -48,6 +52,15 @@ class AppRouter {
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterPage()),
       GoRoute(path: '/setup', builder: (_, __) => const SetupWizardPage()),
+      GoRoute(path: '/connect', builder: (_, __) => const DeviceConnectPage()),
+      GoRoute(
+        path: '/pair',
+        builder: (context, state) {
+          final code = state.uri.queryParameters['code'] ?? '';
+          final server = state.uri.queryParameters['server'];
+          return DeviceRedeemPage(code: code, serverUrl: server);
+        },
+      ),
 
       // Shell routes (with sidebar/drawer)
       ShellRoute(

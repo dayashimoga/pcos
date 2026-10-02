@@ -1,13 +1,17 @@
 #![allow(dead_code)]
 
 mod config;
+mod connection_manager;
 mod db;
 mod delta;
 mod discovery;
+mod doctor;
+mod enroll;
+mod identity;
 mod sync;
 mod watcher;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Parser)]
@@ -31,6 +35,44 @@ struct Cli {
     /// Show agent status
     #[arg(long)]
     status: bool,
+
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// One-command device pairing and node enrollment
+    Enroll {
+        /// 6-digit pairing code from your PCOS Web or Mobile app
+        #[arg(short, long)]
+        code: String,
+
+        /// PCOS Control Plane server URL
+        #[arg(short, long, default_value = "http://localhost:8080")]
+        server: String,
+    },
+
+    /// Run node health diagnostics (storage, networking, CGNAT, control plane, FFmpeg)
+    Doctor {
+        /// Storage directory to test
+        #[arg(short, long, default_value = ".")]
+        storage: String,
+
+        /// PCOS Control Plane server URL
+        #[arg(short, long, default_value = "http://localhost:8080")]
+        server: String,
+    },
+
+    /// Start the outbound node agent service
+    Start {
+        /// Run in background daemon mode
+        #[arg(short, long)]
+        daemon: bool,
+    },
+
+    /// Display node configuration and synchronization statistics
+    Status,
 }
 
 #[tokio::main]
@@ -48,6 +90,29 @@ async fn main() -> anyhow::Result<()> {
 
     // Expand ~ in config path
     let config_path = shellexpand(&cli.config);
+
+    // Handle subcommands first
+    if let Some(cmd) = cli.command {
+        match cmd {
+            Commands::Enroll { code, server } => {
+                return enroll::enroll_node_with_code(&code, &server, &config_path).await;
+            }
+            Commands::Doctor { storage, server } => {
+                let report = doctor::DoctorReport::run_diagnostics(&storage, &server).await;
+                report.print_report();
+                return Ok(());
+            }
+            Commands::Status => {
+                let agent_config = config::AgentConfig::load_or_create(&config_path)?;
+                let local_db = db::LocalDb::open(&agent_config.data_dir)?;
+                print_status(&agent_config, &local_db)?;
+                return Ok(());
+            }
+            Commands::Start { daemon: _ } => {
+                // proceed to start daemon
+            }
+        }
+    }
 
     // Load or create config
     let agent_config = config::AgentConfig::load_or_create(&config_path)?;
@@ -89,21 +154,12 @@ async fn main() -> anyhow::Result<()> {
     }
 
     if cli.status {
-        println!("PCOS Agent v{}", env!("CARGO_PKG_VERSION"));
-        println!("Server: {}", agent_config.server_url);
-        println!("Data dir: {}", agent_config.data_dir);
-        println!("Sync folders: {}", agent_config.sync_folders.len());
-        for folder in &agent_config.sync_folders {
-            println!("  - {}", folder);
-        }
-        let stats = local_db.stats()?;
-        println!("Cached files: {}", stats.total_files);
-        println!("Pending sync: {}", stats.pending_sync);
+        print_status(&agent_config, &local_db)?;
         return Ok(());
     }
 
     // Start daemon mode
-    tracing::info!("Starting in daemon mode");
+    tracing::info!("Starting in daemon mode (Outbound TLS/WSS node active)");
 
     // Start filesystem watcher
     let watcher_handle = {
@@ -125,24 +181,17 @@ async fn main() -> anyhow::Result<()> {
         })
     };
 
-    // Start heartbeat
-    let heartbeat_handle = {
-        let config = agent_config.clone();
-        tokio::spawn(async move {
-            loop {
-                let client = reqwest::Client::new();
-                let _ = client
-                    .put(format!(
-                        "{}/api/v1/devices/{}/heartbeat",
-                        config.server_url, config.device_id
-                    ))
-                    .bearer_auth(&config.auth_token)
-                    .send()
-                    .await;
-                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
-            }
-        })
-    };
+    // Start Outbound Connection Manager loop (TLS/WSS tunnel + host LAN IP discovery + remote commands)
+    let cm = connection_manager::ConnectionManager::new(
+        agent_config.server_url.clone(),
+        agent_config.device_id.clone(),
+        agent_config.user_id.clone(),
+        agent_config.auth_token.clone(),
+        agent_config.data_dir.clone(),
+    );
+    let cm_handle = tokio::spawn(async move {
+        cm.start_outbound_loop().await;
+    });
 
     // Start LAN P2P discovery
     let discovery = discovery::LanDiscovery::new(agent_config.device_id.clone(), 8080);
@@ -157,13 +206,28 @@ async fn main() -> anyhow::Result<()> {
 
     // Wait for shutdown signal
     tokio::signal::ctrl_c().await?;
-    tracing::info!("Shutting down...");
+    tracing::info!("Shutting down PCOS Agent...");
 
     watcher_handle.abort();
     sync_handle.abort();
-    heartbeat_handle.abort();
+    cm_handle.abort();
     discovery_handle.abort();
 
+    Ok(())
+}
+
+fn print_status(config: &config::AgentConfig, db: &db::LocalDb) -> anyhow::Result<()> {
+    println!("PCOS Agent v{}", env!("CARGO_PKG_VERSION"));
+    println!("Server: {}", config.server_url);
+    println!("Device ID: {}", if config.device_id.is_empty() { "Not Enrolled" } else { &config.device_id });
+    println!("Data dir: {}", config.data_dir);
+    println!("Sync folders: {}", config.sync_folders.len());
+    for folder in &config.sync_folders {
+        println!("  - {}", folder);
+    }
+    let stats = db.stats()?;
+    println!("Cached files: {}", stats.total_files);
+    println!("Pending sync: {}", stats.pending_sync);
     Ok(())
 }
 

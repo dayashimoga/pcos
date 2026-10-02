@@ -1,0 +1,67 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pcos-control-plane",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "assets": {
+    "directory": "../frontend/build/web",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pcos-control-db",
+      "database_id": "pcos-control-db-prod",
+      "migrations_table": "_migrations",
+      "migrations_dir": "./migrations"
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PAIRING_HUB",
+        "class_name": "PairingHub"
+      },
+      {
+        "name": "PRESENCE_HUB",
+        "class_name": "DevicePresenceHub"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["PairingHub", "DevicePresenceHub"]
+    }
+  ],
+
+  "kv_namespaces": [
+    {
+      "binding": "CONFIG_KV",
+      "id": "pcos-config-kv-prod"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "CACHE_R2",
+      "bucket_name": "pcos-cloud-cache"
+    }
+  ],
+
+  "vars": {
+    "PCOS_ENV": "production",
+    "PCOS_CONTROL_VERSION": "1.0.0",
+    "FREE_TIER_HARD_BUDGET": "true",
+    "MAX_R2_STORAGE_GB": "10",
+    "MAX_WORKERS_PER_DAY": "100000",
+    "MAX_D1_WRITES_PER_DAY": "100000",
+    "MAX_D1_READS_PER_MONTH": "5000000"
+  }
+}

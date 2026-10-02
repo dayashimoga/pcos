@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
@@ -253,6 +254,35 @@ class _LoginPageState extends State<LoginPage>
                 );
               },
             ),
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text('OR',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white.withOpacity(0.4))),
+              ),
+              Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
+            ]),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              key: const Key('pair_device_button'),
+              onPressed: () => _showServerConfig(context),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                side: BorderSide(color: AppTheme.primary.withOpacity(0.5)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: const Icon(Icons.qr_code_scanner_rounded,
+                  color: AppTheme.primary, size: 20),
+              label: const Text('Pair Device with QR or 6-Digit Code',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600, color: Colors.white)),
+            ),
           ],
         ),
       ),
@@ -347,32 +377,60 @@ class _LoginPageState extends State<LoginPage>
                     ),
                   ]),
                 ),
+              const SizedBox(height: 8),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: testing
-                          ? null
-                          : () async {
-                              setDialogState(() {
-                                testing = true;
-                                testResult = null;
-                              });
-                              final err = await api.testServerUrl(ctrl.text);
-                              setDialogState(() {
-                                testing = false;
-                                testSuccess = (err == null);
-                                testResult = err ?? 'Connection successful!';
-                              });
-                            },
-                      icon: testing
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.wifi_find_rounded, size: 16),
-                      label: Text(testing ? 'Testing...' : 'Test Connection'),
-                    ),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final data = await Clipboard.getData('text/plain');
+                      final text = data?.text?.trim() ?? '';
+                      if (text.isNotEmpty) {
+                        if (text.contains('code=')) {
+                          final uri = Uri.tryParse(text);
+                          if (uri != null) {
+                            final c = uri.queryParameters['code'];
+                            if (c != null) codeCtrl.text = c;
+                            ctrl.text =
+                                '${uri.scheme}://${uri.host}${uri.hasPort ? ":${uri.port}" : ""}';
+                          }
+                        } else if (text.length == 6 &&
+                            int.tryParse(text) != null) {
+                          codeCtrl.text = text;
+                        } else if (text.startsWith('http://') ||
+                            text.startsWith('https://')) {
+                          ctrl.text = text;
+                        }
+                        setDialogState(() {});
+                      }
+                    },
+                    icon: const Icon(Icons.paste_rounded, size: 14),
+                    label: const Text('Paste Code / Link',
+                        style: TextStyle(fontSize: 12)),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: testing
+                        ? null
+                        : () async {
+                            setDialogState(() {
+                              testing = true;
+                              testResult = null;
+                            });
+                            final err = await api.testServerUrl(ctrl.text);
+                            setDialogState(() {
+                              testing = false;
+                              testSuccess = (err == null);
+                              testResult = err ?? 'Connection successful!';
+                            });
+                          },
+                    icon: testing
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.wifi_find_rounded, size: 14),
+                    label: Text(testing ? 'Testing...' : 'Test',
+                        style: const TextStyle(fontSize: 12)),
                   ),
                 ],
               ),
@@ -386,6 +444,33 @@ class _LoginPageState extends State<LoginPage>
               onPressed: () async {
                 final messenger = ScaffoldMessenger.of(context);
                 final newUrl = ctrl.text.trim();
+                final code = codeCtrl.text.trim();
+
+                if (code.isNotEmpty) {
+                  setDialogState(() {
+                    testing = true;
+                    testResult = null;
+                  });
+                  try {
+                    await api.redeemPairingCode(code, serverUrl: newUrl);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    messenger.showSnackBar(const SnackBar(
+                      content:
+                          Text('Device paired successfully! Welcome to PCOS.'),
+                      backgroundColor: AppTheme.success,
+                    ));
+                    if (mounted) context.go('/dashboard');
+                    return;
+                  } catch (e) {
+                    setDialogState(() {
+                      testing = false;
+                      testSuccess = false;
+                      testResult = 'Pairing failed: ${ApiClient.formatError(e)}';
+                    });
+                    return;
+                  }
+                }
+
                 await api.setServerUrl(newUrl);
                 if (mounted) setState(() {});
                 if (ctx.mounted) Navigator.pop(ctx);
@@ -394,7 +479,9 @@ class _LoginPageState extends State<LoginPage>
                   backgroundColor: AppTheme.success,
                 ));
               },
-              child: const Text('Save & Connect'),
+              child: Text(codeCtrl.text.trim().isNotEmpty
+                  ? 'Pair & Sign In'
+                  : 'Save & Connect'),
             ),
           ],
         ),

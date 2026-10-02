@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../router/app_router.dart';
 
@@ -53,11 +54,19 @@ class ApiClient {
     if (stored != null && stored.isNotEmpty) {
       return stored;
     }
-    final envUrl = _resolveBaseUrl();
-    if (envUrl.isEmpty) {
-      return 'http://192.168.0.111';
+    if (kIsWeb) {
+      return Uri.base.origin;
     }
-    return envUrl;
+    final envUrl = _resolveBaseUrl();
+    if (envUrl.isNotEmpty) {
+      return envUrl;
+    }
+    const cloudUrl = String.fromEnvironment('CONTROL_PLANE_URL',
+        defaultValue: 'https://api.pcos.pages.dev');
+    if (cloudUrl.isNotEmpty && cloudUrl.startsWith('http')) {
+      return cloudUrl;
+    }
+    return '';
   }
 
   Future<void> setServerUrl(String url) async {
@@ -110,7 +119,7 @@ class ApiClient {
 
   ApiClient({required this.prefs}) {
     dio = Dio(BaseOptions(
-      baseUrl: currentServerUrl,
+      baseUrl: kIsWeb ? '' : currentServerUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
@@ -180,6 +189,162 @@ class ApiClient {
     AppRouter.setAuthToken(accessToken);
   }
 
+  /// Claim a pairing code from mobile device and request Web/Desktop user approval.
+  Future<Map<String, dynamic>> claimPairingCode({
+    required String code,
+    String? enrollmentToken,
+    String? serverUrl,
+    required String deviceName,
+    required String deviceType,
+    required String os,
+    String? osVersion,
+    String? agentVersion,
+    String? clientFingerprint,
+  }) async {
+    final cleanCode = code.trim().replaceAll(' ', '');
+    final targetUrl = serverUrl != null && serverUrl.trim().isNotEmpty
+        ? serverUrl.trim()
+        : currentServerUrl;
+
+    String normalizedUrl = targetUrl;
+    if (normalizedUrl.endsWith('/')) {
+      normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length - 1);
+    }
+    if (!normalizedUrl.startsWith('http://') &&
+        !normalizedUrl.startsWith('https://')) {
+      normalizedUrl = 'http://$normalizedUrl';
+    }
+
+    final client = Dio(BaseOptions(
+      baseUrl: normalizedUrl,
+      connectTimeout: const Duration(seconds: 8),
+      receiveTimeout: const Duration(seconds: 8),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ));
+
+    final res = await client.post('/api/v1/devices/pair/claim', data: {
+      'pairing_code': cleanCode,
+      if (enrollmentToken != null) 'enrollment_token': enrollmentToken,
+      'device_name': deviceName,
+      'device_type': deviceType,
+      'os': os,
+      'os_version': osVersion ?? '',
+      'agent_version': agentVersion ?? '0.1.0',
+      if (clientFingerprint != null) 'client_fingerprint': clientFingerprint,
+    });
+
+    if (res.data != null && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Invalid response from claim endpoint');
+  }
+
+  /// Get real-time status of a pairing session.
+  Future<Map<String, dynamic>> getPairingStatus({
+    String? code,
+    String? token,
+    String? serverUrl,
+  }) async {
+    final targetUrl = serverUrl != null && serverUrl.trim().isNotEmpty
+        ? serverUrl.trim()
+        : currentServerUrl;
+
+    String normalizedUrl = targetUrl;
+    if (normalizedUrl.endsWith('/')) {
+      normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length - 1);
+    }
+    if (!normalizedUrl.startsWith('http://') &&
+        !normalizedUrl.startsWith('https://')) {
+      normalizedUrl = 'http://$normalizedUrl';
+    }
+
+    final client = Dio(BaseOptions(
+      baseUrl: normalizedUrl,
+      connectTimeout: const Duration(seconds: 6),
+      receiveTimeout: const Duration(seconds: 6),
+    ));
+
+    final res =
+        await client.get('/api/v1/devices/pair/status', queryParameters: {
+      if (code != null) 'code': code.trim().replaceAll(' ', ''),
+      if (token != null) 'token': token.trim(),
+    });
+
+    if (res.data != null && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Invalid status response from pairing server');
+  }
+
+  /// Approve or reject a candidate device from the Web/Desktop client.
+  Future<Map<String, dynamic>> approvePairing({
+    String? code,
+    String? token,
+    required bool approved,
+  }) async {
+    final res = await dio.post('/api/v1/devices/pair/approve', data: {
+      if (code != null) 'pairing_code': code.trim().replaceAll(' ', ''),
+      if (token != null) 'enrollment_token': token.trim(),
+      'approved': approved,
+    });
+
+    if (res.data != null && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Failed to approve pairing');
+  }
+
+  /// Redeem a 6-digit pairing code to enroll device and sign in automatically.
+  Future<Map<String, dynamic>> redeemPairingCode(
+    String code, {
+    String? enrollmentToken,
+    String? serverUrl,
+  }) async {
+    final cleanCode = code.trim().replaceAll(' ', '');
+    final targetUrl = serverUrl != null && serverUrl.trim().isNotEmpty
+        ? serverUrl.trim()
+        : currentServerUrl;
+
+    String normalizedUrl = targetUrl;
+    if (normalizedUrl.endsWith('/')) {
+      normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length - 1);
+    }
+    if (!normalizedUrl.startsWith('http://') &&
+        !normalizedUrl.startsWith('https://')) {
+      normalizedUrl = 'http://$normalizedUrl';
+    }
+
+    final client = Dio(BaseOptions(
+      baseUrl: normalizedUrl,
+      connectTimeout: const Duration(seconds: 8),
+      receiveTimeout: const Duration(seconds: 8),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ));
+
+    final res = await client.post('/api/v1/devices/pair/redeem', data: {
+      'pairing_code': cleanCode,
+      if (enrollmentToken != null) 'enrollment_token': enrollmentToken,
+      'device_name': kIsWeb ? 'Web Client' : 'Mobile Phone',
+      'device_type': kIsWeb ? 'web' : 'mobile',
+      'os': defaultTargetPlatform.name,
+    });
+
+    if (res.data != null && res.data['access_token'] != null) {
+      final access = res.data['access_token'] as String;
+      final refresh = res.data['refresh_token'] as String;
+      await setServerUrl(normalizedUrl);
+      await saveTokens(access, refresh);
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Invalid response from pairing server');
+  }
+
   /// Clear tokens on logout.
   Future<void> clearTokens() async {
     await prefs.remove(_accessTokenKey);
@@ -199,8 +364,11 @@ class ApiClient {
     if (refreshToken == null) return false;
 
     try {
+      final base = dio.options.baseUrl;
+      final refreshUrl =
+          base.isEmpty ? '/api/v1/auth/refresh' : '$base/api/v1/auth/refresh';
       final response = await Dio().post(
-        '${dio.options.baseUrl}api/v1/auth/refresh',
+        refreshUrl,
         data: {'refresh_token': refreshToken},
       );
 
@@ -214,5 +382,78 @@ class ApiClient {
       await clearTokens();
     }
     return false;
+  }
+
+  /// Dispatch real-time remote commands (Play-on-TV, Send-to-Device)
+  Future<Map<String, dynamic>> sendCommand({
+    required String targetDeviceId,
+    required String command,
+    required Map<String, dynamic> payload,
+  }) async {
+    final res = await dio.post('/api/v1/control/commands', data: {
+      'targetDeviceId': targetDeviceId,
+      'command': command,
+      'payload': payload,
+    });
+    if (res.data != null && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Failed to dispatch control command');
+  }
+
+  /// Resolve optimal connection route (Direct LAN, P2P WireGuard, or Relay)
+  Future<Map<String, dynamic>> getDeviceRoute(
+    String targetDeviceId, {
+    String? callerLanIp,
+  }) async {
+    final res = await dio.get(
+      '/api/v1/devices/resolve/$targetDeviceId',
+      queryParameters: {
+        if (callerLanIp != null) 'callerLanIp': callerLanIp,
+      },
+    );
+    if (res.data != null && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Failed to resolve device route');
+  }
+
+  /// Fetch Cloudflare Free-Tier Guard usage & budget statistics
+  Future<Map<String, dynamic>> getFreeTierUsage() async {
+    final res = await dio.get('/api/v1/free-tier/usage');
+    if (res.data != null && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Failed to fetch free tier usage');
+  }
+
+  /// Update file availability policy (local_only, any_device, always_available, redundant, archive)
+  Future<Map<String, dynamic>> setFileAvailability(
+    String fileId,
+    String availabilityTier,
+  ) async {
+    final res = await dio.put(
+      '/api/v1/files/$fileId/availability',
+      data: {'availability_tier': availabilityTier},
+    );
+    if (res.data != null && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Failed to update file availability tier');
+  }
+
+  /// Request file replication to encrypted cloud cache or secondary node
+  Future<Map<String, dynamic>> replicateFile(
+    String fileId, {
+    String target = 'r2_cache',
+  }) async {
+    final res = await dio.post(
+      '/api/v1/files/$fileId/replicate',
+      data: {'target': target},
+    );
+    if (res.data != null && res.data is Map) {
+      return Map<String, dynamic>.from(res.data);
+    }
+    throw Exception('Failed to replicate file');
   }
 }

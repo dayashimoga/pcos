@@ -208,3 +208,21 @@
 ### Test Coverage
 - Current: 57 unit tests + 30+ API tests across 12 versions
 - Target: 90%+ (enforced by qa/scripts/certify.sh)
+
+---
+
+## Sprint: Cloudflare Edge Control Plane & Distributed Storage Nodes (Completed 2026-10-02)
+
+- [x] Cloudflare Edge Control Plane: Workers + D1 + Durable Objects (`PairingHub`, `DevicePresenceHub`) + KV + R2 Cache
+- [x] Cloudflare Pages static web production deployment with CSP, immutability headers, and SPA redirects
+- [x] Authoritative 5-minute QR / 6-digit code device pairing with Candidate Approval on dashboard and brute-force lockout (5 attempts)
+- [x] Complete removal of client-side fake fallback pairing codes
+- [x] Real camera QR scanning in Flutter mobile app via `mobile_scanner` with runtime permissions
+- [x] Outbound-only Node Agent (`pcos-agent`) with `doctor`, `enroll`, `start`, and `status` subcommands
+- [x] Dynamic Route Resolution (`ConnectionManager`) prioritizing Direct LAN (<20ms latency) -> WireGuard P2P -> Encrypted Relay
+- [x] Free-Tier Guard ($0 Hard Budget Mode) with real-time usage card on Settings page and automatic cloud cache cutoff
+- [x] Stable logical identity model (`PcosUri`) decoupling device and file identities from IP addresses
+- [x] File Availability Tiers (`FileAvailabilitySheet`) and encrypted R2 cloud cache replication
+- [x] Remote Play-on-TV & Send-to-Device command dispatch over open WebSocket control channels
+- [x] Automated GitHub Actions workflow (`cloudflare.yml`) for edge testing and deployment
+

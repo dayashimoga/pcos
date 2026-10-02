@@ -2,51 +2,53 @@
 
 ## System Overview
 
-PCOS follows a modular monolith architecture for the backend (Sprint 1-3), designed to be split into microservices as scale requires. The system consists of:
+PCOS features a hybrid distributed architecture that splits the **Always-Available Edge Control Plane** from the **User-Owned Local Data Plane**:
 
-1. **Flutter Web Client** — Responsive SPA for file management and administration
-2. **Rust Backend** — Axum-based API server with modular crate architecture
-3. **Device Agent** — Rust binary running on user devices for file sync (Sprint 3)
-4. **Infrastructure** — PostgreSQL, Redis, NATS, Caddy reverse proxy
+1. **Cloudflare Edge Control Plane (Production)**:
+   - **Flutter Web Client (Pages/Static Assets)**: Global CDN-hosted responsive SPA (`https://<project>.pages.dev`).
+   - **Edge Workers**: Low-latency authentication, connection broker, device registry, and free-tier usage tracking.
+   - **Durable Objects (`PairingHub`, `DevicePresenceHub`)**: In-memory WebSocket presence, real-time pairing approvals, and command dispatch (`play_on_tv`, `send_to_device`).
+   - **D1 Database**: Authoritative logical identity and location metadata.
+   - **R2 Cloud Cache (Optional)**: Free-tier enclosed encrypted cloud cache for "Always Available" files.
 
-## Architecture Diagram
+2. **PCOS Storage Nodes (User Hardware)**:
+   - **Outbound Agent (`pcos-agent`)**: Runs on Windows, macOS, Linux, and NAS devices. Establishes outbound TLS/WSS connections to the Control Plane without router port forwarding.
+   - **Local Storage & Compute**: Keeps multi-gigabyte files, block-level delta chunking, Tantivy search, OCR, local Ollama AI, and FFmpeg hardware-accelerated transcoding strictly local.
+
+3. **Local Monolith (Self-Hosted / Offline LAN / Dev)**:
+   - Axum-based Rust backend (`pcos-server`), PostgreSQL, Redis, NATS, and Caddy reverse proxy for complete air-gapped self-hosting.
+
+## Distributed Architecture Diagram
 
 ```
+                    INTERNET
+                       │
+             https://<pcos>.pages.dev
+                       │
 ┌─────────────────────────────────────────────────────────────┐
-│                        Caddy (Reverse Proxy)                │
-│                    TLS termination, routing                  │
-└─────────┬──────────────────────────────────┬────────────────┘
-          │ /api/*                           │ /*
-          ▼                                  ▼
-┌──────────────────┐              ┌──────────────────────┐
-│  Rust Backend    │              │  Flutter Web Client  │
-│  (pcos-server)   │              │  (nginx + SPA)       │
-│                  │              └──────────────────────┘
-│  ┌─────────────┐ │
-│  │  Gateway    │ │     ┌──────────┐
-│  │  (routes,   │ │────▶│PostgreSQL│
-│  │  middleware)│ │     └──────────┘
-│  └─────────────┘ │
-│  ┌─────────────┐ │     ┌──────────┐
-│  │  Auth       │ │────▶│  Redis   │
-│  │  User       │ │     └──────────┘
-│  │  Device     │ │
-│  │  FileMeta   │ │     ┌──────────┐
-│  │  Search     │ │────▶│  NATS    │
-│  │  ...        │ │     └──────────┘
-│  └─────────────┘ │
-└──────────────────┘
-          ▲
-          │ Outbound WebSocket
-┌─────────┴────────┐
-│  Device Agent    │
-│  (Rust binary)   │
-│  ┌─────────────┐ │
-│  │  SQLite     │ │
-│  │  (local     │ │
-│  │   cache)    │ │
-│  └─────────────┘ │
-└──────────────────┘
+│          CLOUDFLARE EDGE / FREE-FIRST CONTROL PLANE         │
+│                                                             │
+│  Pages / Static Assets  ─▶  Flutter Web (Wasm/Canvas)       │
+│  Edge Workers           ─▶  Auth / Routing / Token Minting  │
+│  Durable Objects        ─▶  WS Presence & Pairing Hub       │
+│  D1 Database            ─▶  Logical Identities & Metadata   │
+│  R2 Storage (Optional)  ─▶  Encrypted Cloud Cache (<=10GB)  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Outbound TLS/WSS
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     CONNECTION MANAGER                      │
+│       Selects Direct LAN ─▶ WireGuard P2P ─▶ Relay Tunnel   │
+└───────────────┬─────────────────────────────┬───────────────┘
+                │                             │
+                ▼                             ▼
+   ┌──────────────────────────┐  ┌──────────────────────────┐
+   │    Desktop PCOS Node     │  │     Laptop PCOS Node     │
+   │  ┌────────────────────┐  │  │  ┌────────────────────┐  │
+   │  │ FFmpeg / Tantivy   │  │  │  │ Watcher / Delta    │  │
+   │  │ Local SSD Storage  │  │  │  │ Local NVMe Storage │  │
+   │  └────────────────────┘  │  │  └────────────────────┘  │
+   └──────────────────────────┘  └──────────────────────────┘
 ```
 
 ## Backend Crate Structure

@@ -1,0 +1,107 @@
+name: Cloudflare Edge Control Plane & Web Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cloudflare/**'
+      - 'frontend/**'
+      - '.github/workflows/cloudflare.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'cloudflare/**'
+      - 'frontend/**'
+      - '.github/workflows/cloudflare.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-control-plane:
+    name: Test Edge Control Plane (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: cloudflare/package-lock.json
+
+      - name: Install dependencies
+        working-directory: cloudflare
+        run: npm ci
+
+      - name: Run Vitest Suite
+        working-directory: cloudflare
+        run: npm test
+
+      - name: Wrangler Dry-Run Check
+        working-directory: cloudflare
+        run: npx wrangler deploy --dry-run
+
+  build-flutter-web:
+    name: Build Flutter Web Client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Verify Web Build
+        working-directory: frontend
+        run: flutter build web --release --dart-define=PCOS_ENV=production
+
+      - name: Upload Web Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-web-bundle
+          path: frontend/build/web
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Cloudflare Pages & Workers
+    needs: [test-control-plane, build-flutter-web]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: cloudflare/package-lock.json
+
+      - name: Download Web Build
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-web-bundle
+          path: frontend/build/web
+
+      - name: Install dependencies
+        working-directory: cloudflare
+        run: npm ci
+
+      - name: Automatically Provision Cloudflare Resources (D1, Schema, KV, R2, DO)
+        working-directory: cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run provision
+
+      - name: Deploy Edge Control Plane & Static Web
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloudflare
+          command: deploy

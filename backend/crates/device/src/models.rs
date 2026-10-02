@@ -43,8 +43,9 @@ pub struct RegisterDeviceRequest {
 }
 
 /// Response DTO for device data.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceResponse {
+
     pub id: Uuid,
     pub name: String,
     pub device_type: String,
@@ -107,15 +108,64 @@ pub struct RedeemPairingRequest {
     pub os: String,
     pub os_version: Option<String>,
     pub agent_version: Option<String>,
+    pub client_fingerprint: Option<String>,
+}
+
+/// Candidate device requesting connection
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CandidateDevice {
+    pub device_name: String,
+    pub device_type: String,
+    pub os: String,
+    pub os_version: String,
+    pub agent_version: String,
+    pub client_fingerprint: Option<String>,
+    pub requested_at: DateTime<Utc>,
+}
+
+/// Request to claim a pairing code from mobile device
+#[derive(Debug, Deserialize, Validate)]
+pub struct ClaimPairingRequest {
+    pub pairing_code: Option<String>,
+    pub enrollment_token: Option<String>,
+    #[validate(length(min = 1, max = 100))]
+    pub device_name: String,
+    #[validate(length(min = 1, max = 50))]
+    pub device_type: String,
+    #[validate(length(min = 1, max = 50))]
+    pub os: String,
+    pub os_version: Option<String>,
+    pub agent_version: Option<String>,
+    pub client_fingerprint: Option<String>,
+}
+
+/// Request to approve or reject a pending pairing session
+#[derive(Debug, Deserialize)]
+pub struct ApprovePairingRequest {
+    pub pairing_code: Option<String>,
+    pub enrollment_token: Option<String>,
+    pub approved: bool,
+}
+
+/// Real-time status of a pairing session
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PairingStatusResponse {
+    pub pairing_code: String,
+    pub enrollment_token: String,
+    pub status: String, // "pending_redeem", "pending_approval", "approved", "rejected", "expired"
+    pub expires_at: DateTime<Utc>,
+    pub candidate_device: Option<CandidateDevice>,
+    pub redeem_result: Option<RedeemPairingResponse>,
 }
 
 /// Provisioning response with minted tokens for device.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RedeemPairingResponse {
     pub device: DeviceResponse,
     pub access_token: String,
     pub refresh_token: String,
 }
+
 
 #[cfg(test)]
 mod tests {

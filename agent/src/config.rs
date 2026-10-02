@@ -6,6 +6,9 @@ pub struct AgentConfig {
     pub server_url: String,
     pub auth_token: String,
     pub device_id: String,
+    pub user_id: String,
+    pub cloud_id: String,
+    pub storage_node_id: String,
     pub data_dir: String,
     pub sync_folders: Vec<String>,
     pub sync_interval_secs: u64,
@@ -24,6 +27,9 @@ impl Default for AgentConfig {
             server_url: "http://localhost:8080".to_string(),
             auth_token: String::new(),
             device_id: String::new(),
+            user_id: String::new(),
+            cloud_id: String::new(),
+            storage_node_id: String::new(),
             data_dir,
             sync_folders: vec![],
             sync_interval_secs: 30,
@@ -52,13 +58,19 @@ impl AgentConfig {
 
         // Create default config
         let config = Self::default();
+        config.save(path.to_str().unwrap_or("agent.toml"))?;
+
+        tracing::info!(path = %path.display(), "Created default config file");
+        Ok(config)
+    }
+
+    pub fn save(&self, path: &str) -> anyhow::Result<()> {
+        let path = PathBuf::from(path);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let content = toml::to_string_pretty(&config)?;
+        let content = toml::to_string_pretty(self)?;
         std::fs::write(&path, content)?;
-
-        tracing::info!(path = %path.display(), "Created default config file — please edit it with your server URL and auth token");
-        Ok(config)
+        Ok(())
     }
 }
