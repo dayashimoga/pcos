@@ -14,19 +14,19 @@ class ApiClient {
 
   static String formatError(dynamic error) {
     if (error is DioException) {
+      if (error.response?.data is Map) {
+        final data = error.response!.data as Map;
+        if (data['error'] != null) return data['error'].toString();
+        if (data['message'] != null) return data['message'].toString();
+      }
       if (error.response?.statusCode == 401) {
-        return 'Session expired. Please sign in again.';
+        return 'Invalid or expired credentials/pairing session.';
       }
       if (error.response?.statusCode == 403) {
         return 'Access denied. You do not have permission to access this resource.';
       }
       if (error.response?.statusCode == 404) {
         return 'The requested resource was not found.';
-      }
-      if (error.response?.data is Map &&
-          error.response?.data['message'] != null) {
-        return error.response?.data['message'].toString() ??
-            'An error occurred';
       }
       if (error.type == DioExceptionType.connectionError ||
           error.type == DioExceptionType.connectionTimeout) {
@@ -49,48 +49,57 @@ class ApiClient {
     return envUrl;
   }
 
+  static String normalizeUrl(String url) {
+    String cleanUrl = url.trim();
+    if (cleanUrl.endsWith('/')) {
+      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
+    }
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      if (cleanUrl.startsWith('192.168.') ||
+          cleanUrl.startsWith('10.') ||
+          cleanUrl.startsWith('172.16.') ||
+          cleanUrl.startsWith('127.0.0.1') ||
+          cleanUrl.startsWith('localhost')) {
+        cleanUrl = 'http://$cleanUrl';
+      } else {
+        cleanUrl = 'https://$cleanUrl';
+      }
+    }
+    return cleanUrl;
+  }
+
   String get currentServerUrl {
     final stored = prefs.getString(_serverUrlKey);
-    if (stored != null && stored.isNotEmpty) {
-      return stored;
+    if (stored != null &&
+        stored.isNotEmpty &&
+        !stored.contains('api.pcos.pages.dev')) {
+      return normalizeUrl(stored);
     }
     if (kIsWeb) {
       return Uri.base.origin;
     }
     final envUrl = _resolveBaseUrl();
     if (envUrl.isNotEmpty) {
-      return envUrl;
+      return normalizeUrl(envUrl);
     }
     const cloudUrl = String.fromEnvironment('CONTROL_PLANE_URL',
-        defaultValue: 'https://api.pcos.pages.dev');
+        defaultValue: 'https://pcos-control-plane.dayashimoga.workers.dev');
     if (cloudUrl.isNotEmpty && cloudUrl.startsWith('http')) {
-      return cloudUrl;
+      return normalizeUrl(cloudUrl);
     }
-    return '';
+    return 'https://pcos-control-plane.dayashimoga.workers.dev';
   }
 
   Future<void> setServerUrl(String url) async {
-    String cleanUrl = url.trim();
-    if (cleanUrl.endsWith('/')) {
-      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
-    }
-    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      cleanUrl = 'http://$cleanUrl';
-    }
+    final cleanUrl = normalizeUrl(url);
     await prefs.setString(_serverUrlKey, cleanUrl);
     dio.options.baseUrl = cleanUrl;
   }
 
   /// Test connection to a candidate server URL.
   Future<String?> testServerUrl(String url) async {
-    String cleanUrl = url.trim();
+    final cleanUrl = normalizeUrl(url);
     if (cleanUrl.isEmpty) return 'Server URL cannot be empty';
-    if (cleanUrl.endsWith('/')) {
-      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
-    }
-    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      cleanUrl = 'http://$cleanUrl';
-    }
     final testDio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 4),
       receiveTimeout: const Duration(seconds: 4),
@@ -205,15 +214,7 @@ class ApiClient {
     final targetUrl = serverUrl != null && serverUrl.trim().isNotEmpty
         ? serverUrl.trim()
         : currentServerUrl;
-
-    String normalizedUrl = targetUrl;
-    if (normalizedUrl.endsWith('/')) {
-      normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length - 1);
-    }
-    if (!normalizedUrl.startsWith('http://') &&
-        !normalizedUrl.startsWith('https://')) {
-      normalizedUrl = 'http://$normalizedUrl';
-    }
+    final normalizedUrl = normalizeUrl(targetUrl);
 
     final client = Dio(BaseOptions(
       baseUrl: normalizedUrl,
@@ -251,15 +252,7 @@ class ApiClient {
     final targetUrl = serverUrl != null && serverUrl.trim().isNotEmpty
         ? serverUrl.trim()
         : currentServerUrl;
-
-    String normalizedUrl = targetUrl;
-    if (normalizedUrl.endsWith('/')) {
-      normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length - 1);
-    }
-    if (!normalizedUrl.startsWith('http://') &&
-        !normalizedUrl.startsWith('https://')) {
-      normalizedUrl = 'http://$normalizedUrl';
-    }
+    final normalizedUrl = normalizeUrl(targetUrl);
 
     final client = Dio(BaseOptions(
       baseUrl: normalizedUrl,
@@ -307,15 +300,7 @@ class ApiClient {
     final targetUrl = serverUrl != null && serverUrl.trim().isNotEmpty
         ? serverUrl.trim()
         : currentServerUrl;
-
-    String normalizedUrl = targetUrl;
-    if (normalizedUrl.endsWith('/')) {
-      normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length - 1);
-    }
-    if (!normalizedUrl.startsWith('http://') &&
-        !normalizedUrl.startsWith('https://')) {
-      normalizedUrl = 'http://$normalizedUrl';
-    }
+    final normalizedUrl = normalizeUrl(targetUrl);
 
     final client = Dio(BaseOptions(
       baseUrl: normalizedUrl,

@@ -97,16 +97,58 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     String? token;
     String? serverUrl;
 
-    if (rawValue.contains('code=')) {
+    if (rawValue.length == 6 && int.tryParse(rawValue) != null) {
+      code = rawValue;
+    } else {
       final uri = Uri.tryParse(rawValue);
-      if (uri != null) {
-        code = uri.queryParameters['code'];
-        token = uri.queryParameters['token'];
+      if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
         serverUrl =
             '${uri.scheme}://${uri.host}${uri.hasPort ? ":${uri.port}" : ""}';
+
+        // 1. Try standard query parameters (before #)
+        code = uri.queryParameters['code'];
+        token = uri.queryParameters['token'];
+
+        // 2. Try fragment query parameters (Flutter hash routes like /#/pair?code=... or /#/connect?code=...)
+        if (code == null && uri.fragment.isNotEmpty) {
+          final frag = uri.fragment;
+          final qIndex = frag.indexOf('?');
+          if (qIndex != -1 && qIndex < frag.length - 1) {
+            final fragQuery = frag.substring(qIndex + 1);
+            final fragParams = Uri.splitQueryString(fragQuery);
+            code = fragParams['code'];
+            token ??= fragParams['token'];
+          }
+        }
+
+        // 3. Fallback regex search for query parameters
+        if (code == null) {
+          final codeMatch =
+              RegExp(r'[?&]code=([0-9A-Za-z]+)').firstMatch(rawValue);
+          if (codeMatch != null) {
+            code = codeMatch.group(1);
+          }
+        }
+        if (token == null) {
+          final tokenMatch =
+              RegExp(r'[?&]token=([0-9A-Za-z_\-]+)').firstMatch(rawValue);
+          if (tokenMatch != null) {
+            token = tokenMatch.group(1);
+          }
+        }
       }
-    } else if (rawValue.length == 6 && int.tryParse(rawValue) != null) {
-      code = rawValue;
+    }
+
+    final api = getIt<ApiClient>();
+
+    // If serverUrl was found in QR, save it and update active client
+    if (serverUrl != null && serverUrl.isNotEmpty) {
+      await api.setServerUrl(serverUrl);
+      if (mounted) {
+        setState(() {
+          _targetServerUrl = serverUrl;
+        });
+      }
     }
 
     if (code != null && code.length == 6) {
@@ -114,11 +156,31 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
         _digitControllers[i].text = code[i];
       }
       _connectWithCode(code: code, token: token, serverUrl: serverUrl);
+    } else if (serverUrl != null && serverUrl.isNotEmpty) {
+      // Scanned server QR without pairing code (e.g. from desktop login screen)
+      if (mounted) {
+        setState(() {
+          _step = ConnectStep.input;
+          _errorMessage = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Connected to server: ${Uri.tryParse(serverUrl)?.host ?? serverUrl}!\n'
+              'Enter your 6-digit pairing code or tap "Back to Sign In".',
+            ),
+            backgroundColor: AppTheme.success,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } else {
-      setState(() {
-        _step = ConnectStep.error;
-        _errorMessage = 'Invalid QR code. Please scan a valid PCOS pairing QR.';
-      });
+      if (mounted) {
+        setState(() {
+          _step = ConnectStep.error;
+          _errorMessage = 'Invalid QR code. Please scan a valid PCOS QR code.';
+        });
+      }
     }
   }
 
@@ -856,13 +918,25 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Pairing Code',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimaryColor(context),
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Pairing Code',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimaryColor(context),
+              ),
+            ),
+            Text(
+              'Generated on PC',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppTheme.textMutedColor(context),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Row(
@@ -910,6 +984,14 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
               ),
             );
           }),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '💡 Sign in on your computer and open Devices → Pair Device (or dashboard) to get your active 6-digit code.',
+          style: TextStyle(
+            fontSize: 11,
+            color: AppTheme.textMutedColor(context),
+          ),
         ),
       ],
     );

@@ -515,6 +515,47 @@ class _LoginPageState extends State<LoginPage>
                           ),
                         ],
                       ),
+                      Container(
+                        margin: const EdgeInsets.only(top: 14),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.backgroundColor(context),
+                          borderRadius: BorderRadius.circular(12),
+                          border:
+                              Border.all(color: AppTheme.borderColor(context)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.info_outline_rounded,
+                                    size: 16, color: AppTheme.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'How Device Pairing Works',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textPrimaryColor(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '1. Scanning this QR code automatically sets your mobile app to this server.\n'
+                              '2. To generate an active 6-digit pairing code for your account, sign in on this computer and click "Pair Phone / Device" on your dashboard.\n'
+                              '3. Or on your phone, tap "Back to Sign In" to log in directly with your email & password.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                height: 1.4,
+                                color: AppTheme.textMutedColor(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
 
                     // Tab 1: Scan QR Code with Camera
