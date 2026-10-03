@@ -74,11 +74,18 @@ async function provision() {
     }
   }
 
+  // Immediately patch wrangler.jsonc with discovered d1Id so wrangler commands have valid UUID
+  if (d1Id && fs.existsSync(configPath)) {
+    let cfg = fs.readFileSync(configPath, 'utf8');
+    cfg = cfg.replace(/"database_id":\s*"[^"]*"/, `"database_id": "${d1Id}"`);
+    fs.writeFileSync(configPath, cfg, 'utf8');
+  }
+
   // 2. D1 Schema Migration Execution
-  if (fs.existsSync(schemaPath)) {
-    console.log('\n📄 Executing schema.sql on D1 (remote)...');
+  if (fs.existsSync(schemaPath) && d1Id) {
+    console.log(`\n📄 Executing schema.sql on D1 (${d1Id})...`);
     try {
-      run('npx wrangler d1 execute pcos-control-db --file=./schema.sql --remote --yes');
+      run(`npx wrangler d1 execute ${d1Id} --file=./schema.sql --remote --yes`);
       console.log('  ✓ Database schema applied successfully');
     } catch (e) {
       console.warn(`  ⚠️ Schema migration returned: ${e.message}`);
