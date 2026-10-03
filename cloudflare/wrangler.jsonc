@@ -15,7 +15,7 @@
     {
       "binding": "DB",
       "database_name": "pcos-control-db",
-      "database_id": "pcos-control-db-prod",
+      "database_id": "5ada9eee-5fae-4139-b3de-d855dfd73074",
       "migrations_table": "_migrations",
       "migrations_dir": "./migrations"
     }
@@ -44,7 +44,7 @@
   "kv_namespaces": [
     {
       "binding": "CONFIG_KV",
-      "id": "pcos-config-kv-prod"
+      "id": "d3c7437faaff4257bbf29b1a7b928c80"
     }
   ],
 

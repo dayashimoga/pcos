@@ -83,9 +83,9 @@ async function provision() {
 
   // 2. D1 Schema Migration Execution
   if (fs.existsSync(schemaPath) && d1Id) {
-    console.log(`\n📄 Executing schema.sql on D1 (${d1Id})...`);
+    console.log('\n📄 Executing schema.sql on D1 (pcos-control-db)...');
     try {
-      run(`npx wrangler d1 execute ${d1Id} --file=./schema.sql --remote --yes`);
+      run('npx wrangler d1 execute pcos-control-db --file=./schema.sql --remote --yes');
       console.log('  ✓ Database schema applied successfully');
     } catch (e) {
       console.warn(`  ⚠️ Schema migration returned: ${e.message}`);
