@@ -151,6 +151,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 label: 'Manage Devices',
                 onTap: () => context.go('/devices')),
             _ActionChip(
+                icon: Icons.qr_code_scanner_rounded,
+                label: 'Pair Phone / Device',
+                onTap: () => context.go('/devices/pair')),
+            _ActionChip(
                 icon: Icons.settings_rounded,
                 label: 'Settings',
                 onTap: () => context.go('/settings')),

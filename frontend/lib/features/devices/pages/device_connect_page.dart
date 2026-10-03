@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
@@ -25,6 +26,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   ConnectStep _step = ConnectStep.input;
+  bool _showQrDisplayMode = false;
   String? _statusMessage;
   String? _errorMessage;
   MobileScannerController? _scannerController;
@@ -38,6 +40,9 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     super.initState();
     final api = getIt<ApiClient>();
     _targetServerUrl = api.currentServerUrl;
+    if (kIsWeb) {
+      _showQrDisplayMode = true;
+    }
   }
 
   @override
@@ -429,18 +434,24 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildHeader(),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
                       if (_step == ConnectStep.waitingApproval ||
                           _step == ConnectStep.success)
                         _buildStatusProgress()
                       else ...[
-                        _buildQrScanButton(),
+                        _buildModeSelector(),
                         const SizedBox(height: 24),
-                        _buildDivider(),
-                        const SizedBox(height: 24),
-                        _buildPairingCodeInput(),
-                        const SizedBox(height: 28),
-                        _buildConnectButton(),
+                        if (_showQrDisplayMode) ...[
+                          _buildQrDisplayCard(),
+                        ] else ...[
+                          _buildQrScanButton(),
+                          const SizedBox(height: 24),
+                          _buildDivider(),
+                          const SizedBox(height: 24),
+                          _buildPairingCodeInput(),
+                          const SizedBox(height: 28),
+                          _buildConnectButton(),
+                        ],
                         if (_errorMessage != null) ...[
                           const SizedBox(height: 16),
                           _buildErrorMessage(),
@@ -533,6 +544,27 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
   Widget _buildHeader() {
     return Column(
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton.icon(
+              onPressed: () => context.go('/login'),
+              icon: const Icon(Icons.arrow_back_rounded, size: 16),
+              label: const Text('Back to Sign In',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            ),
+            if (_targetServerUrl != null)
+              Flexible(
+                child: Text(
+                  Uri.tryParse(_targetServerUrl!)?.host ?? '',
+                  style: TextStyle(
+                      fontSize: 11, color: AppTheme.textMutedColor(context)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
         Container(
           width: 64,
           height: 64,
@@ -543,7 +575,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6C5CE7).withOpacity(0.35),
+                color: const Color(0xFF6C5CE7).withValues(alpha: 0.35),
                 blurRadius: 16,
                 offset: const Offset(0, 8),
               ),
@@ -568,6 +600,212 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppTheme.textMutedColor(context),
               ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModeSelector() {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.borderColor(context)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _showQrDisplayMode = false),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: !_showQrDisplayMode
+                      ? AppTheme.primary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.qr_code_scanner_rounded,
+                      size: 16,
+                      color: !_showQrDisplayMode
+                          ? Colors.white
+                          : AppTheme.textMutedColor(context),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Scan / PIN',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: !_showQrDisplayMode
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        color: !_showQrDisplayMode
+                            ? Colors.white
+                            : AppTheme.textMutedColor(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _showQrDisplayMode = true),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: _showQrDisplayMode
+                      ? AppTheme.primary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.qr_code_rounded,
+                      size: 16,
+                      color: _showQrDisplayMode
+                          ? Colors.white
+                          : AppTheme.textMutedColor(context),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Display QR Code',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: _showQrDisplayMode
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        color: _showQrDisplayMode
+                            ? Colors.white
+                            : AppTheme.textMutedColor(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQrDisplayCard() {
+    final api = getIt<ApiClient>();
+    final serverUrl = _targetServerUrl?.isNotEmpty == true
+        ? _targetServerUrl!
+        : api.currentServerUrl;
+    final payload = '$serverUrl/#/connect';
+
+    return Column(
+      children: [
+        Text(
+          'Point your phone camera or PCOS app at this QR code to connect:',
+          textAlign: TextAlign.center,
+          style:
+              TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context)),
+        ),
+        const SizedBox(height: 18),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primary.withValues(alpha: 0.15),
+                blurRadius: 18,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: QrImageView(
+            data: payload,
+            version: QrVersions.auto,
+            size: 190,
+            backgroundColor: Colors.white,
+            dataModuleStyle: const QrDataModuleStyle(
+              dataModuleShape: QrDataModuleShape.square,
+              color: Color(0xFF1E1E2E),
+            ),
+            eyeStyle: const QrEyeStyle(
+              eyeShape: QrEyeShape.square,
+              color: Color(0xFF11111B),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.backgroundColor(context),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppTheme.borderColor(context)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.link_rounded, size: 14, color: AppTheme.primary),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  payload,
+                  style: TextStyle(
+                      fontSize: 11, color: AppTheme.textPrimaryColor(context)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: payload));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Pairing link copied to clipboard!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                child: const Icon(Icons.copy_rounded,
+                    size: 14, color: AppTheme.primary),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle_outline_rounded,
+                size: 14, color: AppTheme.success),
+            const SizedBox(width: 6),
+            Text(
+              'Supports iOS Camera, Android Camera & Lens',
+              style: TextStyle(
+                  fontSize: 11, color: AppTheme.textMutedColor(context)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        OutlinedButton.icon(
+          onPressed: _startScanning,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 44),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          icon: const Icon(Icons.camera_alt_rounded, size: 18),
+          label: const Text('Open Camera Scanner'),
         ),
       ],
     );

@@ -59,10 +59,13 @@ class _DevicesContent extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      OutlinedButton.icon(
+                      FilledButton.icon(
                         onPressed: () => context.go('/devices/pair'),
                         icon: const Icon(Icons.qr_code_rounded, size: 18),
                         label: const Text('Pair Mobile via QR Code'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton.icon(
