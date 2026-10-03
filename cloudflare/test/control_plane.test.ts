@@ -740,5 +740,262 @@ describe('Liveness, Readiness Probes & Fail-Closed JWT Gate', () => {
   });
 });
 
+describe('Shares API & Public Recipient Access', () => {
+  it('should support creating, listing, public token access, and revoking shares', async () => {
+    const worker = (await import('../src/index')).default;
+    const testSecret = 'test_secret_key_12345678901234567890';
+    const userId = 'usr_share_test_123';
+    const token = await generateJwt({ sub: userId, email: 'share@pcos.dev', role: 'user' }, testSecret);
+
+    const shares: any[] = [];
+    let fileLookupFound = true;
+
+    const mockDb = {
+      prepare: (sql: string) => {
+        let boundParams: any[] = [];
+        return {
+          bind: (...args: any[]) => {
+            boundParams = args;
+            return {
+              first: async () => {
+                if (sql.includes('FROM file_entries WHERE id =')) {
+                  return fileLookupFound
+                    ? { id: boundParams[0], name: 'family_vacation.mp4', size_bytes: 52428800, mime_type: 'video/mp4' }
+                    : null;
+                }
+                if (sql.includes('FROM shares s')) {
+                  const tokenMatch = shares.find((s) => s.share_token === boundParams[0]);
+                  if (!tokenMatch) return null;
+                  return {
+                    ...tokenMatch,
+                    file_name: 'family_vacation.mp4',
+                    size_bytes: 52428800,
+                    mime_type: 'video/mp4',
+                  };
+                }
+                return null;
+              },
+              all: async () => {
+                if (sql.includes('FROM shares s')) {
+                  return { results: shares.filter((s) => s.user_id === boundParams[0]) };
+                }
+                return { results: [] };
+              },
+              run: async () => {
+                if (sql.includes('INSERT INTO shares')) {
+                  shares.push({
+                    id: boundParams[0],
+                    user_id: boundParams[1],
+                    file_id: boundParams[2],
+                    share_token: boundParams[3],
+                    is_public: boundParams[4],
+                    is_upload_request: boundParams[5],
+                    password_hash: boundParams[6],
+                    expires_at: boundParams[7],
+                    max_downloads: boundParams[8],
+                    download_count: 0,
+                    created_at: boundParams[9],
+                  });
+                  return { success: true };
+                }
+                if (sql.includes('DELETE FROM shares')) {
+                  const idx = shares.findIndex((s) => s.id === boundParams[0] && s.user_id === boundParams[1]);
+                  if (idx !== -1) shares.splice(idx, 1);
+                  return { success: true };
+                }
+                if (sql.includes('UPDATE shares SET download_count')) {
+                  const s = shares.find((item) => item.id === boundParams[0]);
+                  if (s) s.download_count++;
+                  return { success: true };
+                }
+                return { success: true };
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const mockEnv = {
+      DB: mockDb,
+      PCOS_ENV: 'test',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    // 1. Create a share link
+    const createReq = new Request('http://edge.pcos.dev/api/v1/shares', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        file_id: 'file_001_mp4',
+        is_public: true,
+        max_downloads: 5,
+      }),
+    });
+
+    const createResp = await worker.fetch(createReq, mockEnv, ctx);
+    expect(createResp.status).toBe(201);
+    const createdShare = (await createResp.json()) as any;
+    expect(createdShare.file_id).toBe('file_001_mp4');
+    expect(createdShare.share_token).toBeDefined();
+    expect(shares).toHaveLength(1);
+
+    // 2. List user shares
+    const listReq = new Request('http://edge.pcos.dev/api/v1/shares', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const listResp = await worker.fetch(listReq, mockEnv, ctx);
+    expect(listResp.status).toBe(200);
+    const listData = (await listResp.json()) as any;
+    expect(listData.total).toBe(1);
+    expect(listData.shares[0].file_id).toBe('file_001_mp4');
+
+    // 3. Unauthenticated public recipient accesses share
+    const publicReq = new Request(`http://edge.pcos.dev/api/v1/shared/${createdShare.share_token}`);
+    const publicResp = await worker.fetch(publicReq, mockEnv, ctx);
+    expect(publicResp.status).toBe(200);
+    const publicData = (await publicResp.json()) as any;
+    expect(publicData.file_name).toBe('family_vacation.mp4');
+    expect(publicData.is_password_protected).toBe(false);
+
+    // 4. Public recipient requests download (increments counter)
+    const dlReq = new Request(`http://edge.pcos.dev/api/v1/shared/${createdShare.share_token}/download`);
+    const dlResp = await worker.fetch(dlReq, mockEnv, ctx);
+    expect(dlResp.status).toBe(200);
+    expect(shares[0].download_count).toBe(1);
+
+    // 5. Revoke share
+    const delReq = new Request(`http://edge.pcos.dev/api/v1/shares/${createdShare.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const delResp = await worker.fetch(delReq, mockEnv, ctx);
+    expect(delResp.status).toBe(200);
+    expect(shares).toHaveLength(0);
+  });
+});
+
+describe('Media Streaming Progress & Continue Watching', () => {
+  it('should track video position and list resume candidates', async () => {
+    const worker = (await import('../src/index')).default;
+    const testSecret = 'test_secret_key_12345678901234567890';
+    const userId = 'usr_media_test_456';
+    const token = await generateJwt({ sub: userId, email: 'media@pcos.dev', role: 'user' }, testSecret);
+
+    const progressRecords: any[] = [];
+
+    const mockDb = {
+      prepare: (sql: string) => {
+        let boundParams: any[] = [];
+        return {
+          bind: (...args: any[]) => {
+            boundParams = args;
+            return {
+              first: async () => {
+                if (sql.includes('FROM playback_progress')) {
+                  return progressRecords.find((r) => r.user_id === boundParams[0] && r.file_id === boundParams[1]) || null;
+                }
+                return null;
+              },
+              all: async () => {
+                if (sql.includes('FROM playback_progress p')) {
+                  return {
+                    results: progressRecords
+                      .filter((r) => r.user_id === boundParams[0] && r.completed === 0 && r.position_secs > 10)
+                      .map((r) => ({
+                        ...r,
+                        file_name: 'matrix_resurrections.mkv',
+                        size_bytes: 4000000000,
+                        mime_type: 'video/x-matroska',
+                      })),
+                  };
+                }
+                return { results: [] };
+              },
+              run: async () => {
+                if (sql.includes('INSERT INTO playback_progress')) {
+                  const existingIdx = progressRecords.findIndex(
+                    (r) => r.user_id === boundParams[1] && r.file_id === boundParams[2]
+                  );
+                  const record = {
+                    id: boundParams[0],
+                    user_id: boundParams[1],
+                    file_id: boundParams[2],
+                    position_secs: boundParams[3],
+                    duration_secs: boundParams[4],
+                    completed: boundParams[5],
+                    updated_at: boundParams[6],
+                  };
+                  if (existingIdx >= 0) {
+                    progressRecords[existingIdx] = record;
+                  } else {
+                    progressRecords.push(record);
+                  }
+                  return { success: true };
+                }
+                return { success: true };
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const mockEnv = {
+      DB: mockDb,
+      PCOS_ENV: 'test',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    // 1. Record playback progress (e.g. 145 seconds in)
+    const postReq = new Request('http://edge.pcos.dev/api/v1/streaming/progress/file_matrix_001', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        position_secs: 145.5,
+        duration_secs: 7200,
+        completed: false,
+      }),
+    });
+    const postResp = await worker.fetch(postReq, mockEnv, ctx);
+    expect(postResp.status).toBe(200);
+    const postData = (await postResp.json()) as any;
+    expect(postData.position_secs).toBe(145.5);
+
+    // 2. Fetch playback progress for this file
+    const getReq = new Request('http://edge.pcos.dev/api/v1/streaming/progress/file_matrix_001', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const getResp = await worker.fetch(getReq, mockEnv, ctx);
+    expect(getResp.status).toBe(200);
+    const getData = (await getResp.json()) as any;
+    expect(getData.position_secs).toBe(145.5);
+
+    // 3. Continue Watching / Media History
+    const historyReq = new Request('http://edge.pcos.dev/api/v1/media/history', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const historyResp = await worker.fetch(historyReq, mockEnv, ctx);
+    expect(historyResp.status).toBe(200);
+    const historyData = (await historyResp.json()) as any;
+    expect(historyData.total).toBe(1);
+    expect(historyData.history[0].file_name).toBe('matrix_resurrections.mkv');
+    expect(historyData.history[0].position_secs).toBe(145.5);
+  });
+});
+
 
 

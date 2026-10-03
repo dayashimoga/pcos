@@ -14,9 +14,12 @@ import '../../features/doctor/pages/doctor_page.dart';
 import '../../features/files/pages/files_page.dart';
 import '../../features/files/pages/duplicate_finder_page.dart';
 import '../../features/gallery/pages/gallery_page.dart';
+import '../../features/media/pages/media_page.dart';
 import '../../features/search/pages/search_page.dart';
 import '../../features/settings/pages/settings_page.dart';
 import '../../features/setup/pages/setup_wizard_page.dart';
+import '../../features/sharing/pages/shared_page.dart';
+import '../../features/storage/pages/storage_page.dart';
 import '../../features/trash/pages/trash_page.dart';
 
 /// Application router with authentication guard.
@@ -70,7 +73,11 @@ class AppRouter {
           GoRoute(
               path: '/dashboard', builder: (_, __) => const DashboardPage()),
           GoRoute(path: '/files', builder: (_, __) => const FilesPage()),
+          GoRoute(path: '/photos', builder: (_, __) => const GalleryPage()),
           GoRoute(path: '/gallery', builder: (_, __) => const GalleryPage()),
+          GoRoute(path: '/media', builder: (_, __) => const MediaPage()),
+          GoRoute(path: '/shared', builder: (_, __) => const SharedPage()),
+          GoRoute(path: '/storage', builder: (_, __) => const StoragePage()),
           GoRoute(path: '/search', builder: (_, __) => const SearchPage()),
           GoRoute(path: '/devices', builder: (_, __) => const DevicesPage()),
           GoRoute(

@@ -241,7 +241,12 @@ class _DoctorPageState extends State<DoctorPage> {
       await _runCheck('Media Server',
           'Direct-play Range streaming and playback', () async {
         final resp = await api.dio.get('/api/v1/media/history');
-        final count = resp.data is List ? (resp.data as List).length : 0;
+        int count = 0;
+        if (resp.data is Map && resp.data['history'] is List) {
+          count = (resp.data['history'] as List).length;
+        } else if (resp.data is List) {
+          count = (resp.data as List).length;
+        }
         return 'Media Engine online ($count sessions)';
       });
     }

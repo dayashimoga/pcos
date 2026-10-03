@@ -161,3 +161,16 @@ CREATE INDEX IF NOT EXISTS idx_file_entries_user ON file_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_file_entries_parent ON file_entries(user_id, parent_id);
 CREATE INDEX IF NOT EXISTS idx_file_entries_trashed ON file_entries(user_id, is_trashed);
 
+CREATE TABLE IF NOT EXISTS playback_progress (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    file_id TEXT NOT NULL,
+    position_secs REAL NOT NULL DEFAULT 0,
+    duration_secs REAL NOT NULL DEFAULT 0,
+    completed INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    UNIQUE(user_id, file_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_playback_user ON playback_progress(user_id, updated_at);
+

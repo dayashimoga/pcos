@@ -476,3 +476,31 @@ All notable changes to this project will be documented in this file.
 - **Remote Control (Play-on-TV & Send-to-Device)**: Phone sends lightweight control instructions over open WebSocket channels; TV streams directly from the owning storage node without phone video proxying.
 - **CI/CD Automation (`cloudflare.yml`)**: GitHub Actions workflow running Vitest control plane tests, Flutter web release compilation, and automated deployment to Cloudflare Pages and Workers.
 
+## [1.1.0] - 2026-10-03
+
+### Added — Plug-and-Play Storage, Unified Media Center, and Real Sharing
+- **Storage Management Page (`StoragePage`)**: Unified interface at `/storage` for local drive pools, USB detection, storage node lifecycle, real aggregated capacity calculation, and safe drive connection without formatting.
+- **Media Center (`MediaPage`)**: Full-featured media hub at `/media` featuring Continue Watching carousel, HTTP 206 Range video playback, seek bar, and Play-on-TV remote casting to smart TVs.
+- **Secure File Sharing (`SharedPage`)**: Sharing console at `/shared` supporting public links with expirations, password protection, download limits, instant QR code display, and link revocation.
+- **Edge Control Plane D1 Features**:
+  - Implemented real D1-backed `GET/POST /api/v1/shares`, `DELETE /api/v1/shares/:id`, and public unauthenticated `GET /api/v1/shared/:token`.
+  - Implemented `POST/GET /api/v1/streaming/progress/:file_id` and `GET /api/v1/media/history` / `GET /api/v1/streaming/resume` backed by `playback_progress` table.
+  - Added `playback_progress` schema definition and index to `cloudflare/schema.sql`.
+- **Navigation & UX Polish**:
+  - Completely replaced misleading "Unlimited" storage sidebar text with dynamic `_SidebarStorageIndicator` reading real total and available bytes.
+  - Streamlined primary sidebar and drawer navigation: `Home`, `Files`, `Photos`, `Media`, `Shared`, `Devices`, `Storage`, `Settings`.
+  - Added interactive 3-step onboarding guide on Dashboard for clean empty-home state (1. Add Storage -> 2. Pair Device -> 3. Protect Data).
+  - Hardened PCOS Doctor to handle both List and Map media history responses.
+- **Windows & Linux Plug-and-Play Automation**:
+  - Created `scripts/windows/install-pcos-service.ps1` safely discovering volumes, creating non-destructive storage pools, and registering auto-start background task.
+  - Created `scripts/windows/uninstall-pcos-service.ps1` for clean task removal while preserving disk files.
+  - Created `scripts/linux/pcos-agent.service` systemd unit file for headless servers and NAS appliances.
+
+### Verification & Test Suite
+- Cloudflare Control Plane: 21/21 Vitest tests passing (`npm test`).
+- Rust Node Agent: 8/8 unit tests passing (`cargo test`).
+- Rust Backend: 34/34 workspace tests passing (`cargo test`).
+- Flutter Frontend: 17/17 unit/BLoC tests passing (`flutter test`).
+- Production Web Build: `flutter build web --release` compiled in 41.5s with zero errors.
+- Live Cloudflare Deployment: All diagnostic probes and authenticated endpoints verified with 100% PASS against `https://pcos-control-plane.dayashimoga.workers.dev`.
+

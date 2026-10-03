@@ -1067,17 +1067,270 @@ async function handleApiRequest(
     return Response.json(user);
   }
 
-  // ─── Auxiliary Stubs (Shares, Notifications, Media History) ───
+  // ─── Shares: List & Create ───
   if (url.pathname === '/api/v1/shares') {
-    return Response.json({ shares: [], total: 0 });
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (request.method === 'GET') {
+      const rows = await env.DB.prepare(
+        `SELECT s.*, f.name as file_name, f.size_bytes, f.mime_type
+         FROM shares s
+         LEFT JOIN file_entries f ON s.file_id = f.id
+         WHERE s.user_id = ?1
+         ORDER BY s.created_at DESC`
+      )
+        .bind(userPayload.sub)
+        .all();
+
+      return Response.json({
+        shares: rows.results || [],
+        total: (rows.results || []).length,
+      });
+    }
+
+    if (request.method === 'POST') {
+      const body = (await request.json().catch(() => ({}))) as {
+        file_id?: string;
+        is_public?: boolean;
+        is_upload_request?: boolean;
+        password?: string;
+        expires_at?: string;
+        max_downloads?: number;
+      };
+
+      if (!body.file_id) {
+        return Response.json({ error: 'file_id is required' }, { status: 400 });
+      }
+
+      // Verify file belongs to user
+      const file = await env.DB.prepare(
+        'SELECT id, name, size_bytes, mime_type FROM file_entries WHERE id = ?1 AND user_id = ?2'
+      )
+        .bind(body.file_id, userPayload.sub)
+        .first();
+
+      if (!file) {
+        return Response.json({ error: 'Referenced file not found' }, { status: 404 });
+      }
+
+      const shareId = crypto.randomUUID();
+      const shareToken = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+      const now = new Date().toISOString();
+      let passwordHash: string | null = null;
+      if (body.password) {
+        passwordHash = await hashPassword(body.password);
+      }
+
+      await env.DB.prepare(
+        `INSERT INTO shares (id, user_id, file_id, share_token, is_public, is_upload_request, password_hash, expires_at, max_downloads, download_count, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10)`
+      )
+        .bind(
+          shareId,
+          userPayload.sub,
+          body.file_id,
+          shareToken,
+          body.is_public !== false ? 1 : 0,
+          body.is_upload_request ? 1 : 0,
+          passwordHash,
+          body.expires_at || null,
+          body.max_downloads || null,
+          now
+        )
+        .run();
+
+      const host = request.headers.get('host') || 'pcos-control-plane.dayashimoga.workers.dev';
+      const proto = url.protocol;
+      const shareUrl = `${proto}//${host}/#/shared/${shareToken}`;
+
+      return Response.json(
+        {
+          id: shareId,
+          file_id: body.file_id,
+          share_token: shareToken,
+          share_url: shareUrl,
+          is_public: body.is_public !== false,
+          is_upload_request: !!body.is_upload_request,
+          is_password_protected: !!body.password,
+          expires_at: body.expires_at || null,
+          max_downloads: body.max_downloads || null,
+          created_at: now,
+        },
+        { status: 201 }
+      );
+    }
   }
 
+  // ─── Shares: Revoke by ID ───
+  if (request.method === 'DELETE' && url.pathname.startsWith('/api/v1/shares/')) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const shareId = url.pathname.replace('/api/v1/shares/', '');
+    await env.DB.prepare('DELETE FROM shares WHERE id = ?1 AND user_id = ?2')
+      .bind(shareId, userPayload.sub)
+      .run();
+
+    return Response.json({ success: true, message: 'Share revoked' });
+  }
+
+  // ─── Public Share Access (Unauthenticated) ───
+  if (request.method === 'GET' && url.pathname.startsWith('/api/v1/shared/')) {
+    const subpath = url.pathname.replace('/api/v1/shared/', '');
+    const [token, action] = subpath.split('/');
+
+    const share = await env.DB.prepare(
+      `SELECT s.*, f.name as file_name, f.size_bytes, f.mime_type, f.sha256_hash, f.storage_path
+       FROM shares s
+       LEFT JOIN file_entries f ON s.file_id = f.id
+       WHERE s.share_token = ?1`
+    )
+      .bind(token)
+      .first<{
+        id: string;
+        user_id: string;
+        file_id: string;
+        share_token: string;
+        is_public: number;
+        is_upload_request: number;
+        password_hash: string | null;
+        expires_at: string | null;
+        max_downloads: number | null;
+        download_count: number;
+        created_at: string;
+        file_name: string | null;
+        size_bytes: number | null;
+        mime_type: string | null;
+        sha256_hash: string | null;
+        storage_path: string | null;
+      }>();
+
+    if (!share) {
+      return Response.json({ error: 'Share link not found or expired' }, { status: 404 });
+    }
+
+    if (share.expires_at && new Date(share.expires_at).getTime() < Date.now()) {
+      return Response.json({ error: 'Share link has expired' }, { status: 410 });
+    }
+
+    if (share.max_downloads && share.download_count >= share.max_downloads) {
+      return Response.json({ error: 'Share download limit reached' }, { status: 410 });
+    }
+
+    if (action === 'download') {
+      await env.DB.prepare('UPDATE shares SET download_count = download_count + 1 WHERE id = ?1')
+        .bind(share.id)
+        .run();
+
+      return Response.json({
+        file_id: share.file_id,
+        file_name: share.file_name,
+        size_bytes: share.size_bytes,
+        download_url: `/api/v1/files/${share.file_id}/download`,
+      });
+    }
+
+    return Response.json({
+      file_id: share.file_id,
+      file_name: share.file_name,
+      size_bytes: share.size_bytes,
+      mime_type: share.mime_type,
+      is_password_protected: !!share.password_hash,
+      is_upload_request: share.is_upload_request === 1,
+      expires_at: share.expires_at,
+      max_downloads: share.max_downloads,
+      download_count: share.download_count,
+    });
+  }
+
+  // ─── Notifications (Recent User Activity from Audit Log) ───
   if (url.pathname === '/api/v1/notifications') {
-    return Response.json({ notifications: [], total: 0 });
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const rows = await env.DB.prepare(
+      `SELECT id, action as title, COALESCE(details_json, 'System event') as message, created_at, 0 as is_read
+       FROM audit_logs
+       WHERE user_id = ?1
+       ORDER BY created_at DESC
+       LIMIT 20`
+    )
+      .bind(userPayload.sub)
+      .all();
+
+    return Response.json({
+      notifications: rows.results || [],
+      total: (rows.results || []).length,
+    });
   }
 
-  if (url.pathname === '/api/v1/media/history') {
-    return Response.json({ history: [] });
+  // ─── Media Streaming & Playback Progress ───
+  if (url.pathname.startsWith('/api/v1/streaming/progress/')) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const fileId = url.pathname.replace('/api/v1/streaming/progress/', '');
+
+    if (request.method === 'POST') {
+      const body = (await request.json().catch(() => ({}))) as {
+        position_secs?: number;
+        duration_secs?: number;
+        completed?: boolean;
+      };
+
+      const now = new Date().toISOString();
+      const progressId = crypto.randomUUID();
+      const pos = body.position_secs || 0;
+      const dur = body.duration_secs || 0;
+      const comp = body.completed ? 1 : 0;
+
+      await env.DB.prepare(
+        `INSERT INTO playback_progress (id, user_id, file_id, position_secs, duration_secs, completed, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT(user_id, file_id) DO UPDATE SET
+           position_secs = ?4,
+           duration_secs = ?5,
+           completed = ?6,
+           updated_at = ?7`
+      )
+        .bind(progressId, userPayload.sub, fileId, pos, dur, comp, now)
+        .run();
+
+      return Response.json({ success: true, file_id: fileId, position_secs: pos, duration_secs: dur });
+    }
+
+    if (request.method === 'GET') {
+      const row = await env.DB.prepare(
+        'SELECT * FROM playback_progress WHERE user_id = ?1 AND file_id = ?2'
+      )
+        .bind(userPayload.sub, fileId)
+        .first();
+
+      return Response.json(row || { position_secs: 0, duration_secs: 0, completed: 0 });
+    }
+  }
+
+  if (url.pathname === '/api/v1/media/history' || url.pathname === '/api/v1/streaming/resume') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const rows = await env.DB.prepare(
+      `SELECT p.id, p.file_id, p.position_secs, p.duration_secs, p.completed, p.updated_at,
+              f.name as file_name, f.size_bytes, f.mime_type
+       FROM playback_progress p
+       JOIN file_entries f ON p.file_id = f.id
+       WHERE p.user_id = ?1 AND p.completed = 0 AND p.position_secs > 10
+       ORDER BY p.updated_at DESC
+       LIMIT 20`
+    )
+      .bind(userPayload.sub)
+      .all();
+
+    return Response.json({
+      history: rows.results || [],
+      total: (rows.results || []).length,
+    });
   }
 
   // ─── Folders: List Root ───

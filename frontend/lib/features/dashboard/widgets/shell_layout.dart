@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/di/service_locator.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../files/pages/files_page.dart' show formatFileSize;
 import '../../transfers/widgets/transfer_center_dialog.dart';
 import '../../transfers/widgets/transfer_status_indicator.dart';
 
@@ -38,16 +41,21 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
   final _focusNode = FocusNode();
 
   static const _pages = [
-    ('Dashboard', Icons.dashboard_rounded, '/dashboard'),
+    ('Home', Icons.home_rounded, '/dashboard'),
     ('Files', Icons.folder_rounded, '/files'),
+    ('Photos', Icons.photo_library_rounded, '/gallery'),
+    ('Media Center', Icons.play_circle_fill_rounded, '/media'),
+    ('Shared & Public Links', Icons.share_rounded, '/shared'),
+    ('Storage Pools & Disks', Icons.storage_rounded, '/storage'),
+    ('Devices & Pairing', Icons.devices_rounded, '/devices'),
     ('Search', Icons.search_rounded, '/search'),
-    ('Devices', Icons.devices_rounded, '/devices'),
     ('Trash', Icons.delete_rounded, '/trash'),
-    ('Admin', Icons.admin_panel_settings_rounded, '/admin'),
-    ('API Explorer', Icons.api_rounded, '/admin/api'),
     ('Duplicates', Icons.find_replace_rounded, '/duplicates'),
     ('Transfer Center', Icons.swap_vert_rounded, '__transfers__'),
     ('Settings', Icons.settings_rounded, '/settings'),
+    ('Doctor Diagnostics', Icons.health_and_safety_rounded, '/doctor'),
+    ('Admin', Icons.admin_panel_settings_rounded, '/admin'),
+    ('API Explorer', Icons.api_rounded, '/admin/api'),
   ];
 
   List<(String, IconData, String)> get _filtered {
@@ -195,23 +203,17 @@ class _NavItem {
 }
 
 const _navItems = [
-  _NavItem('Dashboard', Icons.dashboard_outlined, Icons.dashboard_rounded,
-      '/dashboard'),
+  _NavItem('Home', Icons.home_outlined, Icons.home_rounded, '/dashboard'),
   _NavItem('Files', Icons.folder_outlined, Icons.folder_rounded, '/files'),
-  _NavItem('Gallery', Icons.photo_library_outlined, Icons.photo_library_rounded,
+  _NavItem('Photos', Icons.photo_library_outlined, Icons.photo_library_rounded,
       '/gallery'),
-  _NavItem('Search', Icons.search_outlined, Icons.search_rounded, '/search'),
+  _NavItem('Media', Icons.play_circle_outline_rounded,
+      Icons.play_circle_fill_rounded, '/media'),
+  _NavItem('Shared', Icons.share_outlined, Icons.share_rounded, '/shared'),
   _NavItem(
       'Devices', Icons.devices_outlined, Icons.devices_rounded, '/devices'),
   _NavItem(
-      'Trash', Icons.delete_outline_rounded, Icons.delete_rounded, '/trash'),
-  _NavItem('Duplicates', Icons.find_replace_outlined,
-      Icons.find_replace_rounded, '/duplicates'),
-  _NavItem('Admin', Icons.admin_panel_settings_outlined,
-      Icons.admin_panel_settings_rounded, '/admin'),
-  _NavItem('API Explorer', Icons.api_outlined, Icons.api_rounded, '/admin/api'),
-  _NavItem('Doctor', Icons.health_and_safety_outlined,
-      Icons.health_and_safety_rounded, '/doctor'),
+      'Storage', Icons.storage_outlined, Icons.storage_rounded, '/storage'),
   _NavItem(
       'Settings', Icons.settings_outlined, Icons.settings_rounded, '/settings'),
 ];
@@ -472,40 +474,14 @@ class _DesktopShellState extends State<_DesktopShell> {
                   child: TransferStatusIndicator(compact: _collapsed),
                 ),
 
-                // Storage indicator
-                if (!_collapsed)
-                  Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                        color: boxBg, borderRadius: BorderRadius.circular(12)),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [
-                            const Icon(Icons.cloud_done_rounded,
-                                size: 16, color: AppTheme.primary),
-                            const SizedBox(width: 6),
-                            Text('Storage',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: textPrimary)),
-                          ]),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                                value: 0.0,
-                                minHeight: 6,
-                                backgroundColor: borderColor,
-                                color: AppTheme.primary),
-                          ),
-                          const SizedBox(height: 6),
-                          Text('Unlimited',
-                              style: TextStyle(fontSize: 11, color: textMuted)),
-                        ]),
-                  ),
+                // Dynamic Real Storage indicator
+                _SidebarStorageIndicator(
+                  collapsed: _collapsed,
+                  boxBg: boxBg,
+                  borderColor: borderColor,
+                  textPrimary: textPrimary,
+                  textMuted: textMuted,
+                ),
                 const SizedBox(height: 8),
               ]),
             ),
@@ -649,6 +625,129 @@ class _MobileShell extends StatelessWidget {
                         color: AppTheme.primary, size: 22),
                     label: _navItems[i].label,
                   )),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarStorageIndicator extends StatefulWidget {
+  final bool collapsed;
+  final Color boxBg;
+  final Color borderColor;
+  final Color textPrimary;
+  final Color textMuted;
+
+  const _SidebarStorageIndicator({
+    required this.collapsed,
+    required this.boxBg,
+    required this.borderColor,
+    required this.textPrimary,
+    required this.textMuted,
+  });
+
+  @override
+  State<_SidebarStorageIndicator> createState() => _SidebarStorageIndicatorState();
+}
+
+class _SidebarStorageIndicatorState extends State<_SidebarStorageIndicator> {
+  int _totalBytes = 53687091200; // 50GB default
+  int _availBytes = 53687091200;
+  int _usedBytes = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsage();
+  }
+
+  Future<void> _fetchUsage() async {
+    try {
+      final api = getIt<ApiClient>();
+      final nodesResp = await api.dio.get('/api/v1/storage/nodes');
+      final List rawNodes = nodesResp.data is Map && nodesResp.data['storage_nodes'] is List
+          ? nodesResp.data['storage_nodes']
+          : (nodesResp.data is List ? nodesResp.data : []);
+
+      int total = 0;
+      int avail = 0;
+      for (final n in rawNodes) {
+        total += ((n as Map)['total_capacity_bytes'] as num?)?.toInt() ?? 0;
+        avail += (n['available_capacity_bytes'] as num?)?.toInt() ?? 0;
+      }
+
+      if (total == 0) {
+        final userResp = await api.dio.get('/api/v1/users/me');
+        if (userResp.data is Map) {
+          total = (userResp.data['quota_bytes'] as num?)?.toInt() ?? 53687091200;
+          final used = (userResp.data['used_bytes'] as num?)?.toInt() ?? 0;
+          avail = total > used ? total - used : 0;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _totalBytes = total;
+          _availBytes = avail;
+          _usedBytes = total > avail ? total - avail : 0;
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.collapsed) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: IconButton(
+          icon: const Icon(Icons.cloud_done_rounded, size: 20, color: AppTheme.primary),
+          tooltip: 'Storage: ${formatFileSize(_availBytes)} free of ${formatFileSize(_totalBytes)}',
+          onPressed: () => context.go('/storage'),
+        ),
+      );
+    }
+
+    final pct = _totalBytes > 0 ? (_usedBytes / _totalBytes).clamp(0.0, 1.0) : 0.0;
+
+    return InkWell(
+      onTap: () => context.go('/storage'),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: widget.boxBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: widget.borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.cloud_done_rounded, size: 16, color: AppTheme.primary),
+              const SizedBox(width: 6),
+              Text('Storage Pools',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: widget.textPrimary)),
+              const Spacer(),
+              const Icon(Icons.chevron_right_rounded, size: 16, color: AppTheme.primary),
+            ]),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 6,
+                backgroundColor: widget.borderColor,
+                color: AppTheme.primary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${formatFileSize(_availBytes)} free of ${formatFileSize(_totalBytes)}',
+              style: TextStyle(fontSize: 11, color: widget.textMuted),
+            ),
+          ],
         ),
       ),
     );

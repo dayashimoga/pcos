@@ -1,0 +1,17 @@
+[Unit]
+Description=PCOS Personal Cloud Node Agent & Storage Sync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%I
+ExecStart=/usr/local/bin/pcos-agent --config /etc/pcos/config.json
+Restart=always
+RestartSec=5s
+LimitNOFILE=65536
+Environment=PCOS_ENV=production
+Environment=PCOS_SERVER_URL=https://pcos-control-plane.dayashimoga.workers.dev
+
+[Install]
+WantedBy=multi-user.target
