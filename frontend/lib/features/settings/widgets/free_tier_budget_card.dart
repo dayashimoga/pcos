@@ -40,8 +40,7 @@ class _FreeTierBudgetCardState extends State<FreeTierBudgetCard> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error =
-              'Could not load cloud budget: ${e.toString().replaceAll("Exception: ", "")}';
+          _error = 'Could not load cloud budget: ${ApiClient.formatError(e)}';
           _isLoading = false;
         });
       }

@@ -16,6 +16,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Map<String, dynamic> _stats = {};
   bool _loading = true;
   String? _error;
+  String _serverStatusText = 'Checking...';
+  Color _serverStatusColor = AppTheme.warning;
 
   @override
   void initState() {
@@ -30,11 +32,28 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() {
         _stats = response.data;
         _loading = false;
+        _error = null;
+        _serverStatusText = 'Online';
+        _serverStatusColor = AppTheme.success;
       });
     } catch (e) {
+      String statusText = 'Offline';
+      final errStr = ApiClient.formatError(e);
+      if (errStr.contains('500') ||
+          errStr.contains('503') ||
+          errStr.contains('configuration error') ||
+          errStr.contains('JWT_SECRET')) {
+        statusText = 'Configuration Error';
+      } else if (errStr.contains('Unable to connect') ||
+          errStr.contains('connection')) {
+        statusText = 'Offline (Unreachable)';
+      }
+
       setState(() {
         _loading = false;
-        _error = 'Could not load dashboard data';
+        _error = 'Could not load dashboard data: $errStr';
+        _serverStatusText = statusText;
+        _serverStatusColor = AppTheme.error;
         _stats = {
           'total_files': 0,
           'total_folders': 0,
@@ -186,10 +205,10 @@ class _DashboardPageState extends State<DashboardPage> {
                   label: 'Total Backups',
                   value: '${_stats['total_backups'] ?? 0}'),
               Divider(color: AppTheme.borderColor(context), height: 24),
-              const _StatusRow(
+              _StatusRow(
                   label: 'Server Status',
-                  value: 'Online',
-                  valueColor: AppTheme.success),
+                  value: _serverStatusText,
+                  valueColor: _serverStatusColor),
             ]),
           ),
           const SizedBox(height: 32),

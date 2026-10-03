@@ -122,7 +122,12 @@ export default {
       }
 
       // 3. API Routes
-      if (url.pathname.startsWith('/api/') || url.pathname === '/health') {
+      if (
+        url.pathname.startsWith('/api/') ||
+        url.pathname === '/health' ||
+        url.pathname === '/livez' ||
+        url.pathname === '/readyz'
+      ) {
         const response = await handleApiRequest(request, env, budget);
         // Add dynamic CORS headers to API responses
         const headers = new Headers(response.headers);
@@ -163,17 +168,16 @@ async function handleApiRequest(
   budget: BudgetGuard
 ): Promise<Response> {
   const url = new URL(request.url);
-  const effectiveJwtSecret = env.JWT_SECRET || (env.PCOS_ENV === 'production' ? '' : 'pcos_dev_jwt_secret_do_not_use_in_production');
-  if (!effectiveJwtSecret) {
-    console.error('FATAL: JWT_SECRET environment variable is not configured in production');
-    return Response.json(
-      { error: 'Server configuration error: JWT_SECRET must be configured' },
-      { status: 500 }
-    );
-  }
-  const jwtSecret = effectiveJwtSecret;
 
-  // ─── Health & Connectivity Diagnostics ───
+  // ─── Unauthenticated Health Probes (BEFORE JWT gate) ───
+  // These MUST work even when JWT_SECRET is missing to enable diagnostics.
+
+  // /livez — process is reachable (Kubernetes-style liveness)
+  if (url.pathname === '/livez') {
+    return Response.json({ status: 'alive', timestamp: new Date().toISOString() });
+  }
+
+  // /health — basic reachability (legacy compat)
   if (url.pathname === '/health' || url.pathname === '/api/v1/health') {
     return Response.json({
       status: 'healthy',
@@ -183,6 +187,73 @@ async function handleApiRequest(
     });
   }
 
+  // /readyz — deep dependency check: JWT config + D1 + DO + KV
+  if (url.pathname === '/readyz' || url.pathname === '/api/v1/readyz') {
+    const checks: Record<string, { status: string; detail?: string }> = {};
+    let allReady = true;
+
+    // Check JWT_SECRET configuration
+    const hasJwt = !!(env.JWT_SECRET || (env.PCOS_ENV !== 'production'));
+    checks['jwt_config'] = hasJwt
+      ? { status: 'pass' }
+      : { status: 'fail', detail: 'JWT_SECRET secret is not configured. Run: npx wrangler secret put JWT_SECRET' };
+    if (!hasJwt) allReady = false;
+
+    // Check D1 Database connectivity
+    try {
+      const result = await env.DB.prepare("SELECT 1 as ok").first<{ ok: number }>();
+      checks['d1_database'] = result?.ok === 1
+        ? { status: 'pass' }
+        : { status: 'fail', detail: 'D1 query returned unexpected result' };
+      if (result?.ok !== 1) allReady = false;
+    } catch (e) {
+      checks['d1_database'] = { status: 'fail', detail: 'D1 database unreachable' };
+      allReady = false;
+    }
+
+    // Check D1 schema (users table exists)
+    try {
+      await env.DB.prepare("SELECT COUNT(*) as c FROM users").first();
+      checks['d1_schema'] = { status: 'pass' };
+    } catch (e) {
+      checks['d1_schema'] = { status: 'fail', detail: 'D1 schema not applied. Run schema migrations.' };
+      allReady = false;
+    }
+
+    // Check Durable Objects are bindable
+    try {
+      const doId = env.PAIRING_HUB.idFromName('readyz_probe');
+      checks['durable_objects'] = doId ? { status: 'pass' } : { status: 'fail', detail: 'PairingHub DO binding failed' };
+      if (!doId) allReady = false;
+    } catch (e) {
+      checks['durable_objects'] = { status: 'fail', detail: 'Durable Object bindings unavailable' };
+      allReady = false;
+    }
+
+    // Check KV binding
+    try {
+      if (env.CONFIG_KV) {
+        checks['kv_namespace'] = { status: 'pass' };
+      } else {
+        checks['kv_namespace'] = { status: 'warn', detail: 'CONFIG_KV not bound (optional)' };
+      }
+    } catch (e) {
+      checks['kv_namespace'] = { status: 'warn', detail: 'KV namespace check failed (optional)' };
+    }
+
+    const overallStatus = allReady ? 'ready' : 'not_ready';
+    return Response.json(
+      {
+        status: overallStatus,
+        version: env.PCOS_CONTROL_VERSION || '1.0.0',
+        checks,
+        timestamp: new Date().toISOString(),
+      },
+      { status: allReady ? 200 : 503 }
+    );
+  }
+
+  // /api/v1/doctor/connectivity — network diagnostics (unauthenticated)
   if (url.pathname === '/api/v1/doctor/connectivity') {
     const clientIp = request.headers.get('cf-connecting-ip') || '127.0.0.1';
     const budgetStatus = await budget.getBudgetStatus();
@@ -210,6 +281,17 @@ async function handleApiRequest(
       ],
     });
   }
+
+  // ─── JWT_SECRET Gate (fail-closed for all authenticated endpoints) ───
+  const effectiveJwtSecret = env.JWT_SECRET || (env.PCOS_ENV === 'production' ? '' : 'pcos_dev_jwt_secret_do_not_use_in_production');
+  if (!effectiveJwtSecret) {
+    console.error('FATAL: JWT_SECRET environment variable is not configured in production');
+    return Response.json(
+      { error: 'Server configuration error', code: 'CONFIG_ERROR', message: 'The server is not fully configured. Contact your administrator.' },
+      { status: 503 }
+    );
+  }
+  const jwtSecret = effectiveJwtSecret;
 
   // ─── Free-Tier Usage & Budget Dashboard ───
   if (url.pathname === '/api/v1/usage/budget') {

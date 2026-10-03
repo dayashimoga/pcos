@@ -7,6 +7,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "provision": "node scripts/provision.mjs",
+    "provision:secrets": "node scripts/provision-secrets.mjs",
+    "smoke-test": "node scripts/smoke-test.mjs",
     "test": "vitest run",
     "d1:init": "wrangler d1 execute pcos-db --local --file=./schema.sql",
     "d1:init:prod": "wrangler d1 execute pcos-db --remote --file=./schema.sql"

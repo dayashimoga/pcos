@@ -103,6 +103,14 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npm run provision
 
+      - name: Verify & Provision Secrets (JWT_SECRET Fail-Fast)
+        working-directory: cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: npm run provision:secrets
+
       - name: Deploy Edge Control Plane & Static Web
         uses: cloudflare/wrangler-action@v3
         with:
@@ -110,3 +118,10 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: cloudflare
           command: deploy
+
+      - name: Live Post-Deploy Smoke Test (/livez, /readyz, /health, /usage/budget, /doctor/connectivity)
+        working-directory: cloudflare
+        env:
+          DEPLOYED_URL: https://pcos-control-plane.dayashimoga.workers.dev
+        run: npm run smoke-test
+

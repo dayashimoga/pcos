@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,27 +15,80 @@ class ApiClient {
 
   static String formatError(dynamic error) {
     if (error is DioException) {
-      if (error.response?.data is Map) {
-        final data = error.response!.data as Map;
+      // 1. Inspect structured JSON response from server
+      dynamic data = error.response?.data;
+      if (data is String && data.trim().startsWith('{')) {
+        try {
+          data = jsonDecode(data);
+        } catch (_) {}
+      }
+
+      if (data is Map) {
         if (data['error'] != null) return data['error'].toString();
         if (data['message'] != null) return data['message'].toString();
+        if (data['detail'] != null) return data['detail'].toString();
+      } else if (data is String && data.trim().isNotEmpty && !data.contains('<!DOCTYPE')) {
+        // Short plain text error (prevent leaking raw HTML pages)
+        final cleanText = data.trim();
+        if (cleanText.length < 200) {
+          return cleanText;
+        }
       }
-      if (error.response?.statusCode == 401) {
-        return 'Invalid or expired credentials/pairing session.';
+
+      // 2. HTTP Status Code fallbacks
+      final status = error.response?.statusCode;
+      if (status == 400) {
+        return 'Invalid request parameters (400).';
       }
-      if (error.response?.statusCode == 403) {
-        return 'Access denied. You do not have permission to access this resource.';
+      if (status == 401) {
+        return 'Invalid or expired credentials/pairing session (401).';
       }
-      if (error.response?.statusCode == 404) {
-        return 'The requested resource was not found.';
+      if (status == 403) {
+        return 'Access denied. You do not have permission to access this resource (403).';
       }
+      if (status == 404) {
+        return 'The requested resource was not found (404).';
+      }
+      if (status == 409) {
+        return 'Conflict with existing resource (409).';
+      }
+      if (status == 500) {
+        return 'Server internal error (500). Please check server configuration and logs.';
+      }
+      if (status == 502) {
+        return 'Bad Gateway (502). The PCOS edge or upstream backend is unreachable.';
+      }
+      if (status == 503) {
+        return 'Service temporarily unavailable (503). Server may be configuring or degraded.';
+      }
+      if (status == 504) {
+        return 'Gateway Timeout (504). Upstream service took too long to respond.';
+      }
+
+      // 3. Network connection error fallbacks
       if (error.type == DioExceptionType.connectionError ||
           error.type == DioExceptionType.connectionTimeout) {
-        return 'Unable to connect to PCOS server. Please ensure server is running.';
+        return 'Unable to connect to PCOS server. Please verify network connectivity and server status.';
       }
+      if (error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        return 'Connection timed out while communicating with PCOS server.';
+      }
+      if (error.type == DioExceptionType.badCertificate) {
+        return 'SSL/TLS certificate verification failed.';
+      }
+
+      // 4. Default clean fallback for any other DioException
+      return error.message?.isNotEmpty == true
+          ? error.message!
+          : 'Network communication error (${error.type.name})';
     }
+
     final str = error.toString();
     if (str.startsWith('Exception: ')) return str.substring(11);
+    if (str.contains('DioException')) {
+      return 'Network communication error';
+    }
     return str;
   }
 

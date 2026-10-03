@@ -635,4 +635,110 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
   });
 });
 
+describe('Liveness, Readiness Probes & Fail-Closed JWT Gate', () => {
+  it('should return 200 on /livez probe without authentication', async () => {
+    const worker = (await import('../src/index')).default;
+    const mockEnv = {
+      PCOS_ENV: 'production',
+      JWT_SECRET: undefined,
+    } as unknown as Env;
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    const req = new Request('http://edge.pcos.dev/livez');
+    const resp = await worker.fetch(req, mockEnv, ctx);
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as any;
+    expect(body.status).toBe('alive');
+  });
+
+  it('should return 200 on /health even when JWT_SECRET is unconfigured in production', async () => {
+    const worker = (await import('../src/index')).default;
+    const mockEnv = {
+      PCOS_ENV: 'production',
+      PCOS_CONTROL_VERSION: '1.2.3',
+      JWT_SECRET: undefined,
+    } as unknown as Env;
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    const req = new Request('http://edge.pcos.dev/health');
+    const resp = await worker.fetch(req, mockEnv, ctx);
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as any;
+    expect(body.status).toBe('healthy');
+    expect(body.version).toBe('1.2.3');
+  });
+
+  it('should return 503 on /readyz when JWT_SECRET is missing in production and identify root cause', async () => {
+    const worker = (await import('../src/index')).default;
+    const mockDb = {
+      prepare: () => ({
+        first: async () => ({ ok: 1 }),
+      }),
+    } as unknown as D1Database;
+    const mockEnv = {
+      DB: mockDb,
+      PAIRING_HUB: { idFromName: () => 'do_mock' },
+      PCOS_ENV: 'production',
+      JWT_SECRET: undefined,
+    } as unknown as Env;
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    const req = new Request('http://edge.pcos.dev/readyz');
+    const resp = await worker.fetch(req, mockEnv, ctx);
+    expect(resp.status).toBe(503);
+    const body = (await resp.json()) as any;
+    expect(body.status).toBe('not_ready');
+    expect(body.checks.jwt_config.status).toBe('fail');
+    expect(body.checks.jwt_config.detail).toContain('JWT_SECRET');
+  });
+
+  it('should fail-closed with 503 CONFIG_ERROR for authenticated endpoints when JWT_SECRET is missing', async () => {
+    const worker = (await import('../src/index')).default;
+    const mockEnv = {
+      PCOS_ENV: 'production',
+      JWT_SECRET: undefined,
+    } as unknown as Env;
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    const req = new Request('http://edge.pcos.dev/api/v1/users/me', {
+      headers: { Authorization: 'Bearer some_token' },
+    });
+    const resp = await worker.fetch(req, mockEnv, ctx);
+    expect(resp.status).toBe(503);
+    const body = (await resp.json()) as any;
+    expect(body.code).toBe('CONFIG_ERROR');
+    expect(body.error).toContain('Server configuration error');
+  });
+
+  it('should return 200 on /readyz when all dependencies (JWT, D1, DO) are healthy', async () => {
+    const worker = (await import('../src/index')).default;
+    const mockDb = {
+      prepare: (sql: string) => ({
+        first: async () => {
+          if (sql.includes('SELECT 1')) return { ok: 1 };
+          if (sql.includes('SELECT COUNT(*)')) return { c: 5 };
+          return null;
+        },
+      }),
+    } as unknown as D1Database;
+    const mockEnv = {
+      DB: mockDb,
+      PAIRING_HUB: { idFromName: () => 'do_readyz' },
+      PCOS_ENV: 'production',
+      JWT_SECRET: 'a_very_secure_configured_production_secret_32_chars',
+    } as unknown as Env;
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    const req = new Request('http://edge.pcos.dev/readyz');
+    const resp = await worker.fetch(req, mockEnv, ctx);
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as any;
+    expect(body.status).toBe('ready');
+    expect(body.checks.jwt_config.status).toBe('pass');
+    expect(body.checks.d1_database.status).toBe('pass');
+    expect(body.checks.durable_objects.status).toBe('pass');
+  });
+});
+
+
 
