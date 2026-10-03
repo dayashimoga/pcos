@@ -137,3 +137,27 @@ CREATE TABLE IF NOT EXISTS free_tier_usage (
     r2_storage_bytes INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS file_entries (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    parent_id TEXT REFERENCES file_entries(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    entry_type TEXT NOT NULL CHECK (entry_type IN ('file', 'folder')),
+    mime_type TEXT,
+    size_bytes INTEGER NOT NULL DEFAULT 0,
+    sha256_hash TEXT,
+    storage_path TEXT,
+    storage_node_id TEXT,
+    is_trashed INTEGER NOT NULL DEFAULT 0,
+    trashed_at TEXT,
+    is_favorite INTEGER NOT NULL DEFAULT 0,
+    data_blob BLOB,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_file_entries_user ON file_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_file_entries_parent ON file_entries(user_id, parent_id);
+CREATE INDEX IF NOT EXISTS idx_file_entries_trashed ON file_entries(user_id, is_trashed);
+

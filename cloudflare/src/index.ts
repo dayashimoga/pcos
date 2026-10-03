@@ -2,7 +2,7 @@
 // Free-first, always-available distributed cloud coordinator.
 // Splits control plane (coordination/metadata/presence) from data plane (storage/compute/FFmpeg).
 
-import { Env, User, DeviceIdentity, StorageNode, FileLocation } from './types';
+import { Env, User, DeviceIdentity, StorageNode, FileLocation, FileEntry } from './types';
 import {
   hashPassword,
   verifyPassword,
@@ -687,10 +687,596 @@ async function handleApiRequest(
     });
   }
 
+  // ─── Version & System Diagnostics ───
+  if (url.pathname === '/api/v1/version') {
+    return Response.json({
+      version: env.PCOS_CONTROL_VERSION || '1.0.0',
+      platform: 'cloudflare_edge',
+    });
+  }
+
+  if (url.pathname === '/api/v1/admin/system') {
+    return Response.json({
+      status: 'healthy',
+      version: env.PCOS_CONTROL_VERSION || '1.0.0',
+      platform: 'cloudflare_edge',
+      total_storage_bytes: 0,
+    });
+  }
+
+  // ─── Users: Me Profile ───
+  if (url.pathname === '/api/v1/users/me') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await env.DB.prepare(
+      'SELECT id, email, display_name, role, quota_bytes, used_bytes, created_at, updated_at FROM users WHERE id = ?1'
+    )
+      .bind(userPayload.sub)
+      .first<User>();
+    if (!user) return Response.json({ error: 'User not found' }, { status: 404 });
+    return Response.json(user);
+  }
+
+  // ─── Auxiliary Stubs (Shares, Notifications, Media History) ───
+  if (url.pathname === '/api/v1/shares') {
+    return Response.json({ shares: [], total: 0 });
+  }
+
+  if (url.pathname === '/api/v1/notifications') {
+    return Response.json({ notifications: [], total: 0 });
+  }
+
+  if (url.pathname === '/api/v1/media/history') {
+    return Response.json({ history: [] });
+  }
+
+  // ─── Folders: List Root ───
+  if (request.method === 'GET' && url.pathname === '/api/v1/folders') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+
+    const rows = await env.DB.prepare(
+      `SELECT id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, is_trashed, is_favorite, created_at, updated_at
+       FROM file_entries
+       WHERE user_id = ?1 AND parent_id IS NULL AND is_trashed = 0
+       ORDER BY entry_type DESC, name ASC`
+    )
+      .bind(userPayload.sub)
+      .all<FileEntry>();
+
+    const entries = (rows.results || []).map((e) => ({
+      ...e,
+      is_trashed: e.is_trashed === 1,
+      is_favorite: e.is_favorite === 1,
+    }));
+
+    return Response.json({
+      total: entries.length,
+      entries,
+      path: [{ id: null, name: 'Root' }],
+    });
+  }
+
+  // ─── Folders: List by ID ───
+  if (request.method === 'GET' && url.pathname.startsWith('/api/v1/folders/')) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+
+    const folderId = url.pathname.replace('/api/v1/folders/', '');
+    const folder = await env.DB.prepare(
+      `SELECT * FROM file_entries WHERE id = ?1 AND user_id = ?2 AND is_trashed = 0`
+    )
+      .bind(folderId, userPayload.sub)
+      .first<FileEntry>();
+
+    if (!folder) {
+      return Response.json({ error: 'Folder not found' }, { status: 404 });
+    }
+
+    const rows = await env.DB.prepare(
+      `SELECT id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, is_trashed, is_favorite, created_at, updated_at
+       FROM file_entries
+       WHERE user_id = ?1 AND parent_id = ?2 AND is_trashed = 0
+       ORDER BY entry_type DESC, name ASC`
+    )
+      .bind(userPayload.sub, folderId)
+      .all<FileEntry>();
+
+    const entries = (rows.results || []).map((e) => ({
+      ...e,
+      is_trashed: e.is_trashed === 1,
+      is_favorite: e.is_favorite === 1,
+    }));
+
+    return Response.json({
+      total: entries.length,
+      entries,
+      path: [
+        { id: null, name: 'Root' },
+        { id: folder.id, name: folder.name },
+      ],
+    });
+  }
+
+  // ─── Folders: Create ───
+  if (request.method === 'POST' && url.pathname === '/api/v1/folders') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+
+    const body = (await request.json().catch(() => ({}))) as { name?: string; parent_id?: string | null };
+    if (!body.name || !body.name.trim()) {
+      return Response.json({ error: 'Folder name is required' }, { status: 400 });
+    }
+
+    const folderId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    await env.DB.prepare(
+      `INSERT INTO file_entries (id, user_id, parent_id, name, entry_type, size_bytes, is_trashed, is_favorite, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, 'folder', 0, 0, 0, ?5, ?5)`
+    )
+      .bind(folderId, userPayload.sub, body.parent_id || null, body.name.trim(), now)
+      .run();
+
+    return Response.json(
+      {
+        id: folderId,
+        parent_id: body.parent_id || null,
+        name: body.name.trim(),
+        entry_type: 'folder',
+        size_bytes: 0,
+        is_trashed: false,
+        is_favorite: false,
+        created_at: now,
+        updated_at: now,
+      },
+      { status: 201 }
+    );
+  }
+
+  // ─── Files: List Recent Files (Dashboard) ───
+  if (request.method === 'GET' && url.pathname === '/api/v1/files') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));
+    const rows = await env.DB.prepare(
+      `SELECT id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, is_trashed, is_favorite, created_at, updated_at
+       FROM file_entries
+       WHERE user_id = ?1 AND entry_type = 'file' AND is_trashed = 0
+       ORDER BY updated_at DESC
+       LIMIT ?2`
+    )
+      .bind(userPayload.sub, limit)
+      .all<FileEntry>();
+
+    const entries = (rows.results || []).map((e) => ({
+      ...e,
+      is_trashed: e.is_trashed === 1,
+      is_favorite: e.is_favorite === 1,
+    }));
+
+    return Response.json({ total: entries.length, entries });
+  }
+
+  // ─── Files: Upload ───
+  if (request.method === 'POST' && url.pathname === '/api/v1/files/upload') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+
+    try {
+      const formData = await request.formData();
+      const file = formData.get('file') as File | null;
+      const parentId = (formData.get('parent_id') as string) || null;
+
+      if (!file) {
+        return Response.json({ error: 'No file provided' }, { status: 400 });
+      }
+
+      const fileId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const filename = file.name || 'unnamed_file';
+      const mimeType = file.type || 'application/octet-stream';
+      const sizeBytes = file.size;
+
+      let storagePath = 'local';
+      let dataBlob: ArrayBuffer | null = null;
+
+      if (env.CACHE_R2) {
+        const permitted = await budget.isCloudCachePermitted();
+        if (permitted) {
+          const r2Key = `cache/${userPayload.sub}/${fileId}`;
+          await env.CACHE_R2.put(r2Key, file.stream(), {
+            httpMetadata: { contentType: mimeType },
+            customMetadata: { userId: userPayload.sub, fileId, filename },
+          });
+          await budget.updateR2StorageBytes(sizeBytes);
+          storagePath = 'r2';
+        }
+      }
+
+      if (storagePath !== 'r2') {
+        if (sizeBytes <= 2 * 1024 * 1024) {
+          dataBlob = await file.arrayBuffer();
+          storagePath = 'd1';
+        } else {
+          storagePath = 'metadata_only';
+        }
+      }
+
+      await env.DB.prepare(
+        `INSERT INTO file_entries (id, user_id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, storage_path, is_trashed, is_favorite, data_blob, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, 'file', ?5, ?6, '', ?7, 0, 0, ?8, ?9, ?9)`
+      )
+        .bind(fileId, userPayload.sub, parentId, filename, mimeType, sizeBytes, storagePath, dataBlob, now)
+        .run();
+
+      return Response.json(
+        {
+          id: fileId,
+          parent_id: parentId,
+          name: filename,
+          entry_type: 'file',
+          mime_type: mimeType,
+          size_bytes: sizeBytes,
+          storage_path: storagePath,
+          is_trashed: false,
+          is_favorite: false,
+          created_at: now,
+          updated_at: now,
+        },
+        { status: 201 }
+      );
+    } catch (err) {
+      return Response.json({ error: 'File upload failed', details: String(err) }, { status: 500 });
+    }
+  }
+
+  // ─── Files: Download & Preview ───
+  if (
+    request.method === 'GET' &&
+    (url.pathname.match(/^\/api\/v1\/files\/[^/]+\/download$/) ||
+      url.pathname.match(/^\/api\/v1\/files\/[^/]+\/preview$/))
+  ) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    const fileId = url.pathname.split('/')[4];
+    const isPreview = url.pathname.endsWith('/preview');
+
+    await ensureTables(env.DB);
+    const entry = await env.DB.prepare('SELECT * FROM file_entries WHERE id = ?1')
+      .bind(fileId)
+      .first<FileEntry>();
+
+    if (!entry || (userPayload && entry.user_id !== userPayload.sub)) {
+      return Response.json({ error: 'File not found or unauthorized' }, { status: 404 });
+    }
+
+    const mime = entry.mime_type || 'application/octet-stream';
+    const disposition = isPreview
+      ? 'inline'
+      : `attachment; filename="${encodeURIComponent(entry.name)}"`;
+
+    if (entry.storage_path === 'r2' && env.CACHE_R2) {
+      const obj = await env.CACHE_R2.get(`cache/${entry.user_id}/${entry.id}`);
+      if (obj) {
+        return new Response(obj.body, {
+          headers: {
+            'Content-Type': mime,
+            'Content-Disposition': disposition,
+            'Content-Length': String(entry.size_bytes),
+          },
+        });
+      }
+    }
+
+    if (entry.data_blob) {
+      return new Response(entry.data_blob, {
+        headers: {
+          'Content-Type': mime,
+          'Content-Disposition': disposition,
+          'Content-Length': String(entry.size_bytes),
+        },
+      });
+    }
+
+    return Response.json(
+      {
+        error: 'File content resides on your connected local PCOS Storage Node.',
+        file_id: entry.id,
+        name: entry.name,
+      },
+      { status: 404 }
+    );
+  }
+
+  // ─── Files: Item Operations (Rename & Delete) ───
+  if (url.pathname.match(/^\/api\/v1\/files\/[^/]+$/)) {
+    const fileId = url.pathname.split('/')[4];
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+    const now = new Date().toISOString();
+
+    if (request.method === 'PUT') {
+      const body = (await request.json().catch(() => ({}))) as { name?: string };
+      if (!body.name) return Response.json({ error: 'Name is required' }, { status: 400 });
+      await env.DB.prepare(
+        'UPDATE file_entries SET name = ?1, updated_at = ?2 WHERE id = ?3 AND user_id = ?4'
+      )
+        .bind(body.name.trim(), now, fileId, userPayload.sub)
+        .run();
+      return Response.json({ success: true, name: body.name.trim() });
+    }
+
+    if (request.method === 'DELETE') {
+      await env.DB.prepare(
+        'UPDATE file_entries SET is_trashed = 1, trashed_at = ?1, updated_at = ?1 WHERE id = ?2 AND user_id = ?3'
+      )
+        .bind(now, fileId, userPayload.sub)
+        .run();
+      return Response.json({ success: true, message: 'Item moved to trash' });
+    }
+  }
+
+  // ─── Files: Favorite ───
+  if (request.method === 'PUT' && url.pathname.match(/^\/api\/v1\/files\/[^/]+\/favorite$/)) {
+    const fileId = url.pathname.split('/')[4];
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      'UPDATE file_entries SET is_favorite = (CASE WHEN is_favorite = 1 THEN 0 ELSE 1 END), updated_at = ?1 WHERE id = ?2 AND user_id = ?3'
+    )
+      .bind(now, fileId, userPayload.sub)
+      .run();
+    return Response.json({ success: true });
+  }
+
+  // ─── Files: Move ───
+  if (request.method === 'PUT' && url.pathname.match(/^\/api\/v1\/files\/[^/]+\/move$/)) {
+    const fileId = url.pathname.split('/')[4];
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+    const body = (await request.json().catch(() => ({}))) as { target_folder_id?: string | null };
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      'UPDATE file_entries SET parent_id = ?1, updated_at = ?2 WHERE id = ?3 AND user_id = ?4'
+    )
+      .bind(body.target_folder_id || null, now, fileId, userPayload.sub)
+      .run();
+    return Response.json({ success: true });
+  }
+
+  // ─── Files: Bulk Delete ───
+  if (request.method === 'POST' && url.pathname === '/api/v1/files/bulk-delete') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+    const body = (await request.json().catch(() => ({}))) as { ids?: string[] };
+    const now = new Date().toISOString();
+    if (body.ids && body.ids.length > 0) {
+      for (const id of body.ids) {
+        await env.DB.prepare(
+          'UPDATE file_entries SET is_trashed = 1, trashed_at = ?1, updated_at = ?1 WHERE id = ?2 AND user_id = ?3'
+        )
+          .bind(now, id, userPayload.sub)
+          .run();
+      }
+    }
+    return Response.json({ success: true });
+  }
+
+  // ─── Trash: List ───
+  if (url.pathname === '/api/v1/trash' && request.method === 'GET') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+    const rows = await env.DB.prepare(
+      `SELECT id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, is_trashed, is_favorite, created_at, updated_at, trashed_at
+       FROM file_entries WHERE user_id = ?1 AND is_trashed = 1 ORDER BY trashed_at DESC`
+    )
+      .bind(userPayload.sub)
+      .all<FileEntry>();
+    return Response.json(rows.results || []);
+  }
+
+  // ─── Trash: Restore ───
+  if (url.pathname.match(/^\/api\/v1\/trash\/[^/]+\/restore$/) && request.method === 'POST') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+    const itemId = url.pathname.split('/')[4];
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      'UPDATE file_entries SET is_trashed = 0, trashed_at = NULL, updated_at = ?1 WHERE id = ?2 AND user_id = ?3'
+    )
+      .bind(now, itemId, userPayload.sub)
+      .run();
+    return Response.json({ success: true });
+  }
+
+  // ─── Trash: Empty ───
+  if (url.pathname === '/api/v1/trash/empty' && request.method === 'POST') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+    await env.DB.prepare('DELETE FROM file_entries WHERE user_id = ?1 AND is_trashed = 1')
+      .bind(userPayload.sub)
+      .run();
+    return Response.json({ success: true });
+  }
+
+  // ─── Search: Files & Photos (Used by Gallery & Search) ───
+  if (request.method === 'GET' && url.pathname === '/api/v1/search') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+
+    const q = url.searchParams.get('q') || '*';
+    const type = url.searchParams.get('type');
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));
+
+    let querySql = `SELECT id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, is_trashed, is_favorite, created_at, updated_at
+                    FROM file_entries WHERE user_id = ?1 AND is_trashed = 0`;
+    const binds: (string | number)[] = [userPayload.sub];
+
+    if (type === 'file') {
+      querySql += ` AND entry_type = 'file'`;
+    } else if (type === 'folder') {
+      querySql += ` AND entry_type = 'folder'`;
+    }
+
+    if (q && q !== '*') {
+      querySql += ` AND name LIKE ?2`;
+      binds.push(`%${q}%`);
+    }
+
+    querySql += ` ORDER BY updated_at DESC LIMIT ?${binds.length + 1}`;
+    binds.push(limit);
+
+    const stmt = env.DB.prepare(querySql);
+    const rows = await stmt.bind(...binds).all<FileEntry>();
+
+    const results = (rows.results || []).map((e) => ({
+      ...e,
+      is_trashed: e.is_trashed === 1,
+      is_favorite: e.is_favorite === 1,
+    }));
+
+    return Response.json({
+      results,
+      total: results.length,
+      query: q,
+    });
+  }
+
+  // ─── Storage: Statistics ───
+  if (request.method === 'GET' && url.pathname === '/api/v1/storage/stats') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+
+    const filesCount = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM file_entries WHERE user_id = ?1 AND entry_type = 'file' AND is_trashed = 0`
+    )
+      .bind(userPayload.sub)
+      .first<{ count: number }>();
+
+    const foldersCount = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM file_entries WHERE user_id = ?1 AND entry_type = 'folder' AND is_trashed = 0`
+    )
+      .bind(userPayload.sub)
+      .first<{ count: number }>();
+
+    const sizeSum = await env.DB.prepare(
+      `SELECT SUM(size_bytes) as total_bytes FROM file_entries WHERE user_id = ?1 AND entry_type = 'file' AND is_trashed = 0`
+    )
+      .bind(userPayload.sub)
+      .first<{ total_bytes: number }>();
+
+    const trashedCount = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM file_entries WHERE user_id = ?1 AND is_trashed = 1`
+    )
+      .bind(userPayload.sub)
+      .first<{ count: number }>();
+
+    return Response.json({
+      total_files: filesCount?.count || 0,
+      total_folders: foldersCount?.count || 0,
+      total_size_bytes: sizeSum?.total_bytes || 0,
+      trashed_items: trashedCount?.count || 0,
+    });
+  }
+
+  // ─── Analytics: Overview (Dashboard) ───
+  if (request.method === 'GET' && url.pathname === '/api/v1/analytics/overview') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTables(env.DB);
+
+    const filesCount = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM file_entries WHERE user_id = ?1 AND entry_type = 'file' AND is_trashed = 0`
+    )
+      .bind(userPayload.sub)
+      .first<{ count: number }>();
+
+    const foldersCount = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM file_entries WHERE user_id = ?1 AND entry_type = 'folder' AND is_trashed = 0`
+    )
+      .bind(userPayload.sub)
+      .first<{ count: number }>();
+
+    const sizeSum = await env.DB.prepare(
+      `SELECT SUM(size_bytes) as total_bytes FROM file_entries WHERE user_id = ?1 AND entry_type = 'file' AND is_trashed = 0`
+    )
+      .bind(userPayload.sub)
+      .first<{ total_bytes: number }>();
+
+    const devCount = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM device_identities WHERE user_id = ?1`
+    )
+      .bind(userPayload.sub)
+      .first<{ count: number }>();
+
+    const bytes = sizeSum?.total_bytes || 0;
+
+    return Response.json({
+      total_files: filesCount?.count || 0,
+      total_folders: foldersCount?.count || 0,
+      total_size_bytes: bytes,
+      total_devices: devCount?.count || 0,
+      active_shares: 0,
+      total_backups: 0,
+      formatted_size: formatBytes(bytes),
+    });
+  }
+
   return Response.json({ error: 'Endpoint not found' }, { status: 404 });
 }
 
 // ─── Helper Functions ───
+
+async function ensureTables(db: D1Database): Promise<void> {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS file_entries (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        parent_id TEXT REFERENCES file_entries(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        entry_type TEXT NOT NULL CHECK (entry_type IN ('file', 'folder')),
+        mime_type TEXT,
+        size_bytes INTEGER NOT NULL DEFAULT 0,
+        sha256_hash TEXT,
+        storage_path TEXT,
+        storage_node_id TEXT,
+        is_trashed INTEGER NOT NULL DEFAULT 0,
+        trashed_at TEXT,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        data_blob BLOB,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`
+    )
+    .run()
+    .catch(() => {});
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
 
 async function issueTokenPair(
   userId: string,

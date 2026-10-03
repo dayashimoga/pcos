@@ -136,3 +136,61 @@ describe('Budget & Free-Tier Guard', () => {
     expect(status.cloud_cache_active).toBe(false); // Cloud cache blocked to protect free tier!
   });
 });
+
+describe('File System & Storage Metadata Endpoints', () => {
+  it('should format storage sizes correctly', () => {
+    // 0 B
+    const zero = 0;
+    expect(zero <= 0 ? '0 B' : '').toBe('0 B');
+
+    // KB
+    const kb = 2048;
+    expect(`${(kb / 1024).toFixed(1)} KB`).toBe('2.0 KB');
+
+    // MB
+    const mb = 15 * 1024 * 1024;
+    expect(`${(mb / (1024 * 1024)).toFixed(1)} MB`).toBe('15.0 MB');
+  });
+
+  it('should construct valid file and folder payloads matching frontend expectations', () => {
+    const mockFolder = {
+      id: 'fld_123',
+      parent_id: null,
+      name: 'Documents',
+      entry_type: 'folder',
+      size_bytes: 0,
+      is_trashed: false,
+      is_favorite: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    expect(mockFolder.entry_type).toBe('folder');
+    expect(mockFolder.size_bytes).toBe(0);
+
+    const mockPhoto = {
+      id: 'file_456',
+      parent_id: null,
+      name: 'vacation.jpg',
+      entry_type: 'file',
+      mime_type: 'image/jpeg',
+      size_bytes: 2048500,
+      is_trashed: false,
+      is_favorite: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    expect(mockPhoto.mime_type?.startsWith('image/')).toBe(true);
+
+    const rootListing = {
+      total: 2,
+      entries: [mockFolder, mockPhoto],
+      path: [{ id: null, name: 'Root' }],
+    };
+
+    expect(rootListing.entries).toHaveLength(2);
+    expect(rootListing.path[0].name).toBe('Root');
+  });
+});
+

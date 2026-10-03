@@ -85,6 +85,25 @@ export interface FileLocation {
   updated_at: string;
 }
 
+export interface FileEntry {
+  id: string;
+  user_id: string;
+  parent_id: string | null;
+  name: string;
+  entry_type: 'file' | 'folder';
+  mime_type: string | null;
+  size_bytes: number;
+  sha256_hash: string | null;
+  storage_path: string | null;
+  storage_node_id: string | null;
+  is_trashed: number;
+  trashed_at: string | null;
+  is_favorite: number;
+  data_blob?: ArrayBuffer | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PairingSessionData {
   id: string;
   user_id: string;
