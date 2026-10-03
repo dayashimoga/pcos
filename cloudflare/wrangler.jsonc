@@ -48,13 +48,6 @@
     }
   ],
 
-  "r2_buckets": [
-    {
-      "binding": "CACHE_R2",
-      "bucket_name": "pcos-cloud-cache"
-    }
-  ],
-
   "vars": {
     "PCOS_ENV": "production",
     "PCOS_CONTROL_VERSION": "1.0.0",

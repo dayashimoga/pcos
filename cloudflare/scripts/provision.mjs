@@ -112,17 +112,32 @@ async function provision() {
     }
   }
 
-  // 4. R2 Bucket Provisioning
+  // 4. R2 Bucket Provisioning (Optional Cloud Cache)
   console.log('\n🪣 Checking R2 Bucket (pcos-cloud-cache)...');
+  let hasR2 = false;
   try {
-    run('npx wrangler r2 bucket create pcos-cloud-cache', true);
-    console.log('  ✓ R2 Bucket "pcos-cloud-cache" verified/created');
-  } catch (e) {
-    console.log('  ✓ R2 bucket check complete');
+    const listOut = run('npx wrangler r2 bucket list', true) || '';
+    if (listOut.includes('pcos-cloud-cache')) {
+      hasR2 = true;
+      console.log('  ✓ Found existing R2 Bucket "pcos-cloud-cache"');
+    } else {
+      console.log('  ➜ Attempting to create R2 bucket "pcos-cloud-cache"...');
+      run('npx wrangler r2 bucket create pcos-cloud-cache', true);
+      const verifyOut = run('npx wrangler r2 bucket list', true) || '';
+      if (verifyOut.includes('pcos-cloud-cache')) {
+        hasR2 = true;
+        console.log('  ✓ Successfully created and verified R2 Bucket "pcos-cloud-cache"');
+      }
+    }
+  } catch (_) {}
+
+  if (!hasR2) {
+    console.log('  ℹ️ R2 is not enabled on this Cloudflare account or API token lacks R2 permissions.');
+    console.log('  ℹ️ PCOS will operate without cloud cache (100% user-owned storage nodes, zero cloud fees).');
   }
 
-  // 5. Update wrangler.jsonc with real IDs if discovered
-  if (fs.existsSync(configPath) && (d1Id || kvId)) {
+  // 5. Update wrangler.jsonc with real IDs and active bindings
+  if (fs.existsSync(configPath)) {
     let configContent = fs.readFileSync(configPath, 'utf8');
     if (d1Id) {
       configContent = configContent.replace(
@@ -135,6 +150,23 @@ async function provision() {
         /"id":\s*"pcos-config-kv-[^"]*"/,
         `"id": "${kvId}"`
       );
+    }
+    if (hasR2) {
+      if (!configContent.includes('"binding": "CACHE_R2"')) {
+        configContent = configContent.replace(
+          /"vars":/,
+          `"r2_buckets": [\n    {\n      "binding": "CACHE_R2",\n      "bucket_name": "pcos-cloud-cache"\n    }\n  ],\n\n  "vars":`
+        );
+        console.log('  ✓ Bound active R2 bucket "pcos-cloud-cache" to CACHE_R2 in wrangler.jsonc');
+      }
+    } else {
+      if (configContent.includes('"binding": "CACHE_R2"')) {
+        configContent = configContent.replace(
+          /\s*"r2_buckets":\s*\[[\s\S]*?\]\s*,?/,
+          ''
+        );
+        console.log('  ✓ Cleaned r2_buckets from wrangler.jsonc to prevent deployment errors');
+      }
     }
     fs.writeFileSync(configPath, configContent, 'utf8');
     console.log('\n📝 Updated wrangler.jsonc with active Cloudflare resource bindings');
