@@ -275,8 +275,7 @@ class _LoginPageState extends State<LoginPage>
               onPressed: () => _showPairingDialog(context, initialTab: 0),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),
-                side:
-                    BorderSide(color: AppTheme.primary.withValues(alpha: 0.6)),
+                side: BorderSide(color: AppTheme.primary.withOpacity(0.6)),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
@@ -292,7 +291,7 @@ class _LoginPageState extends State<LoginPage>
               onPressed: () => context.go('/connect'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),
-                backgroundColor: AppTheme.primary.withValues(alpha: 0.16),
+                backgroundColor: AppTheme.primary.withOpacity(0.16),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
@@ -342,7 +341,7 @@ class _LoginPageState extends State<LoginPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.15),
+                    color: AppTheme.primary.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.qr_code_scanner_rounded,
@@ -437,7 +436,7 @@ class _LoginPageState extends State<LoginPage>
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.primary.withValues(alpha: 0.15),
+                              color: AppTheme.primary.withOpacity(0.15),
                               blurRadius: 16,
                               offset: const Offset(0, 4),
                             ),
@@ -533,7 +532,7 @@ class _LoginPageState extends State<LoginPage>
                         width: 90,
                         height: 90,
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.12),
+                          color: AppTheme.primary.withOpacity(0.12),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.qr_code_scanner_rounded,
@@ -826,8 +825,7 @@ class _LoginPageState extends State<LoginPage>
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: (success ? AppTheme.success : AppTheme.error)
-            .withValues(alpha: 0.12),
+        color: (success ? AppTheme.success : AppTheme.error).withOpacity(0.12),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: success ? AppTheme.success : AppTheme.error),
       ),

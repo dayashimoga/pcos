@@ -575,7 +575,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6C5CE7).withValues(alpha: 0.35),
+                color: const Color(0xFF6C5CE7).withOpacity(0.35),
                 blurRadius: 16,
                 offset: const Offset(0, 8),
               ),
@@ -723,7 +723,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.15),
+                color: AppTheme.primary.withOpacity(0.15),
                 blurRadius: 18,
                 offset: const Offset(0, 4),
               ),
