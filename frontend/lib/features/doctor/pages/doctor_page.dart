@@ -62,13 +62,14 @@ class _DoctorPageState extends State<DoctorPage> {
               if (checks['jwt_config']?['status'] == 'fail') {
                 isServerReady = false;
                 rootCauseReason = 'JWT_SECRET missing';
-                _rootCauseTitle = 'Server Configuration Error: JWT_SECRET Missing';
+                _rootCauseTitle =
+                    'Server Configuration Error: JWT_SECRET Missing';
                 _rootCauseDetail = checks['jwt_config']?['detail'] ??
                     'JWT_SECRET secret is not configured on the Cloudflare Worker.';
                 _rootCauseRemedy =
                     'Run: npx wrangler secret put JWT_SECRET\nOr add JWT_SECRET to GitHub Repository Secrets.';
-                throw Exception(
-                    checks['jwt_config']?['detail'] ?? 'JWT_SECRET not configured');
+                throw Exception(checks['jwt_config']?['detail'] ??
+                    'JWT_SECRET not configured');
               }
               if (checks['d1_database']?['status'] == 'fail') {
                 isServerReady = false;
@@ -106,23 +107,30 @@ class _DoctorPageState extends State<DoctorPage> {
       final resp = await api.dio.get('/health');
       final version =
           resp.data is Map ? (resp.data['version'] ?? '1.0.0') : '1.0.0';
-      final uptime =
-          resp.data is Map ? (resp.data['uptime_secs'] ?? 0) : 0;
+      final uptime = resp.data is Map ? (resp.data['uptime_secs'] ?? 0) : 0;
       return 'v$version — uptime ${uptime}s';
     });
 
     // ─── 3–10. Authenticated Dependent Checks ───
     if (!isServerReady) {
       // Avoid cascading 10 doomed requests when root configuration failed
-      final blockReason = 'Blocked: Root server configuration prerequisite failed (${rootCauseReason ?? 'Configuration Error'})';
-      _addBlockedCheck('Database', 'PostgreSQL / D1 connection pool', blockReason);
-      _addBlockedCheck('Authentication', 'JWT auth and session management', blockReason);
-      _addBlockedCheck('File Storage', 'Storage directory / R2 accessible', blockReason);
+      final blockReason =
+          'Blocked: Root server configuration prerequisite failed (${rootCauseReason ?? 'Configuration Error'})';
+      _addBlockedCheck(
+          'Database', 'PostgreSQL / D1 connection pool', blockReason);
+      _addBlockedCheck(
+          'Authentication', 'JWT auth and session management', blockReason);
+      _addBlockedCheck(
+          'File Storage', 'Storage directory / R2 accessible', blockReason);
       _addBlockedCheck('Search Engine', 'Full-text search index', blockReason);
-      _addBlockedCheck('Admin API', 'System administration endpoints', blockReason);
-      _addBlockedCheck('Sharing', 'Share link creation and management', blockReason);
-      _addBlockedCheck('Device Sync', 'Device registration and sync', blockReason);
-      _addBlockedCheck('Notifications', 'Notification delivery system', blockReason);
+      _addBlockedCheck(
+          'Admin API', 'System administration endpoints', blockReason);
+      _addBlockedCheck(
+          'Sharing', 'Share link creation and management', blockReason);
+      _addBlockedCheck(
+          'Device Sync', 'Device registration and sync', blockReason);
+      _addBlockedCheck(
+          'Notifications', 'Notification delivery system', blockReason);
       _addBlockedCheck('Trash', 'Soft-delete and recovery system', blockReason);
     } else {
       // 3. Database
@@ -150,8 +158,8 @@ class _DoctorPageState extends State<DoctorPage> {
 
       // 6. Search Engine
       await _runCheck('Search Engine', 'Full-text search index', () async {
-        final resp = await api.dio
-            .get('/api/v1/search', queryParameters: {'q': 'test'});
+        final resp =
+            await api.dio.get('/api/v1/search', queryParameters: {'q': 'test'});
         int count = 0;
         if (resp.data is Map && resp.data['results'] is List) {
           count = (resp.data['results'] as List).length;
@@ -175,7 +183,8 @@ class _DoctorPageState extends State<DoctorPage> {
       });
 
       // 8. Sharing
-      await _runCheck('Sharing', 'Share link creation and management', () async {
+      await _runCheck('Sharing', 'Share link creation and management',
+          () async {
         final resp = await api.dio.get('/api/v1/shares');
         int count = 0;
         if (resp.data is Map && resp.data['shares'] is List) {
@@ -199,7 +208,8 @@ class _DoctorPageState extends State<DoctorPage> {
       });
 
       // 10. Notifications
-      await _runCheck('Notifications', 'Notification delivery system', () async {
+      await _runCheck('Notifications', 'Notification delivery system',
+          () async {
         await api.dio.get('/api/v1/notifications');
         return 'Service available';
       });
@@ -234,12 +244,13 @@ class _DoctorPageState extends State<DoctorPage> {
 
     // ─── 13. Media Streaming Engine ───
     if (!isServerReady) {
-      _addBlockedCheck('Media Server',
+      _addBlockedCheck(
+          'Media Server',
           'Direct-play Range streaming and playback',
           'Blocked: Prerequisite Server Configuration failed');
     } else {
-      await _runCheck('Media Server',
-          'Direct-play Range streaming and playback', () async {
+      await _runCheck(
+          'Media Server', 'Direct-play Range streaming and playback', () async {
         final resp = await api.dio.get('/api/v1/media/history');
         int count = 0;
         if (resp.data is Map && resp.data['history'] is List) {
@@ -326,7 +337,8 @@ class _DoctorPageState extends State<DoctorPage> {
   Widget build(BuildContext context) {
     final passed = _checks.where((c) => c.status == _CheckStatus.pass).length;
     final failed = _checks.where((c) => c.status == _CheckStatus.fail).length;
-    final blocked = _checks.where((c) => c.status == _CheckStatus.blocked).length;
+    final blocked =
+        _checks.where((c) => c.status == _CheckStatus.blocked).length;
     final total = _checks.length;
 
     return SingleChildScrollView(

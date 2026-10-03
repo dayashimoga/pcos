@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
@@ -302,7 +301,8 @@ class _LoginPageState extends State<LoginPage>
         builder: (dialogCtx, setDialogState) {
           return AlertDialog(
             backgroundColor: AppTheme.surfaceColor(context),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
             titlePadding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
             title: Row(
@@ -313,7 +313,8 @@ class _LoginPageState extends State<LoginPage>
                     color: AppTheme.primary.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.dns_rounded, color: AppTheme.primary, size: 22),
+                  child: const Icon(Icons.dns_rounded,
+                      color: AppTheme.primary, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -350,10 +351,12 @@ class _LoginPageState extends State<LoginPage>
                     const SizedBox(height: 16),
                     TextField(
                       controller: ctrl,
-                      style: TextStyle(color: AppTheme.textPrimaryColor(context)),
+                      style:
+                          TextStyle(color: AppTheme.textPrimaryColor(context)),
                       decoration: const InputDecoration(
                         labelText: 'Server URL',
-                        hintText: 'https://pcos-control-plane... or http://192.168.1.50:8080',
+                        hintText:
+                            'https://pcos-control-plane... or http://192.168.1.50:8080',
                         prefixIcon: Icon(Icons.link_rounded),
                       ),
                     ),
@@ -373,18 +376,21 @@ class _LoginPageState extends State<LoginPage>
                                       testing = true;
                                       testResult = null;
                                     });
-                                    final err = await api.testServerUrl(ctrl.text.trim());
+                                    final err = await api
+                                        .testServerUrl(ctrl.text.trim());
                                     setDialogState(() {
                                       testing = false;
                                       testSuccess = (err == null);
-                                      testResult = err ?? 'Connection successful!';
+                                      testResult =
+                                          err ?? 'Connection successful!';
                                     });
                                   },
                             icon: testing
                                 ? const SizedBox(
                                     width: 14,
                                     height: 14,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
                                   )
                                 : const Icon(Icons.wifi_find_rounded, size: 14),
                             label: Text(testing ? 'Testing...' : 'Test',
@@ -404,13 +410,15 @@ class _LoginPageState extends State<LoginPage>
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Server updated: ${api.currentServerUrl}'),
+                                    content: Text(
+                                        'Server updated: ${api.currentServerUrl}'),
                                     backgroundColor: AppTheme.success,
                                   ),
                                 );
                               }
                             },
-                            child: const Text('Save Server', style: TextStyle(fontSize: 12)),
+                            child: const Text('Save Server',
+                                style: TextStyle(fontSize: 12)),
                           ),
                         ),
                       ],

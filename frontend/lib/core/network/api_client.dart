@@ -27,7 +27,9 @@ class ApiClient {
         if (data['error'] != null) return data['error'].toString();
         if (data['message'] != null) return data['message'].toString();
         if (data['detail'] != null) return data['detail'].toString();
-      } else if (data is String && data.trim().isNotEmpty && !data.contains('<!DOCTYPE')) {
+      } else if (data is String &&
+          data.trim().isNotEmpty &&
+          !data.contains('<!DOCTYPE')) {
         // Short plain text error (prevent leaking raw HTML pages)
         final cleanText = data.trim();
         if (cleanText.length < 200) {

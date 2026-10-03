@@ -32,45 +32,48 @@ class _MediaPageState extends State<MediaPage> {
 
       // 1. Continue Watching
       final histResp = await api.dio.get('/api/v1/media/history');
-      final List rawHist = histResp.data is Map && histResp.data['history'] is List
-          ? histResp.data['history']
-          : (histResp.data is List ? histResp.data : []);
+      final List rawHist =
+          histResp.data is Map && histResp.data['history'] is List
+              ? histResp.data['history']
+              : (histResp.data is List ? histResp.data : []);
 
       // 2. All files (filter videos & audios)
       final filesResp = await api.dio.get('/api/v1/files');
-      final List rawFiles = filesResp.data is Map && filesResp.data['entries'] is List
-          ? filesResp.data['entries']
-          : (filesResp.data is List ? filesResp.data : []);
+      final List rawFiles =
+          filesResp.data is Map && filesResp.data['entries'] is List
+              ? filesResp.data['entries']
+              : (filesResp.data is List ? filesResp.data : []);
 
       // 3. Devices for TV Casting
       final devResp = await api.dio.get('/api/v1/devices');
-      final List rawDevs = devResp.data is Map && devResp.data['devices'] is List
-          ? devResp.data['devices']
-          : (devResp.data is List ? devResp.data : []);
+      final List rawDevs =
+          devResp.data is Map && devResp.data['devices'] is List
+              ? devResp.data['devices']
+              : (devResp.data is List ? devResp.data : []);
 
       final tvs = rawDevs
           .map((d) => Map<String, dynamic>.from(d as Map))
-          .where((d) => d['device_type'] == 'smart_tv' || d['device_type'] == 'tv')
+          .where(
+              (d) => d['device_type'] == 'smart_tv' || d['device_type'] == 'tv')
           .toList();
 
-      final media = rawFiles
-          .map((f) => Map<String, dynamic>.from(f as Map))
-          .where((f) {
-            final mime = f['mime_type']?.toString().toLowerCase() ?? '';
-            final name = f['name']?.toString().toLowerCase() ?? '';
-            return mime.startsWith('video/') ||
-                mime.startsWith('audio/') ||
-                name.endsWith('.mp4') ||
-                name.endsWith('.mkv') ||
-                name.endsWith('.mov') ||
-                name.endsWith('.mp3') ||
-                name.endsWith('.flac');
-          })
-          .toList();
+      final media =
+          rawFiles.map((f) => Map<String, dynamic>.from(f as Map)).where((f) {
+        final mime = f['mime_type']?.toString().toLowerCase() ?? '';
+        final name = f['name']?.toString().toLowerCase() ?? '';
+        return mime.startsWith('video/') ||
+            mime.startsWith('audio/') ||
+            name.endsWith('.mp4') ||
+            name.endsWith('.mkv') ||
+            name.endsWith('.mov') ||
+            name.endsWith('.mp3') ||
+            name.endsWith('.flac');
+      }).toList();
 
       if (mounted) {
         setState(() {
-          _continueWatching = rawHist.map((h) => Map<String, dynamic>.from(h as Map)).toList();
+          _continueWatching =
+              rawHist.map((h) => Map<String, dynamic>.from(h as Map)).toList();
           _mediaFiles = media;
           _tvDevices = tvs;
           _loading = false;
@@ -97,11 +100,13 @@ class _MediaPageState extends State<MediaPage> {
         onProgressUpdate: (pos, dur) async {
           try {
             final api = getIt<ApiClient>();
-            await api.dio.post('/api/v1/streaming/progress/${file['id'] ?? file['file_id']}', data: {
-              'position_secs': pos,
-              'duration_secs': dur,
-              'completed': pos >= dur && dur > 0,
-            });
+            await api.dio.post(
+                '/api/v1/streaming/progress/${file['id'] ?? file['file_id']}',
+                data: {
+                  'position_secs': pos,
+                  'duration_secs': dur,
+                  'completed': pos >= dur && dur > 0,
+                });
             _loadMedia();
           } catch (_) {}
         },
@@ -124,7 +129,8 @@ class _MediaPageState extends State<MediaPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Media Center', style: Theme.of(context).textTheme.displayMedium),
+                  Text('Media Center',
+                      style: Theme.of(context).textTheme.displayMedium),
                   const SizedBox(height: 6),
                   Text(
                     'Direct-play video streaming, continuous resume, and Play-on-TV casting.',
@@ -133,17 +139,22 @@ class _MediaPageState extends State<MediaPage> {
                 ]),
                 if (_tvDevices.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppTheme.accent.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(children: [
-                      const Icon(Icons.tv_rounded, color: AppTheme.accent, size: 18),
+                      const Icon(Icons.tv_rounded,
+                          color: AppTheme.accent, size: 18),
                       const SizedBox(width: 8),
                       Text(
                         '${_tvDevices.length} TV(s) Ready',
-                        style: const TextStyle(fontSize: 12, color: AppTheme.accent, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.accent,
+                            fontWeight: FontWeight.bold),
                       ),
                     ]),
                   ),
@@ -161,15 +172,20 @@ class _MediaPageState extends State<MediaPage> {
                   border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 18),
+                  const Icon(Icons.warning_amber_rounded,
+                      color: AppTheme.warning, size: 18),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(_error!, style: const TextStyle(color: AppTheme.warning, fontSize: 13))),
+                  Expanded(
+                      child: Text(_error!,
+                          style: const TextStyle(
+                              color: AppTheme.warning, fontSize: 13))),
                 ]),
               ),
 
             // Continue Watching Section
             if (_continueWatching.isNotEmpty) ...[
-              Text('Continue Watching', style: Theme.of(context).textTheme.headlineMedium),
+              Text('Continue Watching',
+                  style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 14),
               SizedBox(
                 height: 180,
@@ -179,8 +195,10 @@ class _MediaPageState extends State<MediaPage> {
                   separatorBuilder: (_, __) => const SizedBox(width: 14),
                   itemBuilder: (context, idx) {
                     final item = _continueWatching[idx];
-                    final pos = (item['position_secs'] as num?)?.toDouble() ?? 0.0;
-                    final dur = (item['duration_secs'] as num?)?.toDouble() ?? 1.0;
+                    final pos =
+                        (item['position_secs'] as num?)?.toDouble() ?? 0.0;
+                    final dur =
+                        (item['duration_secs'] as num?)?.toDouble() ?? 1.0;
                     final pct = dur > 0 ? (pos / dur).clamp(0.0, 1.0) : 0.0;
                     final name = item['file_name'] ?? 'Video';
 
@@ -193,7 +211,8 @@ class _MediaPageState extends State<MediaPage> {
                         decoration: BoxDecoration(
                           color: AppTheme.surfaceColor(context),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppTheme.borderColor(context)),
+                          border:
+                              Border.all(color: AppTheme.borderColor(context)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,7 +225,8 @@ class _MediaPageState extends State<MediaPage> {
                                   color: AppTheme.primary.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Icon(Icons.play_arrow_rounded, color: AppTheme.primary, size: 24),
+                                child: const Icon(Icons.play_arrow_rounded,
+                                    color: AppTheme.primary, size: 24),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -214,29 +234,44 @@ class _MediaPageState extends State<MediaPage> {
                                   name,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ]),
-                            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: pct,
-                                  minHeight: 6,
-                                  backgroundColor: AppTheme.surfaceLightColor(context),
-                                  color: AppTheme.primary,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                                Text(
-                                  '${pos.toInt()}s / ${dur.toInt()}s',
-                                  style: TextStyle(fontSize: 11, color: AppTheme.textMutedColor(context)),
-                                ),
-                                const Text('Resume', style: TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.bold)),
-                              ]),
-                            ]),
+                            Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: pct,
+                                      minHeight: 6,
+                                      backgroundColor:
+                                          AppTheme.surfaceLightColor(context),
+                                      color: AppTheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          '${pos.toInt()}s / ${dur.toInt()}s',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: AppTheme.textMutedColor(
+                                                  context)),
+                                        ),
+                                        const Text('Resume',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: AppTheme.primary,
+                                                fontWeight: FontWeight.bold)),
+                                      ]),
+                                ]),
                           ],
                         ),
                       ),
@@ -251,14 +286,19 @@ class _MediaPageState extends State<MediaPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Media Library', style: Theme.of(context).textTheme.headlineMedium),
-                Text('${_mediaFiles.length} file(s)', style: TextStyle(color: AppTheme.textMutedColor(context))),
+                Text('Media Library',
+                    style: Theme.of(context).textTheme.headlineMedium),
+                Text('${_mediaFiles.length} file(s)',
+                    style: TextStyle(color: AppTheme.textMutedColor(context))),
               ],
             ),
             const SizedBox(height: 16),
 
             if (_loading)
-              const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator()))
+              const Center(
+                  child: Padding(
+                      padding: EdgeInsets.all(48),
+                      child: CircularProgressIndicator()))
             else if (_mediaFiles.isEmpty)
               Container(
                 width: double.infinity,
@@ -275,15 +315,19 @@ class _MediaPageState extends State<MediaPage> {
                       color: AppTheme.primary.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.movie_outlined, size: 36, color: AppTheme.primary),
+                    child: const Icon(Icons.movie_outlined,
+                        size: 36, color: AppTheme.primary),
                   ),
                   const SizedBox(height: 16),
-                  const Text('No Media Files Found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('No Media Files Found',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
                     'Upload MP4, MKV, MOV, or audio files to stream them with direct playback or cast to your TV.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context)),
+                    style: TextStyle(
+                        fontSize: 13, color: AppTheme.textMutedColor(context)),
                   ),
                 ]),
               )
@@ -297,9 +341,11 @@ class _MediaPageState extends State<MediaPage> {
                   final f = _mediaFiles[idx];
                   final name = f['name'] ?? 'Media';
                   final size = (f['size_bytes'] as num?)?.toInt() ?? 0;
-                  final isVideo = (f['mime_type']?.toString().startsWith('video/') ?? false) ||
-                      name.endsWith('.mp4') ||
-                      name.endsWith('.mkv');
+                  final isVideo =
+                      (f['mime_type']?.toString().startsWith('video/') ??
+                              false) ||
+                          name.endsWith('.mp4') ||
+                          name.endsWith('.mkv');
 
                   return Container(
                     padding: const EdgeInsets.all(16),
@@ -312,31 +358,42 @@ class _MediaPageState extends State<MediaPage> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: (isVideo ? AppTheme.primary : AppTheme.accent).withOpacity(0.12),
+                          color: (isVideo ? AppTheme.primary : AppTheme.accent)
+                              .withOpacity(0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
-                          isVideo ? Icons.movie_rounded : Icons.audiotrack_rounded,
+                          isVideo
+                              ? Icons.movie_rounded
+                              : Icons.audiotrack_rounded,
                           color: isVideo ? AppTheme.primary : AppTheme.accent,
                           size: 22,
                         ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${formatFileSize(size)} • Direct Play (Range HTTP 206)',
-                            style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context)),
-                          ),
-                        ]),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name,
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${formatFileSize(size)} • Direct Play (Range HTTP 206)',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textMutedColor(context)),
+                              ),
+                            ]),
                       ),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                         onPressed: () => _playMedia(f),
                         icon: const Icon(Icons.play_arrow_rounded, size: 18),
@@ -373,7 +430,8 @@ class _MediaPlayerDialog extends StatefulWidget {
 class _MediaPlayerDialogState extends State<_MediaPlayerDialog> {
   bool _isPlaying = true;
   double _positionSecs = 0.0;
-  double _durationSecs = 1800.0; // Mock default duration or derived from metadata
+  final double _durationSecs =
+      1800.0; // Mock default duration or derived from metadata
 
   @override
   void initState() {
@@ -396,13 +454,17 @@ class _MediaPlayerDialogState extends State<_MediaPlayerDialog> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Streaming "${widget.file['name'] ?? 'Media'}" to ${tv['name']}!')),
+          SnackBar(
+              content: Text(
+                  'Streaming "${widget.file['name'] ?? 'Media'}" to ${tv['name']}!')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Casting initiated: Direct node-to-TV media link active.')),
+          const SnackBar(
+              content: Text(
+                  'Casting initiated: Direct node-to-TV media link active.')),
         );
       }
     }
@@ -410,18 +472,21 @@ class _MediaPlayerDialogState extends State<_MediaPlayerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final fileName = widget.file['name'] ?? widget.file['file_name'] ?? 'Media Player';
+    final fileName =
+        widget.file['name'] ?? widget.file['file_name'] ?? 'Media Player';
 
     return AlertDialog(
       backgroundColor: Colors.black87,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Row(children: [
-        const Icon(Icons.play_circle_outline_rounded, color: Colors.white, size: 24),
+        const Icon(Icons.play_circle_outline_rounded,
+            color: Colors.white, size: 24),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             fileName,
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -458,14 +523,20 @@ class _MediaPlayerDialogState extends State<_MediaPlayerDialog> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  const Icon(Icons.movie_filter_rounded, size: 64, color: Colors.white24),
+                  const Icon(Icons.movie_filter_rounded,
+                      size: 64, color: Colors.white24),
                   Positioned(
                     bottom: 12,
                     left: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
-                      child: const Text('HTTP 206 Range Stream', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(6)),
+                      child: const Text('HTTP 206 Range Stream',
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 11)),
                     ),
                   ),
                 ],
@@ -484,18 +555,28 @@ class _MediaPlayerDialogState extends State<_MediaPlayerDialog> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('${_positionSecs.toInt()}s', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                Text('${_durationSecs.toInt()}s', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              ]),
+              child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('${_positionSecs.toInt()}s',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12)),
+                    Text('${_durationSecs.toInt()}s',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12)),
+                  ]),
             ),
           ],
         ),
       ),
       actions: [
         IconButton(
-          icon: Icon(_isPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
-              color: Colors.white, size: 36),
+          icon: Icon(
+              _isPlaying
+                  ? Icons.pause_circle_filled_rounded
+                  : Icons.play_circle_fill_rounded,
+              color: Colors.white,
+              size: 36),
           onPressed: () {
             setState(() => _isPlaying = !_isPlaying);
           },

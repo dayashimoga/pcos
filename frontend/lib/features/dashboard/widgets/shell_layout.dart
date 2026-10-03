@@ -647,7 +647,8 @@ class _SidebarStorageIndicator extends StatefulWidget {
   });
 
   @override
-  State<_SidebarStorageIndicator> createState() => _SidebarStorageIndicatorState();
+  State<_SidebarStorageIndicator> createState() =>
+      _SidebarStorageIndicatorState();
 }
 
 class _SidebarStorageIndicatorState extends State<_SidebarStorageIndicator> {
@@ -665,9 +666,10 @@ class _SidebarStorageIndicatorState extends State<_SidebarStorageIndicator> {
     try {
       final api = getIt<ApiClient>();
       final nodesResp = await api.dio.get('/api/v1/storage/nodes');
-      final List rawNodes = nodesResp.data is Map && nodesResp.data['storage_nodes'] is List
-          ? nodesResp.data['storage_nodes']
-          : (nodesResp.data is List ? nodesResp.data : []);
+      final List rawNodes =
+          nodesResp.data is Map && nodesResp.data['storage_nodes'] is List
+              ? nodesResp.data['storage_nodes']
+              : (nodesResp.data is List ? nodesResp.data : []);
 
       int total = 0;
       int avail = 0;
@@ -679,7 +681,8 @@ class _SidebarStorageIndicatorState extends State<_SidebarStorageIndicator> {
       if (total == 0) {
         final userResp = await api.dio.get('/api/v1/users/me');
         if (userResp.data is Map) {
-          total = (userResp.data['quota_bytes'] as num?)?.toInt() ?? 53687091200;
+          total =
+              (userResp.data['quota_bytes'] as num?)?.toInt() ?? 53687091200;
           final used = (userResp.data['used_bytes'] as num?)?.toInt() ?? 0;
           avail = total > used ? total - used : 0;
         }
@@ -701,14 +704,17 @@ class _SidebarStorageIndicatorState extends State<_SidebarStorageIndicator> {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: IconButton(
-          icon: const Icon(Icons.cloud_done_rounded, size: 20, color: AppTheme.primary),
-          tooltip: 'Storage: ${formatFileSize(_availBytes)} free of ${formatFileSize(_totalBytes)}',
+          icon: const Icon(Icons.cloud_done_rounded,
+              size: 20, color: AppTheme.primary),
+          tooltip:
+              'Storage: ${formatFileSize(_availBytes)} free of ${formatFileSize(_totalBytes)}',
           onPressed: () => context.go('/storage'),
         ),
       );
     }
 
-    final pct = _totalBytes > 0 ? (_usedBytes / _totalBytes).clamp(0.0, 1.0) : 0.0;
+    final pct =
+        _totalBytes > 0 ? (_usedBytes / _totalBytes).clamp(0.0, 1.0) : 0.0;
 
     return InkWell(
       onTap: () => context.go('/storage'),
@@ -725,12 +731,17 @@ class _SidebarStorageIndicatorState extends State<_SidebarStorageIndicator> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              const Icon(Icons.cloud_done_rounded, size: 16, color: AppTheme.primary),
+              const Icon(Icons.cloud_done_rounded,
+                  size: 16, color: AppTheme.primary),
               const SizedBox(width: 6),
               Text('Storage Pools',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: widget.textPrimary)),
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: widget.textPrimary)),
               const Spacer(),
-              const Icon(Icons.chevron_right_rounded, size: 16, color: AppTheme.primary),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 16, color: AppTheme.primary),
             ]),
             const SizedBox(height: 8),
             ClipRRect(

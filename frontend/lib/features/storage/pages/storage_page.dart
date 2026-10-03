@@ -34,18 +34,22 @@ class _StoragePageState extends State<StoragePage> {
 
       // Fetch storage nodes
       final nodesResp = await api.dio.get('/api/v1/storage/nodes');
-      final List rawNodes = nodesResp.data is Map && nodesResp.data['storage_nodes'] is List
-          ? nodesResp.data['storage_nodes']
-          : (nodesResp.data is List ? nodesResp.data : []);
+      final List rawNodes =
+          nodesResp.data is Map && nodesResp.data['storage_nodes'] is List
+              ? nodesResp.data['storage_nodes']
+              : (nodesResp.data is List ? nodesResp.data : []);
 
-      final nodes = rawNodes.map((n) => Map<String, dynamic>.from(n as Map)).toList();
+      final nodes =
+          rawNodes.map((n) => Map<String, dynamic>.from(n as Map)).toList();
 
       // Fetch devices for mapping
       final devResp = await api.dio.get('/api/v1/devices');
-      final List rawDevices = devResp.data is Map && devResp.data['devices'] is List
-          ? devResp.data['devices']
-          : (devResp.data is List ? devResp.data : []);
-      final devices = rawDevices.map((d) => Map<String, dynamic>.from(d as Map)).toList();
+      final List rawDevices =
+          devResp.data is Map && devResp.data['devices'] is List
+              ? devResp.data['devices']
+              : (devResp.data is List ? devResp.data : []);
+      final devices =
+          rawDevices.map((d) => Map<String, dynamic>.from(d as Map)).toList();
 
       int total = 0;
       int avail = 0;
@@ -62,7 +66,8 @@ class _StoragePageState extends State<StoragePage> {
         try {
           final userResp = await api.dio.get('/api/v1/users/me');
           if (userResp.data is Map) {
-            total = (userResp.data['quota_bytes'] as num?)?.toInt() ?? 53687091200;
+            total =
+                (userResp.data['quota_bytes'] as num?)?.toInt() ?? 53687091200;
             final used = (userResp.data['used_bytes'] as num?)?.toInt() ?? 0;
             avail = total > used ? total - used : 0;
           }
@@ -97,14 +102,16 @@ class _StoragePageState extends State<StoragePage> {
     final pathCtrl = TextEditingController(text: 'D:\\PCOS');
     final totalGbCtrl = TextEditingController(text: '2000');
     final availGbCtrl = TextEditingController(text: '1450');
-    String? selectedDeviceId = _devices.isNotEmpty ? _devices.first['id']?.toString() : null;
+    String? selectedDeviceId =
+        _devices.isNotEmpty ? _devices.first['id']?.toString() : null;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
           backgroundColor: AppTheme.surfaceColor(context),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(children: [
             Container(
               padding: const EdgeInsets.all(8),
@@ -112,10 +119,12 @@ class _StoragePageState extends State<StoragePage> {
                 color: AppTheme.primary.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.add_to_drive_rounded, color: AppTheme.primary, size: 22),
+              child: const Icon(Icons.add_to_drive_rounded,
+                  color: AppTheme.primary, size: 22),
             ),
             const SizedBox(width: 12),
-            const Text('Connect Storage Drive', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Connect Storage Drive',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ]),
           content: SingleChildScrollView(
             child: SizedBox(
@@ -129,42 +138,56 @@ class _StoragePageState extends State<StoragePage> {
                     decoration: BoxDecoration(
                       color: AppTheme.success.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+                      border:
+                          Border.all(color: AppTheme.success.withOpacity(0.3)),
                     ),
                     child: Row(children: [
-                      const Icon(Icons.shield_outlined, color: AppTheme.success, size: 18),
+                      const Icon(Icons.shield_outlined,
+                          color: AppTheme.success, size: 18),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Safe Plug-and-Play: Existing files are preserved. PCOS will NEVER format or delete your drive.',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textPrimaryColor(context)),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textPrimaryColor(context)),
                         ),
                       ),
                     ]),
                   ),
                   const SizedBox(height: 16),
                   if (_devices.isNotEmpty) ...[
-                    Text('Host Device', style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
+                    Text('Host Device',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textMutedColor(context))),
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       value: selectedDeviceId,
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: AppTheme.surfaceLightColor(context),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
                       ),
                       items: _devices
                           .map((d) => DropdownMenuItem(
                                 value: d['id']?.toString(),
-                                child: Text('${d['name'] ?? 'Device'} (${d['device_type'] ?? 'node'})'),
+                                child: Text(
+                                    '${d['name'] ?? 'Device'} (${d['device_type'] ?? 'node'})'),
                               ))
                           .toList(),
-                      onChanged: (val) => setDialogState(() => selectedDeviceId = val),
+                      onChanged: (val) =>
+                          setDialogState(() => selectedDeviceId = val),
                     ),
                     const SizedBox(height: 14),
                   ],
-                  Text('Storage Pool Name', style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
+                  Text('Storage Pool Name',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textMutedColor(context))),
                   const SizedBox(height: 6),
                   TextField(
                     controller: nameCtrl,
@@ -172,11 +195,15 @@ class _StoragePageState extends State<StoragePage> {
                       hintText: 'e.g. Desktop 2TB SSD, NAS Array, USB Drive',
                       filled: true,
                       fillColor: AppTheme.surfaceLightColor(context),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Text('Storage Mount Path', style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
+                  Text('Storage Mount Path',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textMutedColor(context))),
                   const SizedBox(height: 6),
                   TextField(
                     controller: pathCtrl,
@@ -184,41 +211,54 @@ class _StoragePageState extends State<StoragePage> {
                       hintText: 'e.g. D:\\PCOS or /mnt/storage',
                       filled: true,
                       fillColor: AppTheme.surfaceLightColor(context),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
                   const SizedBox(height: 14),
                   Row(children: [
                     Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Total Capacity (GB)', style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: totalGbCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: AppTheme.surfaceLightColor(context),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        ),
-                      ]),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Total Capacity (GB)',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textMutedColor(context))),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: totalGbCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: AppTheme.surfaceLightColor(context),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ]),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Free Space (GB)', style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context))),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: availGbCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: AppTheme.surfaceLightColor(context),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        ),
-                      ]),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Free Space (GB)',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textMutedColor(context))),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: availGbCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: AppTheme.surfaceLightColor(context),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ]),
                     ),
                   ]),
                 ],
@@ -234,12 +274,14 @@ class _StoragePageState extends State<StoragePage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () async {
                 final name = nameCtrl.text.trim();
                 final path = pathCtrl.text.trim();
-                final totalGb = double.tryParse(totalGbCtrl.text.trim()) ?? 1000;
+                final totalGb =
+                    double.tryParse(totalGbCtrl.text.trim()) ?? 1000;
                 final freeGb = double.tryParse(availGbCtrl.text.trim()) ?? 800;
 
                 if (path.isEmpty) return;
@@ -247,11 +289,16 @@ class _StoragePageState extends State<StoragePage> {
                 Navigator.pop(ctx);
                 try {
                   final api = getIt<ApiClient>();
-                  final targetDevice = selectedDeviceId ?? (_devices.isNotEmpty ? _devices.first['id'] : null);
+                  final targetDevice = selectedDeviceId ??
+                      (_devices.isNotEmpty ? _devices.first['id'] : null);
                   if (targetDevice == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please pair or register a device before adding storage.')),
-                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                'Please pair or register a device before adding storage.')),
+                      );
+                    }
                     return;
                   }
 
@@ -259,19 +306,29 @@ class _StoragePageState extends State<StoragePage> {
                     'device_id': targetDevice,
                     'name': name.isEmpty ? 'Storage Pool' : name,
                     'storage_path': path,
-                    'total_capacity_bytes': (totalGb * 1024 * 1024 * 1024).toInt(),
-                    'available_capacity_bytes': (freeGb * 1024 * 1024 * 1024).toInt(),
+                    'total_capacity_bytes':
+                        (totalGb * 1024 * 1024 * 1024).toInt(),
+                    'available_capacity_bytes':
+                        (freeGb * 1024 * 1024 * 1024).toInt(),
                     'capabilities_json': '["ffmpeg","tantivy"]',
                   });
 
                   _loadStorageData();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Storage drive registered successfully!')),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content:
+                              Text('Storage drive registered successfully!')),
+                    );
+                  }
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to connect storage: ${ApiClient.formatError(e)}')),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              'Failed to connect storage: ${ApiClient.formatError(e)}')),
+                    );
+                  }
                 }
               },
               child: const Text('Connect Drive'),
@@ -289,11 +346,15 @@ class _StoragePageState extends State<StoragePage> {
         backgroundColor: AppTheme.surfaceColor(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Disconnect Storage Drive?'),
-        content: Text('Are you sure you want to unlink "$nodeName"? Your files on disk will NOT be deleted.'),
+        content: Text(
+            'Are you sure you want to unlink "$nodeName"? Your files on disk will NOT be deleted.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.error, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Disconnect Drive'),
           ),
@@ -315,7 +376,8 @@ class _StoragePageState extends State<StoragePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to unlink: ${ApiClient.formatError(e)}')),
+          SnackBar(
+              content: Text('Failed to unlink: ${ApiClient.formatError(e)}')),
         );
       }
     }
@@ -340,7 +402,8 @@ class _StoragePageState extends State<StoragePage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Storage Pools & Disks', style: Theme.of(context).textTheme.displayMedium),
+                  Text('Storage Pools & Disks',
+                      style: Theme.of(context).textTheme.displayMedium),
                   const SizedBox(height: 6),
                   Text(
                     'Unified personal storage aggregated across your connected drives and devices.',
@@ -351,8 +414,10 @@ class _StoragePageState extends State<StoragePage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _showAddStorageDialog,
                   icon: const Icon(Icons.add_to_drive_rounded, size: 20),
@@ -372,9 +437,13 @@ class _StoragePageState extends State<StoragePage> {
                   border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 18),
+                  const Icon(Icons.warning_amber_rounded,
+                      color: AppTheme.warning, size: 18),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(_error!, style: const TextStyle(color: AppTheme.warning, fontSize: 13))),
+                  Expanded(
+                      child: Text(_error!,
+                          style: const TextStyle(
+                              color: AppTheme.warning, fontSize: 13))),
                 ]),
               ),
 
@@ -399,20 +468,31 @@ class _StoragePageState extends State<StoragePage> {
                             gradient: AppTheme.primaryGradient,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.pie_chart_rounded, color: Colors.white, size: 24),
+                          child: const Icon(Icons.pie_chart_rounded,
+                              color: Colors.white, size: 24),
                         ),
                         const SizedBox(width: 14),
-                        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Text('Total Aggregated Capacity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          Text(
-                            '${formatFileSize(_availableCapacityBytes)} available of ${formatFileSize(_totalCapacityBytes)}',
-                            style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context)),
-                          ),
-                        ]),
+                        Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Total Aggregated Capacity',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                              Text(
+                                '${formatFileSize(_availableCapacityBytes)} available of ${formatFileSize(_totalCapacityBytes)}',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.textMutedColor(context)),
+                              ),
+                            ]),
                       ]),
                       Text(
                         '${(usedPct * 100).toStringAsFixed(1)}% Used',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.primary),
+                        style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.primary),
                       ),
                     ],
                   ),
@@ -423,27 +503,33 @@ class _StoragePageState extends State<StoragePage> {
                       value: usedPct,
                       minHeight: 12,
                       backgroundColor: AppTheme.surfaceLightColor(context),
-                      color: usedPct > 0.9 ? AppTheme.error : (usedPct > 0.75 ? AppTheme.warning : AppTheme.primary),
+                      color: usedPct > 0.9
+                          ? AppTheme.error
+                          : (usedPct > 0.75
+                              ? AppTheme.warning
+                              : AppTheme.primary),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    _CapacityBadge(
-                      color: AppTheme.primary,
-                      label: 'Used Space',
-                      value: formatFileSize(_usedCapacityBytes),
-                    ),
-                    _CapacityBadge(
-                      color: AppTheme.success,
-                      label: 'Free Space',
-                      value: formatFileSize(_availableCapacityBytes),
-                    ),
-                    _CapacityBadge(
-                      color: AppTheme.accent,
-                      label: 'Connected Drives',
-                      value: '${_storageNodes.length}',
-                    ),
-                  ]),
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _CapacityBadge(
+                          color: AppTheme.primary,
+                          label: 'Used Space',
+                          value: formatFileSize(_usedCapacityBytes),
+                        ),
+                        _CapacityBadge(
+                          color: AppTheme.success,
+                          label: 'Free Space',
+                          value: formatFileSize(_availableCapacityBytes),
+                        ),
+                        _CapacityBadge(
+                          color: AppTheme.accent,
+                          label: 'Connected Drives',
+                          value: '${_storageNodes.length}',
+                        ),
+                      ]),
                 ],
               ),
             ),
@@ -453,14 +539,19 @@ class _StoragePageState extends State<StoragePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Active Storage Nodes', style: Theme.of(context).textTheme.headlineMedium),
-                Text('${_storageNodes.length} Drive(s)', style: TextStyle(color: AppTheme.textMutedColor(context))),
+                Text('Active Storage Nodes',
+                    style: Theme.of(context).textTheme.headlineMedium),
+                Text('${_storageNodes.length} Drive(s)',
+                    style: TextStyle(color: AppTheme.textMutedColor(context))),
               ],
             ),
             const SizedBox(height: 16),
 
             if (_loading)
-              const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator()))
+              const Center(
+                  child: Padding(
+                      padding: EdgeInsets.all(48),
+                      child: CircularProgressIndicator()))
             else if (_storageNodes.isEmpty)
               Container(
                 width: double.infinity,
@@ -477,19 +568,25 @@ class _StoragePageState extends State<StoragePage> {
                       color: AppTheme.primary.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.storage_rounded, size: 36, color: AppTheme.primary),
+                    child: const Icon(Icons.storage_rounded,
+                        size: 36, color: AppTheme.primary),
                   ),
                   const SizedBox(height: 16),
-                  const Text('No Storage Drives Added Yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('No Storage Drives Added Yet',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
                     'PCOS is ready for plug-and-play storage. Add an external drive, USB, or local folder to expand your personal cloud.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context)),
+                    style: TextStyle(
+                        fontSize: 13, color: AppTheme.textMutedColor(context)),
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white),
                     onPressed: _showAddStorageDialog,
                     icon: const Icon(Icons.add_to_drive_rounded, size: 18),
                     label: const Text('Add Your First Drive'),
@@ -504,11 +601,17 @@ class _StoragePageState extends State<StoragePage> {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, idx) {
                   final node = _storageNodes[idx];
-                  final totalBytes = (node['total_capacity_bytes'] as num?)?.toInt() ?? 0;
-                  final availBytes = (node['available_capacity_bytes'] as num?)?.toInt() ?? 0;
-                  final usedNodeBytes = totalBytes > availBytes ? totalBytes - availBytes : 0;
-                  final pct = totalBytes > 0 ? (usedNodeBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
-                  final isOnline = node['is_online'] == 1 || node['is_online'] == true;
+                  final totalBytes =
+                      (node['total_capacity_bytes'] as num?)?.toInt() ?? 0;
+                  final availBytes =
+                      (node['available_capacity_bytes'] as num?)?.toInt() ?? 0;
+                  final usedNodeBytes =
+                      totalBytes > availBytes ? totalBytes - availBytes : 0;
+                  final pct = totalBytes > 0
+                      ? (usedNodeBytes / totalBytes).clamp(0.0, 1.0)
+                      : 0.0;
+                  final isOnline =
+                      node['is_online'] == 1 || node['is_online'] == true;
 
                   return Container(
                     padding: const EdgeInsets.all(18),
@@ -525,51 +628,73 @@ class _StoragePageState extends State<StoragePage> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: (isOnline ? AppTheme.success : AppTheme.textMuted).withOpacity(0.12),
+                                color: (isOnline
+                                        ? AppTheme.success
+                                        : AppTheme.textMuted)
+                                    .withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
                                 Icons.dns_rounded,
-                                color: isOnline ? AppTheme.success : AppTheme.textMuted,
+                                color: isOnline
+                                    ? AppTheme.success
+                                    : AppTheme.textMuted,
                                 size: 22,
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Row(children: [
-                                  Text(
-                                    node['name'] ?? 'Storage Node',
-                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: (isOnline ? AppTheme.success : AppTheme.textMuted).withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      isOnline ? 'ONLINE' : 'OFFLINE',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: isOnline ? AppTheme.success : AppTheme.textMuted,
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(children: [
+                                      Text(
+                                        node['name'] ?? 'Storage Node',
+                                        style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold),
                                       ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: (isOnline
+                                                  ? AppTheme.success
+                                                  : AppTheme.textMuted)
+                                              .withOpacity(0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          isOnline ? 'ONLINE' : 'OFFLINE',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: isOnline
+                                                ? AppTheme.success
+                                                : AppTheme.textMuted,
+                                          ),
+                                        ),
+                                      ),
+                                    ]),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      node['storage_path'] ??
+                                          'Path unconfigured',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color:
+                                              AppTheme.textMutedColor(context)),
                                     ),
-                                  ),
-                                ]),
-                                const SizedBox(height: 2),
-                                Text(
-                                  node['storage_path'] ?? 'Path unconfigured',
-                                  style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context)),
-                                ),
-                              ]),
+                                  ]),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 20),
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  color: AppTheme.error, size: 20),
                               tooltip: 'Disconnect Drive',
-                              onPressed: () => _deleteStorageNode(node['id'], node['name'] ?? 'Node'),
+                              onPressed: () => _deleteStorageNode(
+                                  node['id'], node['name'] ?? 'Node'),
                             ),
                           ],
                         ),
@@ -579,7 +704,8 @@ class _StoragePageState extends State<StoragePage> {
                           child: LinearProgressIndicator(
                             value: pct,
                             minHeight: 6,
-                            backgroundColor: AppTheme.surfaceLightColor(context),
+                            backgroundColor:
+                                AppTheme.surfaceLightColor(context),
                             color: AppTheme.primary,
                           ),
                         ),
@@ -589,26 +715,36 @@ class _StoragePageState extends State<StoragePage> {
                           children: [
                             Text(
                               '${formatFileSize(availBytes)} free of ${formatFileSize(totalBytes)}',
-                              style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context)),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textMutedColor(context)),
                             ),
                             Wrap(
                               spacing: 6,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: AppTheme.primary.withOpacity(0.08),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
-                                  child: const Text('SMART: Healthy', style: TextStyle(fontSize: 10, color: AppTheme.primary)),
+                                  child: const Text('SMART: Healthy',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: AppTheme.primary)),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: AppTheme.accent.withOpacity(0.08),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
-                                  child: const Text('Direct LAN', style: TextStyle(fontSize: 10, color: AppTheme.accent)),
+                                  child: const Text('Direct LAN',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: AppTheme.accent)),
                                 ),
                               ],
                             ),
@@ -630,16 +766,23 @@ class _CapacityBadge extends StatelessWidget {
   final Color color;
   final String label;
   final String value;
-  const _CapacityBadge({required this.color, required this.label, required this.value});
+  const _CapacityBadge(
+      {required this.color, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+      Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
       const SizedBox(width: 8),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-        Text(label, style: TextStyle(fontSize: 11, color: AppTheme.textMutedColor(context))),
+        Text(value,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        Text(label,
+            style: TextStyle(
+                fontSize: 11, color: AppTheme.textMutedColor(context))),
       ]),
     ]);
   }

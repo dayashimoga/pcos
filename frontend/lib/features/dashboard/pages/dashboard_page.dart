@@ -29,19 +29,22 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final api = getIt<ApiClient>();
       final response = await api.dio.get('/api/v1/analytics/overview');
-      Map<String, dynamic> data = Map<String, dynamic>.from(response.data as Map);
+      Map<String, dynamic> data =
+          Map<String, dynamic>.from(response.data as Map);
 
       try {
         final nodesResp = await api.dio.get('/api/v1/storage/nodes');
-        final List rawNodes = nodesResp.data is Map && nodesResp.data['storage_nodes'] is List
-            ? nodesResp.data['storage_nodes']
-            : (nodesResp.data is List ? nodesResp.data : []);
+        final List rawNodes =
+            nodesResp.data is Map && nodesResp.data['storage_nodes'] is List
+                ? nodesResp.data['storage_nodes']
+                : (nodesResp.data is List ? nodesResp.data : []);
         data['total_nodes'] = rawNodes.length;
 
         int totalCap = 0;
         int availCap = 0;
         for (final n in rawNodes) {
-          totalCap += ((n as Map)['total_capacity_bytes'] as num?)?.toInt() ?? 0;
+          totalCap +=
+              ((n as Map)['total_capacity_bytes'] as num?)?.toInt() ?? 0;
           availCap += (n['available_capacity_bytes'] as num?)?.toInt() ?? 0;
         }
         data['total_storage_capacity'] = totalCap;
@@ -169,7 +172,9 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 32),
 
           // Empty Home Guidance: Plug Storage -> Install PCOS -> Scan QR -> Done
-          if (!_loading && ((_stats['total_files'] ?? 0) == 0 || (_stats['total_nodes'] ?? 0) == 0))
+          if (!_loading &&
+              ((_stats['total_files'] ?? 0) == 0 ||
+                  (_stats['total_nodes'] ?? 0) == 0))
             Container(
               margin: const EdgeInsets.only(bottom: 28),
               padding: const EdgeInsets.all(22),
@@ -183,64 +188,87 @@ class _DashboardPageState extends State<DashboardPage> {
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
               ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.rocket_launch_rounded, color: AppTheme.primary, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Get Started with Personal Cloud', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text(
-                      'Complete 3 simple steps to connect and protect your personal data.',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context)),
-                    ),
-                  ]),
-                ]),
-                const SizedBox(height: 18),
-                LayoutBuilder(builder: (ctx, constraints) {
-                  final isWide = constraints.maxWidth >= 720;
-                  final steps = [
-                    _OnboardingStep(
-                      stepNumber: '1',
-                      icon: Icons.add_to_drive_rounded,
-                      title: 'Add Storage Pool',
-                      description: 'Plug in USB, SSD, or select a local PC/NAS directory without formatting.',
-                      buttonLabel: 'Add Storage',
-                      onTap: () => context.go('/storage'),
-                    ),
-                    _OnboardingStep(
-                      stepNumber: '2',
-                      icon: Icons.qr_code_scanner_rounded,
-                      title: 'Pair Your Devices',
-                      description: 'Scan cryptographic QR code to connect phones, laptops, and TV.',
-                      buttonLabel: 'Pair Device',
-                      onTap: () => context.go('/devices/pair'),
-                    ),
-                    _OnboardingStep(
-                      stepNumber: '3',
-                      icon: Icons.shield_rounded,
-                      title: 'Protect Your Data',
-                      description: 'Store and sync files locally with zero Cloudflare or port complexity.',
-                      buttonLabel: 'Browse Files',
-                      onTap: () => context.go('/files'),
-                    ),
-                  ];
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.rocket_launch_rounded,
+                            color: AppTheme.primary, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Get Started with Personal Cloud',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold)),
+                            Text(
+                              'Complete 3 simple steps to connect and protect your personal data.',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textMutedColor(context)),
+                            ),
+                          ]),
+                    ]),
+                    const SizedBox(height: 18),
+                    LayoutBuilder(builder: (ctx, constraints) {
+                      final isWide = constraints.maxWidth >= 720;
+                      final steps = [
+                        _OnboardingStep(
+                          stepNumber: '1',
+                          icon: Icons.add_to_drive_rounded,
+                          title: 'Add Storage Pool',
+                          description:
+                              'Plug in USB, SSD, or select a local PC/NAS directory without formatting.',
+                          buttonLabel: 'Add Storage',
+                          onTap: () => context.go('/storage'),
+                        ),
+                        _OnboardingStep(
+                          stepNumber: '2',
+                          icon: Icons.qr_code_scanner_rounded,
+                          title: 'Pair Your Devices',
+                          description:
+                              'Scan cryptographic QR code to connect phones, laptops, and TV.',
+                          buttonLabel: 'Pair Device',
+                          onTap: () => context.go('/devices/pair'),
+                        ),
+                        _OnboardingStep(
+                          stepNumber: '3',
+                          icon: Icons.shield_rounded,
+                          title: 'Protect Your Data',
+                          description:
+                              'Store and sync files locally with zero Cloudflare or port complexity.',
+                          buttonLabel: 'Browse Files',
+                          onTap: () => context.go('/files'),
+                        ),
+                      ];
 
-                  if (isWide) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: steps.map((s) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: s))).toList(),
-                    );
-                  }
-                  return Column(children: steps.map((s) => Padding(padding: const EdgeInsets.only(bottom: 12), child: s)).toList());
-                }),
-              ]),
+                      if (isWide) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: steps
+                              .map((s) => Expanded(
+                                  child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6),
+                                      child: s)))
+                              .toList(),
+                        );
+                      }
+                      return Column(
+                          children: steps
+                              .map((s) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: s))
+                              .toList());
+                    }),
+                  ]),
             ),
 
           // Quick Actions
@@ -572,17 +600,23 @@ class _OnboardingStep extends StatelessWidget {
                 ),
                 child: Text(
                   stepNumber,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primary),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          Text(title,
+              style:
+                  const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(
             description,
-            style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context)),
+            style: TextStyle(
+                fontSize: 12, color: AppTheme.textMutedColor(context)),
           ),
           const SizedBox(height: 14),
           SizedBox(
@@ -592,11 +626,14 @@ class _OnboardingStep extends StatelessWidget {
                 backgroundColor: AppTheme.surfaceLightColor(context),
                 foregroundColor: AppTheme.primary,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
                 padding: const EdgeInsets.symmetric(vertical: 8),
               ),
               onPressed: onTap,
-              child: Text(buttonLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              child: Text(buttonLabel,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
