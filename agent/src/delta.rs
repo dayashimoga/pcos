@@ -91,11 +91,19 @@ pub fn diff_chunks(local: &[ChunkInfo], server: &[ChunkInfo]) -> Vec<usize> {
         .collect()
 }
 
-/// Compute file-level hash for quick change detection.
+/// Compute file-level hash for quick change detection using buffered streaming.
 pub async fn file_hash(path: &Path) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    let data = tokio::fs::read(path).await?;
+    use tokio::io::AsyncReadExt;
+    let mut file = tokio::fs::File::open(path).await?;
     let mut hasher = Sha256::new();
-    hasher.update(&data);
+    let mut buffer = [0u8; 65536]; // 64 KB streaming buffer
+    loop {
+        let n = file.read(&mut buffer).await?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buffer[..n]);
+    }
     Ok(format!("{:x}", hasher.finalize()))
 }
 
@@ -143,6 +151,26 @@ mod tests {
             .unwrap();
         let hash = file_hash(&temp_file).await.unwrap();
         assert_eq!(hash.len(), 64);
+        tokio::fs::remove_file(&temp_file).await.ok();
+    }
+
+    #[tokio::test]
+    async fn test_file_hash_streaming_large() {
+        let temp_dir = std::env::temp_dir();
+        let temp_file = temp_dir.join("pcos_test_hash_large.bin");
+        // Create 200KB file (spans multiple 64KB buffer iterations)
+        let data = vec![7u8; 200 * 1024];
+        tokio::fs::write(&temp_file, &data).await.unwrap();
+
+        let hash = file_hash(&temp_file).await.unwrap();
+        assert_eq!(hash.len(), 64);
+
+        // Verify matches direct SHA-256
+        let mut hasher = Sha256::new();
+        hasher.update(&data);
+        let expected = format!("{:x}", hasher.finalize());
+        assert_eq!(hash, expected);
+
         tokio::fs::remove_file(&temp_file).await.ok();
     }
 }

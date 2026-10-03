@@ -17,6 +17,7 @@ export interface Env {
   MAX_D1_WRITES_PER_DAY: string;
   MAX_D1_READS_PER_MONTH: string;
   JWT_SECRET?: string;
+  ALLOWED_ORIGINS?: string;
 }
 
 export interface User {
@@ -120,6 +121,7 @@ export interface PairingSessionData {
     client_fingerprint?: string;
     requested_at: string;
   };
+  redeem_result?: unknown;
   expires_at: string;
   created_at: string;
 }

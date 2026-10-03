@@ -367,6 +367,32 @@ class _DeviceCard extends StatelessWidget {
                           color: isOnline
                               ? AppTheme.success
                               : AppTheme.textMuted)),
+                  const SizedBox(width: 4),
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert_rounded,
+                        size: 18, color: AppTheme.textMutedColor(context)),
+                    tooltip: 'Device options',
+                    padding: EdgeInsets.zero,
+                    onSelected: (val) {
+                      if (val == 'remove') {
+                        _confirmRemoveDevice(context, device);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'remove',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded,
+                                size: 18, color: AppTheme.error),
+                            SizedBox(width: 8),
+                            Text('Remove Device',
+                                style: TextStyle(color: AppTheme.error)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ],
@@ -385,6 +411,36 @@ class _DeviceCard extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 12, color: AppTheme.textMutedColor(context))),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmRemoveDevice(BuildContext context, Map<String, dynamic> device) {
+    final deviceId = device['id'] as String?;
+    final deviceName = device['name'] as String? ?? 'Device';
+    if (deviceId == null) return;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor(context),
+        title: const Text('Remove Device'),
+        content: Text(
+            'Are you sure you want to remove "$deviceName"? It will no longer sync with your personal cloud.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            onPressed: () {
+              Navigator.pop(dialogCtx);
+              context.read<DeviceBloc>().add(DeviceRemoveRequested(deviceId));
+            },
+            child: const Text('Remove'),
           ),
         ],
       ),

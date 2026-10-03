@@ -194,3 +194,445 @@ describe('File System & Storage Metadata Endpoints', () => {
   });
 });
 
+describe('PairingHub Durable Object & Rate Limiting', () => {
+  it('should enforce IP rate limiting on brute force pairing attempts and persist redeem_result', async () => {
+    const { PairingHub } = await import('../src/durable_objects/PairingHub');
+    const storageMap = new Map<string, any>();
+    const mockState = {
+      storage: {
+        get: async (k: string) => storageMap.get(k),
+        put: async (k: string, v: any) => storageMap.set(k, v),
+        delete: async (k: string) => storageMap.delete(k),
+      },
+      blockConcurrencyWhile: async (fn: () => Promise<void>) => {
+        await fn();
+      },
+    } as unknown as DurableObjectState;
+
+    const hub = new PairingHub(mockState);
+
+    // 1. Create a valid pairing session
+    const createReq = new Request('http://do/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: 'sess_test_1',
+        userId: 'usr_owner_1',
+        pairingCode: '654321',
+        enrollmentToken: 'enr_token_1234567890abcdef12345678',
+        expiresAt: new Date(Date.now() + 600000).toISOString(),
+      }),
+    });
+    const createResp = await hub.fetch(createReq);
+    expect(createResp.status).toBe(200);
+
+    // 2. Simulate brute-force attack from an attacker IP
+    const attackerIp = '203.0.113.42';
+    for (let i = 0; i < 4; i++) {
+      const wrongReq = new Request('http://do/claim', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': attackerIp },
+        body: JSON.stringify({
+          key: `00000${i}`,
+          candidate: {
+            device_name: 'Attacker Phone',
+            device_type: 'phone',
+            os: 'unknown',
+            requested_at: new Date().toISOString(),
+          },
+        }),
+      });
+      const wrongResp = await hub.fetch(wrongReq);
+      expect(wrongResp.status).toBe(401);
+    }
+
+    // 5th failed attempt triggers rate limit block (HTTP 429)
+    const fifthReq = new Request('http://do/claim', {
+      method: 'POST',
+      headers: { 'cf-connecting-ip': attackerIp },
+      body: JSON.stringify({
+        key: '999999',
+        candidate: {
+          device_name: 'Attacker Phone',
+          device_type: 'phone',
+          os: 'unknown',
+          requested_at: new Date().toISOString(),
+        },
+      }),
+    });
+    const fifthResp = await hub.fetch(fifthReq);
+    expect(fifthResp.status).toBe(429);
+    const fifthBody = (await fifthResp.json()) as { error: string };
+    expect(fifthBody.error).toContain('Too many invalid pairing attempts');
+
+    // 6th attempt from same IP is immediately blocked with 429 even if code was correct
+    const blockedReq = new Request('http://do/claim', {
+      method: 'POST',
+      headers: { 'cf-connecting-ip': attackerIp },
+      body: JSON.stringify({
+        key: '654321',
+        candidate: {
+          device_name: 'Attacker Phone',
+          device_type: 'phone',
+          os: 'unknown',
+          requested_at: new Date().toISOString(),
+        },
+      }),
+    });
+    const blockedResp = await hub.fetch(blockedReq);
+    expect(blockedResp.status).toBe(429);
+
+    // 3. Legitimate mobile device from different IP claims successfully
+    const legitIp = '198.51.100.25';
+    const legitReq = new Request('http://do/claim', {
+      method: 'POST',
+      headers: { 'cf-connecting-ip': legitIp },
+      body: JSON.stringify({
+        key: '654321',
+        candidate: {
+          device_name: 'Pixel 9 Pro',
+          device_type: 'phone',
+          os: 'android',
+          requested_at: new Date().toISOString(),
+        },
+      }),
+    });
+    const legitResp = await hub.fetch(legitReq);
+    expect(legitResp.status).toBe(200);
+
+    // 4. Web user approves session and provides redeemResult
+    const approveReq = new Request('http://do/approve', {
+      method: 'POST',
+      body: JSON.stringify({
+        key: '654321',
+        userId: 'usr_owner_1',
+        approved: true,
+        redeemResult: {
+          device: { id: 'dev_pixel_9', name: 'Pixel 9 Pro', device_type: 'phone' },
+          access_token: 'jwt_access_legit',
+          refresh_token: 'jwt_refresh_legit',
+        },
+      }),
+    });
+    const approveResp = await hub.fetch(approveReq);
+    expect(approveResp.status).toBe(200);
+
+    // 5. Polling client checks status and retrieves redeemResult without re-creating device
+    const statusReq = new Request('http://do/status?key=654321');
+    const statusResp = await hub.fetch(statusReq);
+    expect(statusResp.status).toBe(200);
+    const statusData = (await statusResp.json()) as any;
+    expect(statusData.status).toBe('approved');
+    expect(statusData.redeem_result).toBeDefined();
+    expect(statusData.redeem_result.device.id).toBe('dev_pixel_9');
+  });
+});
+
+describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
+  it('should handle CORS preflight dynamically for local and pages.dev origins', async () => {
+    const worker = (await import('../src/index')).default;
+    const mockEnv = {
+      PCOS_ENV: 'test',
+      MAX_WORKERS_PER_DAY: '100000',
+      MAX_D1_WRITES_PER_DAY: '100000',
+      MAX_D1_READS_PER_MONTH: '5000000',
+      MAX_R2_STORAGE_GB: '10',
+      FREE_TIER_HARD_BUDGET: 'true',
+      JWT_SECRET: 'test_secret_for_cors',
+    } as unknown as Env;
+
+    const ctx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as unknown as ExecutionContext;
+
+    // Test localhost origin
+    const localReq = new Request('http://edge.pcos.dev/api/v1/health', {
+      method: 'OPTIONS',
+      headers: { Origin: 'http://localhost:5173' },
+    });
+    const localResp = await worker.fetch(localReq, mockEnv, ctx);
+    expect(localResp.status).toBe(200);
+    expect(localResp.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost:5173');
+    expect(localResp.headers.get('Access-Control-Allow-Credentials')).toBe('true');
+
+    // Test pages.dev origin
+    const pagesReq = new Request('http://edge.pcos.dev/api/v1/health', {
+      method: 'OPTIONS',
+      headers: { Origin: 'https://my-pcos.pages.dev' },
+    });
+    const pagesResp = await worker.fetch(pagesReq, mockEnv, ctx);
+    expect(pagesResp.status).toBe(200);
+    expect(pagesResp.headers.get('Access-Control-Allow-Origin')).toBe('https://my-pcos.pages.dev');
+    expect(pagesResp.headers.get('Access-Control-Allow-Credentials')).toBe('true');
+  });
+
+  it('should process device heartbeat and update status', async () => {
+    const worker = (await import('../src/index')).default;
+    let updatedDeviceId = '';
+    let updatedLanIp = '';
+
+    const mockDb = {
+      prepare: (query: string) => ({
+        bind: (...args: any[]) => ({
+          run: async () => {
+            if (query.includes('UPDATE device_identities')) {
+              updatedLanIp = args[1];
+              updatedDeviceId = args[2];
+            }
+            return { success: true };
+          },
+          first: async () => null,
+          all: async () => ({ results: [] }),
+        }),
+      }),
+    } as unknown as D1Database;
+
+    const mockPresenceHub = {
+      idFromName: () => 'presence_id',
+      get: () => ({
+        fetch: async () => Response.json({ success: true }),
+      }),
+    } as unknown as DurableObjectNamespace;
+
+    const mockEnv = {
+      DB: mockDb,
+      PRESENCE_HUB: mockPresenceHub,
+      PCOS_ENV: 'test',
+      MAX_WORKERS_PER_DAY: '100000',
+      MAX_D1_WRITES_PER_DAY: '100000',
+      MAX_D1_READS_PER_MONTH: '5000000',
+      MAX_R2_STORAGE_GB: '10',
+      FREE_TIER_HARD_BUDGET: 'true',
+      JWT_SECRET: 'test_secret_for_heartbeat',
+    } as unknown as Env;
+
+    const ctx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as unknown as ExecutionContext;
+
+    const hbReq = new Request('http://edge.pcos.dev/api/v1/devices/dev_storage_node_99/heartbeat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'cf-connecting-ip': '103.21.244.1',
+      },
+      body: JSON.stringify({
+        deviceId: 'dev_storage_node_99',
+        lanIp: '192.168.1.150',
+        name: 'Home NAS Node',
+        deviceType: 'nas',
+      }),
+    });
+
+    const resp = await worker.fetch(hbReq, mockEnv, ctx);
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.is_online).toBe(true);
+    expect(body.device_id).toBe('dev_storage_node_99');
+    expect(updatedDeviceId).toBe('dev_storage_node_99');
+    expect(updatedLanIp).toBe('192.168.1.150');
+  });
+
+  it('should support device registration (POST) and deletion (DELETE)', async () => {
+    const worker = (await import('../src/index')).default;
+    const testSecret = 'device_mgmt_test_secret_12345';
+    const testUserId = 'usr_mgmt_1';
+    const token = await generateJwt({ sub: testUserId, email: 'mgmt@pcos.dev' }, testSecret, 3600);
+
+    const insertedDevices: any[] = [];
+    let deletedDeviceId: string | null = null;
+
+    const mockDb = {
+      prepare: (query: string) => ({
+        bind: (...args: any[]) => ({
+          run: async () => {
+            if (query.includes('INSERT INTO device_identities')) {
+              insertedDevices.push({
+                id: args[0],
+                user_id: args[1],
+                cloud_id: args[2],
+                name: args[3],
+                device_type: args[4],
+                os: args[5],
+              });
+            }
+            if (query.includes('DELETE FROM device_identities')) {
+              deletedDeviceId = args[0];
+            }
+            return { success: true };
+          },
+          first: async () => {
+            if (query.includes('SELECT cloud_id FROM cloud_identities')) {
+              return { cloud_id: 'pcos-cloud-123' };
+            }
+            return null;
+          },
+          all: async () => ({ results: insertedDevices }),
+        }),
+      }),
+    } as unknown as D1Database;
+
+    const mockEnv = {
+      DB: mockDb,
+      PCOS_ENV: 'test',
+      MAX_WORKERS_PER_DAY: '100000',
+      MAX_D1_WRITES_PER_DAY: '100000',
+      MAX_D1_READS_PER_MONTH: '5000000',
+      MAX_R2_STORAGE_GB: '10',
+      FREE_TIER_HARD_BUDGET: 'true',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    // 1. Register a device
+    const regReq = new Request('http://edge.pcos.dev/api/v1/devices', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: 'Work MacBook Pro',
+        device_type: 'laptop',
+        os: 'macOS',
+      }),
+    });
+
+    const regResp = await worker.fetch(regReq, mockEnv, ctx);
+    expect(regResp.status).toBe(201);
+    const regBody = (await regResp.json()) as any;
+    expect(regBody.name).toBe('Work MacBook Pro');
+    expect(regBody.device_type).toBe('laptop');
+    expect(regBody.os).toBe('macOS');
+    expect(insertedDevices).toHaveLength(1);
+    expect(insertedDevices[0].id).toBe(regBody.id);
+
+    // 2. Delete the device
+    const delReq = new Request(`http://edge.pcos.dev/api/v1/devices/${regBody.id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const delResp = await worker.fetch(delReq, mockEnv, ctx);
+    expect(delResp.status).toBe(200);
+    const delBody = (await delResp.json()) as any;
+    expect(delBody.success).toBe(true);
+    expect(deletedDeviceId).toBe(regBody.id);
+  });
+
+  it('should support storage node registration, listing, and deletion', async () => {
+    const worker = (await import('../src/index')).default;
+    const testSecret = 'storage_nodes_test_secret_12345';
+    const testUserId = 'usr_sn_1';
+    const token = await generateJwt({ sub: testUserId, email: 'sn@pcos.dev' }, testSecret, 3600);
+
+    const storageNodes: any[] = [];
+    let deletedNodeId: string | null = null;
+
+    const mockDb = {
+      prepare: (query: string) => ({
+        bind: (...args: any[]) => ({
+          run: async () => {
+            if (query.includes('INSERT INTO storage_nodes')) {
+              const node = {
+                id: args[0],
+                device_id: args[1],
+                user_id: args[2],
+                name: args[3],
+                storage_path: args[4],
+                total_capacity_bytes: args[5],
+                available_capacity_bytes: args[6],
+                capabilities_json: args[7],
+              };
+              storageNodes.push(node);
+            }
+            if (query.includes('DELETE FROM storage_nodes')) {
+              deletedNodeId = args[0];
+            }
+            return { success: true };
+          },
+          first: async () => {
+            if (query.includes('SELECT id, name FROM device_identities')) {
+              return { id: args[0], name: 'My Primary NAS' };
+            }
+            return null;
+          },
+          all: async () => ({ results: storageNodes }),
+        }),
+      }),
+    } as unknown as D1Database;
+
+    const mockEnv = {
+      DB: mockDb,
+      PCOS_ENV: 'test',
+      MAX_WORKERS_PER_DAY: '100000',
+      MAX_D1_WRITES_PER_DAY: '100000',
+      MAX_D1_READS_PER_MONTH: '5000000',
+      MAX_R2_STORAGE_GB: '10',
+      FREE_TIER_HARD_BUDGET: 'true',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    // 1. Register a storage node
+    const createReq = new Request('http://edge.pcos.dev/api/v1/storage/nodes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        device_id: 'dev_nas_001',
+        name: '4TB Western Digital RED',
+        storage_path: '/mnt/storage/pcos',
+        total_capacity_bytes: 4000000000000,
+        available_capacity_bytes: 2500000000000,
+        capabilities_json: JSON.stringify({ ffmpeg: true, tantivy: true }),
+      }),
+    });
+
+    const createResp = await worker.fetch(createReq, mockEnv, ctx);
+    expect(createResp.status).toBe(201);
+    const createdNode = (await createResp.json()) as any;
+    expect(createdNode.name).toBe('4TB Western Digital RED');
+    expect(createdNode.storage_path).toBe('/mnt/storage/pcos');
+    expect(createdNode.total_capacity_bytes).toBe(4000000000000);
+    expect(storageNodes).toHaveLength(1);
+
+    // 2. List storage nodes
+    const listReq = new Request('http://edge.pcos.dev/api/v1/storage/nodes', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const listResp = await worker.fetch(listReq, mockEnv, ctx);
+    expect(listResp.status).toBe(200);
+    const listBody = (await listResp.json()) as any;
+    expect(listBody.total).toBe(1);
+    expect(listBody.storage_nodes[0].storage_path).toBe('/mnt/storage/pcos');
+
+    // 3. Delete storage node
+    const delReq = new Request(`http://edge.pcos.dev/api/v1/storage/nodes/${createdNode.id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const delResp = await worker.fetch(delReq, mockEnv, ctx);
+    expect(delResp.status).toBe(200);
+    const delBody = (await delResp.json()) as any;
+    expect(delBody.success).toBe(true);
+    expect(deletedNodeId).toBe(createdNode.id);
+  });
+});
+
+

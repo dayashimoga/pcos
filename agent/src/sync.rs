@@ -74,13 +74,14 @@ async fn upload_file(
 
     // Use chunked upload if file has multiple chunks and size > 1 MB
     if chunks.len() > 1 && size > 1024 * 1024 {
+        use tokio::io::{AsyncReadExt, AsyncSeekExt};
         let upload_id = uuid::Uuid::new_v4();
-        let file_data = tokio::fs::read(file_path).await?;
+        let mut file = tokio::fs::File::open(file_path).await?;
 
         for chunk in &chunks {
-            let start = chunk.offset as usize;
-            let end = start + chunk.length;
-            let chunk_bytes = file_data[start..end].to_vec();
+            file.seek(std::io::SeekFrom::Start(chunk.offset)).await?;
+            let mut chunk_bytes = vec![0u8; chunk.length];
+            file.read_exact(&mut chunk_bytes).await?;
 
             let part = multipart::Part::bytes(chunk_bytes)
                 .file_name(format!("chunk_{:06}", chunk.index))

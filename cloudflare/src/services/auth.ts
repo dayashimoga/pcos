@@ -70,11 +70,18 @@ export async function verifyPassword(
     256
   );
 
-  const actualHashHex = Array.from(new Uint8Array(derivedKey))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  const actualHash = new Uint8Array(derivedKey);
+  const expectedBytes = new Uint8Array(
+    expectedHashHex.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
+  );
 
-  return actualHashHex === expectedHashHex;
+  // Constant-time comparison to prevent timing side-channel attacks
+  if (actualHash.length !== expectedBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < actualHash.length; i++) {
+    diff |= actualHash[i] ^ expectedBytes[i];
+  }
+  return diff === 0;
 }
 
 export async function generateJwt(

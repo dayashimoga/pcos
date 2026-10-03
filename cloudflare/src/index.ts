@@ -17,17 +17,88 @@ import { CloudCacheService } from './services/r2_cache';
 export { PairingHub } from './durable_objects/PairingHub';
 export { DevicePresenceHub } from './durable_objects/DevicePresenceHub';
 
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-};
+function getCorsHeaders(request: Request, env?: Env): Record<string, string> {
+  const origin = request.headers.get('Origin');
+  const baseHeaders: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+  };
+
+  if (!origin) {
+    baseHeaders['Access-Control-Allow-Origin'] = '*';
+    return baseHeaders;
+  }
+
+  let allowed = false;
+  try {
+    const originUrl = new URL(origin);
+    const host = originUrl.hostname;
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.endsWith('.pages.dev') ||
+      host.endsWith('.workers.dev')
+    ) {
+      allowed = true;
+    }
+  } catch (_) {}
+
+  if (env?.ALLOWED_ORIGINS) {
+    const list = env.ALLOWED_ORIGINS.split(',').map((o) => o.trim());
+    if (list.includes(origin) || list.includes('*')) {
+      allowed = true;
+    }
+  }
+
+  if (allowed) {
+    baseHeaders['Access-Control-Allow-Origin'] = origin;
+    baseHeaders['Access-Control-Allow-Credentials'] = 'true';
+    baseHeaders['Vary'] = 'Origin';
+  } else {
+    baseHeaders['Access-Control-Allow-Origin'] = origin;
+  }
+
+  return baseHeaders;
+}
+
+// In-memory rate limiting per Worker isolate (complements Durable Object rate limiting)
+const authRateLimiter = new Map<string, { attempts: number; blockedUntil: number }>();
+
+function checkRateLimit(key: string): Response | null {
+  const now = Date.now();
+  const record = authRateLimiter.get(key);
+  if (record && record.blockedUntil > now) {
+    const waitSecs = Math.ceil((record.blockedUntil - now) / 1000);
+    return Response.json(
+      { error: `Too many requests. Please wait ${waitSecs}s before retrying.` },
+      { status: 429, headers: { 'Retry-After': String(waitSecs) } }
+    );
+  }
+  return null;
+}
+
+function recordFailedAttempt(key: string, maxAttempts = 5, blockDurationMs = 300000): void {
+  const now = Date.now();
+  const record = authRateLimiter.get(key);
+  const count = (record && record.blockedUntil <= now ? record.attempts : 0) + 1;
+  if (count >= maxAttempts) {
+    authRateLimiter.set(key, { attempts: count, blockedUntil: now + blockDurationMs });
+  } else {
+    authRateLimiter.set(key, { attempts: count, blockedUntil: 0 });
+  }
+}
+
+function recordSuccess(key: string): void {
+  authRateLimiter.delete(key);
+}
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const corsHeaders = getCorsHeaders(request, env);
+
     // 1. Handle CORS preflight
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: CORS_HEADERS });
+      return new Response(null, { headers: corsHeaders });
     }
 
     const url = new URL(request.url);
@@ -53,9 +124,9 @@ export default {
       // 3. API Routes
       if (url.pathname.startsWith('/api/') || url.pathname === '/health') {
         const response = await handleApiRequest(request, env, budget);
-        // Add CORS headers to API responses
+        // Add dynamic CORS headers to API responses
         const headers = new Headers(response.headers);
-        for (const [k, v] of Object.entries(CORS_HEADERS)) {
+        for (const [k, v] of Object.entries(corsHeaders)) {
           headers.set(k, v);
         }
         return new Response(response.body, {
@@ -77,9 +148,10 @@ export default {
 
       return new Response('PCOS Edge Control Plane Active', { status: 200 });
     } catch (err) {
+      console.error('PCOS Edge uncaught error:', err);
       return Response.json(
-        { error: 'Internal edge error', message: String(err) },
-        { status: 500, headers: CORS_HEADERS }
+        { error: 'Internal edge server error' },
+        { status: 500, headers: corsHeaders }
       );
     }
   },
@@ -91,7 +163,15 @@ async function handleApiRequest(
   budget: BudgetGuard
 ): Promise<Response> {
   const url = new URL(request.url);
-  const jwtSecret = env.JWT_SECRET || 'pcos_edge_control_plane_jwt_secret_default_change_me';
+  const effectiveJwtSecret = env.JWT_SECRET || (env.PCOS_ENV === 'production' ? '' : 'pcos_dev_jwt_secret_do_not_use_in_production');
+  if (!effectiveJwtSecret) {
+    console.error('FATAL: JWT_SECRET environment variable is not configured in production');
+    return Response.json(
+      { error: 'Server configuration error: JWT_SECRET must be configured' },
+      { status: 500 }
+    );
+  }
+  const jwtSecret = effectiveJwtSecret;
 
   // ─── Health & Connectivity Diagnostics ───
   if (url.pathname === '/health' || url.pathname === '/api/v1/health') {
@@ -139,7 +219,11 @@ async function handleApiRequest(
 
   // ─── Auth: Register ───
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/register') {
-    const body = (await request.json()) as {
+    const clientIp = request.headers.get('cf-connecting-ip') || '127.0.0.1';
+    const rateLimitResp = checkRateLimit(`reg_${clientIp}`);
+    if (rateLimitResp) return rateLimitResp;
+
+    const body = (await request.json().catch(() => ({}))) as {
       email?: string;
       password?: string;
       display_name?: string;
@@ -169,6 +253,7 @@ async function handleApiRequest(
         .run();
 
       const tokens = await issueTokenPair(userId, body.email, jwtSecret, env.DB);
+      recordSuccess(`reg_${clientIp}`);
 
       return Response.json({
         user: { id: userId, email: body.email, display_name: body.display_name, cloud_id: cloudId },
@@ -178,13 +263,19 @@ async function handleApiRequest(
       if (String(e).includes('UNIQUE')) {
         return Response.json({ error: 'User with this email already exists' }, { status: 409 });
       }
-      return Response.json({ error: 'Registration failed', details: String(e) }, { status: 500 });
+      console.error('Registration failed:', e);
+      recordFailedAttempt(`reg_${clientIp}`, 5, 300000);
+      return Response.json({ error: 'Registration failed' }, { status: 500 });
     }
   }
 
   // ─── Auth: Login ───
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/login') {
-    const body = (await request.json()) as { email?: string; password?: string };
+    const clientIp = request.headers.get('cf-connecting-ip') || '127.0.0.1';
+    const rateLimitResp = checkRateLimit(`login_${clientIp}`);
+    if (rateLimitResp) return rateLimitResp;
+
+    const body = (await request.json().catch(() => ({}))) as { email?: string; password?: string };
     if (!body.email || !body.password) {
       return Response.json({ error: 'Email and password required' }, { status: 400 });
     }
@@ -194,8 +285,11 @@ async function handleApiRequest(
       .first<User>();
 
     if (!user || !(await verifyPassword(body.password, user.password_hash))) {
+      recordFailedAttempt(`login_${clientIp}`, 5, 300000);
       return Response.json({ error: 'Invalid email or password' }, { status: 401 });
     }
+
+    recordSuccess(`login_${clientIp}`);
 
     const cloudRow = await env.DB.prepare('SELECT cloud_id FROM cloud_identities WHERE user_id = ?1')
       .bind(user.id)
@@ -326,11 +420,13 @@ async function handleApiRequest(
       requested_at: new Date().toISOString(),
     };
 
-    // Forward to PairingHub DO
+    // Forward to PairingHub DO with client IP for rate limiting
     const doId = env.PAIRING_HUB.idFromName('global_pairing_hub');
     const stub = env.PAIRING_HUB.get(doId);
+    const clientIp = request.headers.get('cf-connecting-ip') || '';
     const resp = await stub.fetch('http://do/claim', {
       method: 'POST',
+      headers: { 'cf-connecting-ip': clientIp },
       body: JSON.stringify({ key, candidate }),
     });
 
@@ -356,7 +452,7 @@ async function handleApiRequest(
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = (await request.json()) as {
+    const body = (await request.json().catch(() => ({}))) as {
       pairing_code?: string;
       enrollment_token?: string;
       approved: boolean;
@@ -390,7 +486,7 @@ async function handleApiRequest(
       });
     }
 
-    // Approved: Provision the device
+    // Approved: Provision the device once
     const candidate = JSON.parse(sessionRow.candidate_device_json || '{}') as {
       device_name: string;
       device_type: string;
@@ -436,9 +532,14 @@ async function handleApiRequest(
       refresh_token: tokens.refresh_token,
     };
 
-    // Update D1
-    await env.DB.prepare("UPDATE pairing_sessions SET status = 'approved' WHERE id = ?1")
-      .bind(sessionRow.id)
+    // Update D1 with approved status and redeem result to avoid duplicate device on redeem
+    const candidateWithRedeem = {
+      ...candidate,
+      device_id: deviceId,
+      redeem_result: redeemResult,
+    };
+    await env.DB.prepare("UPDATE pairing_sessions SET status = 'approved', candidate_device_json = ?1 WHERE id = ?2")
+      .bind(JSON.stringify(candidateWithRedeem), sessionRow.id)
       .run();
 
     // Notify PairingHub DO
@@ -469,7 +570,7 @@ async function handleApiRequest(
 
   // ─── Pairing: Redeem (Mobile picks up tokens once approved) ───
   if (request.method === 'POST' && url.pathname === '/api/v1/devices/pair/redeem') {
-    const body = (await request.json()) as {
+    const body = (await request.json().catch(() => ({}))) as {
       pairing_code?: string;
       enrollment_token?: string;
       device_name?: string;
@@ -486,7 +587,7 @@ async function handleApiRequest(
       'SELECT * FROM pairing_sessions WHERE pairing_code = ?1 OR enrollment_token = ?1'
     )
       .bind(key)
-      .first<{ id: string; user_id: string; status: string; expires_at: string }>();
+      .first<{ id: string; user_id: string; status: string; expires_at: string; candidate_device_json?: string }>();
 
     if (!sessionRow) {
       return Response.json({ error: 'Invalid pairing code' }, { status: 401 });
@@ -507,14 +608,30 @@ async function handleApiRequest(
       );
     }
 
-    // Consume pairing session immediately (single-use token protection)
-    await env.DB.prepare('DELETE FROM pairing_sessions WHERE id = ?1').bind(sessionRow.id).run();
+    // Check if session was already approved and provisioned
+    if (sessionRow.status === 'approved') {
+      let candidateData: { redeem_result?: { device: Record<string, unknown>; access_token: string; refresh_token: string } } = {};
+      try {
+        candidateData = JSON.parse(sessionRow.candidate_device_json || '{}');
+      } catch (_) {}
 
+      // Consume session immediately (single-use token)
+      await env.DB.prepare('DELETE FROM pairing_sessions WHERE id = ?1').bind(sessionRow.id).run();
+      const doId = env.PAIRING_HUB.idFromName('global_pairing_hub');
+      const stub = env.PAIRING_HUB.get(doId);
+      await stub.fetch(`http://do/consume?key=${encodeURIComponent(key)}`, { method: 'POST' });
+
+      if (candidateData.redeem_result) {
+        return Response.json(candidateData.redeem_result);
+      }
+    }
+
+    // Direct single-step headless enrollment (e.g. for CLI without approval requirement)
+    await env.DB.prepare('DELETE FROM pairing_sessions WHERE id = ?1').bind(sessionRow.id).run();
     const doId = env.PAIRING_HUB.idFromName('global_pairing_hub');
     const stub = env.PAIRING_HUB.get(doId);
     await stub.fetch(`http://do/consume?key=${encodeURIComponent(key)}`, { method: 'POST' });
 
-    // Direct single-step enrollment (e.g. for headless CLI or test flows)
     const user = await env.DB.prepare('SELECT email FROM users WHERE id = ?1')
       .bind(sessionRow.user_id)
       .first<{ email: string }>();
@@ -556,6 +673,59 @@ async function handleApiRequest(
   }
 
   // ─── Devices: List & Heartbeat ───
+  if (
+    (request.method === 'POST' || request.method === 'PUT') &&
+    url.pathname.startsWith('/api/v1/devices/') &&
+    url.pathname.endsWith('/heartbeat')
+  ) {
+    const parts = url.pathname.split('/');
+    const deviceId = parts[4]; // /api/v1/devices/<deviceId>/heartbeat
+    const body = (await request.json().catch(() => ({}))) as {
+      deviceId?: string;
+      userId?: string;
+      lanIp?: string;
+      lan_ip?: string;
+      name?: string;
+      deviceType?: string;
+    };
+
+    const lanIp = body.lanIp || body.lan_ip || null;
+    const now = new Date().toISOString();
+
+    // 1. Update D1 device identity
+    await env.DB.prepare(
+      `UPDATE device_identities
+       SET is_online = 1, last_seen_at = ?1, last_lan_ip = COALESCE(?2, last_lan_ip), updated_at = ?1
+       WHERE id = ?3`
+    )
+      .bind(now, lanIp, deviceId)
+      .run();
+
+    // 2. Forward to DevicePresenceHub DO
+    const doId = env.PRESENCE_HUB.idFromName('global_presence_hub');
+    const stub = env.PRESENCE_HUB.get(doId);
+    const clientIp = request.headers.get('cf-connecting-ip') || '';
+
+    await stub.fetch('http://do/heartbeat', {
+      method: 'POST',
+      headers: { 'cf-connecting-ip': clientIp },
+      body: JSON.stringify({
+        deviceId,
+        userId: body.userId,
+        name: body.name,
+        deviceType: body.deviceType,
+        lanIp,
+      }),
+    });
+
+    return Response.json({
+      success: true,
+      is_online: true,
+      device_id: deviceId,
+      last_seen_at: now,
+    });
+  }
+
   if (url.pathname === '/api/v1/devices') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) {
@@ -573,6 +743,104 @@ async function handleApiRequest(
         devices: devices.results,
         total: devices.results.length,
       });
+    }
+
+    if (request.method === 'POST') {
+      const body = (await request.json().catch(() => ({}))) as {
+        name?: string;
+        device_type?: string;
+        os?: string;
+        os_version?: string;
+        agent_version?: string;
+        public_key?: string;
+      };
+
+      if (!body.name) {
+        return Response.json({ error: 'Device name is required' }, { status: 400 });
+      }
+
+      const cloudRow = await env.DB.prepare('SELECT cloud_id FROM cloud_identities WHERE user_id = ?1')
+        .bind(userPayload.sub)
+        .first<{ cloud_id: string }>();
+
+      const deviceId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const cloudId = cloudRow?.cloud_id || 'pcos';
+      const deviceType = body.device_type || 'desktop';
+      const osName = body.os || 'unknown';
+      const osVersion = body.os_version || '';
+      const agentVersion = body.agent_version || '0.1.0';
+
+      await env.DB.prepare(
+        `INSERT INTO device_identities (id, user_id, cloud_id, name, device_type, os, os_version, agent_version, public_key, is_online, last_seen_at, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 1, ?10, ?10, ?10)`
+      )
+        .bind(
+          deviceId,
+          userPayload.sub,
+          cloudId,
+          body.name.trim(),
+          deviceType,
+          osName,
+          osVersion,
+          agentVersion,
+          body.public_key || null,
+          now
+        )
+        .run();
+
+      const createdDevice = {
+        id: deviceId,
+        user_id: userPayload.sub,
+        cloud_id: cloudId,
+        name: body.name.trim(),
+        device_type: deviceType,
+        os: osName,
+        os_version: osVersion,
+        agent_version: agentVersion,
+        is_online: 1,
+        last_seen_at: now,
+        created_at: now,
+        updated_at: now,
+      };
+
+      return Response.json(createdDevice, { status: 201 });
+    }
+  }
+
+  // ─── Devices: Single Device Operations (GET / DELETE) ───
+  if (
+    url.pathname.match(/^\/api\/v1\/devices\/[0-9a-fA-F-]+$/) &&
+    !url.pathname.endsWith('/heartbeat') &&
+    !url.pathname.includes('/pair')
+  ) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const deviceId = url.pathname.split('/')[4];
+
+    if (request.method === 'GET') {
+      const device = await env.DB.prepare(
+        'SELECT * FROM device_identities WHERE id = ?1 AND user_id = ?2'
+      )
+        .bind(deviceId, userPayload.sub)
+        .first<DeviceIdentity>();
+
+      if (!device) {
+        return Response.json({ error: 'Device not found' }, { status: 404 });
+      }
+      return Response.json(device);
+    }
+
+    if (request.method === 'DELETE') {
+      await env.DB.prepare(
+        'DELETE FROM device_identities WHERE id = ?1 AND user_id = ?2'
+      )
+        .bind(deviceId, userPayload.sub)
+        .run();
+
+      return Response.json({ success: true, message: 'Device removed successfully' });
     }
   }
 
@@ -734,7 +1002,6 @@ async function handleApiRequest(
   if (request.method === 'GET' && url.pathname === '/api/v1/folders') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
 
     const rows = await env.DB.prepare(
       `SELECT id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, is_trashed, is_favorite, created_at, updated_at
@@ -762,7 +1029,6 @@ async function handleApiRequest(
   if (request.method === 'GET' && url.pathname.startsWith('/api/v1/folders/')) {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
 
     const folderId = url.pathname.replace('/api/v1/folders/', '');
     const folder = await env.DB.prepare(
@@ -804,7 +1070,6 @@ async function handleApiRequest(
   if (request.method === 'POST' && url.pathname === '/api/v1/folders') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
 
     const body = (await request.json().catch(() => ({}))) as { name?: string; parent_id?: string | null };
     if (!body.name || !body.name.trim()) {
@@ -841,7 +1106,6 @@ async function handleApiRequest(
   if (request.method === 'GET' && url.pathname === '/api/v1/files') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
 
     const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));
     const rows = await env.DB.prepare(
@@ -867,7 +1131,6 @@ async function handleApiRequest(
   if (request.method === 'POST' && url.pathname === '/api/v1/files/upload') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
 
     try {
       const formData = await request.formData();
@@ -933,7 +1196,8 @@ async function handleApiRequest(
         { status: 201 }
       );
     } catch (err) {
-      return Response.json({ error: 'File upload failed', details: String(err) }, { status: 500 });
+      console.error('File upload error:', err);
+      return Response.json({ error: 'File upload failed' }, { status: 500 });
     }
   }
 
@@ -946,8 +1210,6 @@ async function handleApiRequest(
     const userPayload = await extractAuthUser(request, jwtSecret);
     const fileId = url.pathname.split('/')[4];
     const isPreview = url.pathname.endsWith('/preview');
-
-    await ensureTables(env.DB);
     const entry = await env.DB.prepare('SELECT * FROM file_entries WHERE id = ?1')
       .bind(fileId)
       .first<FileEntry>();
@@ -999,7 +1261,6 @@ async function handleApiRequest(
     const fileId = url.pathname.split('/')[4];
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
     const now = new Date().toISOString();
 
     if (request.method === 'PUT') {
@@ -1028,7 +1289,6 @@ async function handleApiRequest(
     const fileId = url.pathname.split('/')[4];
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
     const now = new Date().toISOString();
     await env.DB.prepare(
       'UPDATE file_entries SET is_favorite = (CASE WHEN is_favorite = 1 THEN 0 ELSE 1 END), updated_at = ?1 WHERE id = ?2 AND user_id = ?3'
@@ -1043,7 +1303,6 @@ async function handleApiRequest(
     const fileId = url.pathname.split('/')[4];
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
     const body = (await request.json().catch(() => ({}))) as { target_folder_id?: string | null };
     const now = new Date().toISOString();
     await env.DB.prepare(
@@ -1058,7 +1317,6 @@ async function handleApiRequest(
   if (request.method === 'POST' && url.pathname === '/api/v1/files/bulk-delete') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
     const body = (await request.json().catch(() => ({}))) as { ids?: string[] };
     const now = new Date().toISOString();
     if (body.ids && body.ids.length > 0) {
@@ -1077,7 +1335,6 @@ async function handleApiRequest(
   if (url.pathname === '/api/v1/trash' && request.method === 'GET') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
     const rows = await env.DB.prepare(
       `SELECT id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, is_trashed, is_favorite, created_at, updated_at, trashed_at
        FROM file_entries WHERE user_id = ?1 AND is_trashed = 1 ORDER BY trashed_at DESC`
@@ -1091,7 +1348,6 @@ async function handleApiRequest(
   if (url.pathname.match(/^\/api\/v1\/trash\/[^/]+\/restore$/) && request.method === 'POST') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
     const itemId = url.pathname.split('/')[4];
     const now = new Date().toISOString();
     await env.DB.prepare(
@@ -1106,7 +1362,6 @@ async function handleApiRequest(
   if (url.pathname === '/api/v1/trash/empty' && request.method === 'POST') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
     await env.DB.prepare('DELETE FROM file_entries WHERE user_id = ?1 AND is_trashed = 1')
       .bind(userPayload.sub)
       .run();
@@ -1117,7 +1372,6 @@ async function handleApiRequest(
   if (request.method === 'GET' && url.pathname === '/api/v1/search') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
 
     const q = url.searchParams.get('q') || '*';
     const type = url.searchParams.get('type');
@@ -1157,11 +1411,129 @@ async function handleApiRequest(
     });
   }
 
+  // ─── Storage: Nodes Management ───
+  if (url.pathname === '/api/v1/storage/nodes') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (request.method === 'GET') {
+      const rows = await env.DB.prepare(
+        'SELECT * FROM storage_nodes WHERE user_id = ?1 ORDER BY created_at DESC'
+      )
+        .bind(userPayload.sub)
+        .all();
+
+      return Response.json({
+        storage_nodes: rows.results || [],
+        total: (rows.results || []).length,
+      });
+    }
+
+    if (request.method === 'POST') {
+      const body = (await request.json().catch(() => ({}))) as {
+        id?: string;
+        device_id?: string;
+        name?: string;
+        storage_path?: string;
+        total_capacity_bytes?: number;
+        available_capacity_bytes?: number;
+        capabilities_json?: string;
+      };
+
+      if (!body.device_id || !body.storage_path) {
+        return Response.json(
+          { error: 'device_id and storage_path are required' },
+          { status: 400 }
+        );
+      }
+
+      // Verify device belongs to user
+      const device = await env.DB.prepare(
+        'SELECT id, name FROM device_identities WHERE id = ?1 AND user_id = ?2'
+      )
+        .bind(body.device_id, userPayload.sub)
+        .first();
+
+      if (!device) {
+        return Response.json(
+          { error: 'Referenced device not found or does not belong to user' },
+          { status: 404 }
+        );
+      }
+
+      const nodeId = body.id || crypto.randomUUID();
+      const nodeName = body.name || `${device.name} Storage`;
+      const now = new Date().toISOString();
+      const caps = body.capabilities_json || '{"ffmpeg":false,"ocr":false,"tantivy":false,"ollama":false}';
+      const totalBytes = body.total_capacity_bytes || 0;
+      const availBytes = body.available_capacity_bytes || 0;
+
+      await env.DB.prepare(
+        `INSERT INTO storage_nodes (id, device_id, user_id, name, storage_path, total_capacity_bytes, available_capacity_bytes, is_online, capabilities_json, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?9, ?9)
+         ON CONFLICT(id) DO UPDATE SET
+           storage_path = ?5,
+           total_capacity_bytes = ?6,
+           available_capacity_bytes = ?7,
+           is_online = 1,
+           capabilities_json = ?8,
+           updated_at = ?9`
+      )
+        .bind(
+          nodeId,
+          body.device_id,
+          userPayload.sub,
+          nodeName,
+          body.storage_path,
+          totalBytes,
+          availBytes,
+          caps,
+          now
+        )
+        .run();
+
+      return Response.json(
+        {
+          id: nodeId,
+          device_id: body.device_id,
+          user_id: userPayload.sub,
+          name: nodeName,
+          storage_path: body.storage_path,
+          total_capacity_bytes: totalBytes,
+          available_capacity_bytes: availBytes,
+          is_online: 1,
+          capabilities_json: caps,
+          created_at: now,
+          updated_at: now,
+        },
+        { status: 201 }
+      );
+    }
+  }
+
+  if (url.pathname.startsWith('/api/v1/storage/nodes/')) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const nodeId = url.pathname.replace('/api/v1/storage/nodes/', '');
+
+    if (request.method === 'DELETE') {
+      await env.DB.prepare('DELETE FROM storage_nodes WHERE id = ?1 AND user_id = ?2')
+        .bind(nodeId, userPayload.sub)
+        .run();
+
+      return Response.json({ success: true, message: 'Storage node deleted' });
+    }
+  }
+
   // ─── Storage: Statistics ───
   if (request.method === 'GET' && url.pathname === '/api/v1/storage/stats') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
 
     const filesCount = await env.DB.prepare(
       `SELECT COUNT(*) as count FROM file_entries WHERE user_id = ?1 AND entry_type = 'file' AND is_trashed = 0`
@@ -1199,7 +1571,6 @@ async function handleApiRequest(
   if (request.method === 'GET' && url.pathname === '/api/v1/analytics/overview') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    await ensureTables(env.DB);
 
     const filesCount = await env.DB.prepare(
       `SELECT COUNT(*) as count FROM file_entries WHERE user_id = ?1 AND entry_type = 'file' AND is_trashed = 0`
@@ -1243,31 +1614,6 @@ async function handleApiRequest(
 
 // ─── Helper Functions ───
 
-async function ensureTables(db: D1Database): Promise<void> {
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS file_entries (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        parent_id TEXT REFERENCES file_entries(id) ON DELETE CASCADE,
-        name TEXT NOT NULL,
-        entry_type TEXT NOT NULL CHECK (entry_type IN ('file', 'folder')),
-        mime_type TEXT,
-        size_bytes INTEGER NOT NULL DEFAULT 0,
-        sha256_hash TEXT,
-        storage_path TEXT,
-        storage_node_id TEXT,
-        is_trashed INTEGER NOT NULL DEFAULT 0,
-        trashed_at TEXT,
-        is_favorite INTEGER NOT NULL DEFAULT 0,
-        data_blob BLOB,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )`
-    )
-    .run()
-    .catch(() => {});
-}
 
 function formatBytes(bytes: number): string {
   if (bytes <= 0) return '0 B';

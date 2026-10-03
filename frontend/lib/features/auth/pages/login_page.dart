@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
@@ -269,22 +268,6 @@ class _LoginPageState extends State<LoginPage>
               Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
             ]),
             const SizedBox(height: 14),
-            OutlinedButton.icon(
-              key: const Key('pair_device_button'),
-              onPressed: () => _showPairingDialog(context, initialTab: 0),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 48),
-                side: BorderSide(color: AppTheme.primary.withOpacity(0.6)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              icon: const Icon(Icons.qr_code_2_rounded,
-                  color: AppTheme.primary, size: 20),
-              label: const Text('Show QR Code to Pair',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, color: Colors.white)),
-            ),
-            const SizedBox(height: 10),
             FilledButton.tonalIcon(
               key: const Key('scan_camera_button'),
               onPressed: () => context.go('/connect'),
@@ -296,7 +279,7 @@ class _LoginPageState extends State<LoginPage>
               ),
               icon: const Icon(Icons.qr_code_scanner_rounded,
                   color: AppTheme.primary, size: 20),
-              label: const Text('Scan QR with Camera / Enter PIN',
+              label: const Text('Pair Device to Existing Cloud (Scan QR / PIN)',
                   style: TextStyle(
                       fontWeight: FontWeight.w600, color: Colors.white)),
             ),
@@ -307,32 +290,19 @@ class _LoginPageState extends State<LoginPage>
   }
 
   void _showServerConfig(BuildContext context) {
-    _showPairingDialog(context, initialTab: 3);
-  }
-
-  void _showPairingDialog(BuildContext context, {int initialTab = 0}) {
     final api = getIt<ApiClient>();
     final ctrl = TextEditingController(text: api.currentServerUrl);
-    final codeCtrl = TextEditingController();
-    int currentTab = initialTab;
     bool testing = false;
     String? testResult;
     bool? testSuccess;
-    bool pairing = false;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) {
-          final serverUrl = ctrl.text.trim().isNotEmpty
-              ? ctrl.text.trim()
-              : api.currentServerUrl;
-          final qrPayload = '$serverUrl/#/connect';
-
           return AlertDialog(
             backgroundColor: AppTheme.surfaceColor(context),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
             titlePadding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
             title: Row(
@@ -343,13 +313,12 @@ class _LoginPageState extends State<LoginPage>
                     color: AppTheme.primary.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.qr_code_scanner_rounded,
-                      color: AppTheme.primary, size: 22),
+                  child: const Icon(Icons.dns_rounded, color: AppTheme.primary, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Pair Device & Connect',
+                    'PCOS Server Settings',
                     style: TextStyle(
                       color: AppTheme.textPrimaryColor(context),
                       fontSize: 18,
@@ -369,494 +338,89 @@ class _LoginPageState extends State<LoginPage>
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Segmented Tabs
-                    Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.backgroundColor(context),
-                        borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: AppTheme.borderColor(context)),
-                      ),
-                      child: Row(
-                        children: [
-                          _buildDialogTabItem(
-                            context: context,
-                            index: 0,
-                            activeIndex: currentTab,
-                            icon: Icons.qr_code_rounded,
-                            label: 'Show QR',
-                            onTap: () => setDialogState(() => currentTab = 0),
-                          ),
-                          _buildDialogTabItem(
-                            context: context,
-                            index: 1,
-                            activeIndex: currentTab,
-                            icon: Icons.camera_alt_rounded,
-                            label: 'Scan QR',
-                            onTap: () => setDialogState(() => currentTab = 1),
-                          ),
-                          _buildDialogTabItem(
-                            context: context,
-                            index: 2,
-                            activeIndex: currentTab,
-                            icon: Icons.pin_rounded,
-                            label: 'PIN Code',
-                            onTap: () => setDialogState(() => currentTab = 2),
-                          ),
-                          _buildDialogTabItem(
-                            context: context,
-                            index: 3,
-                            activeIndex: currentTab,
-                            icon: Icons.dns_rounded,
-                            label: 'Server',
-                            onTap: () => setDialogState(() => currentTab = 3),
-                          ),
-                        ],
+                    Text(
+                      'Configure your control plane endpoint or local storage node URL:',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textMutedColor(context),
                       ),
                     ),
-                    const SizedBox(height: 20),
-
-                    // Tab 0: Show QR Code
-                    if (currentTab == 0) ...[
-                      Text(
-                        'Point your phone camera or PCOS app at this QR code to connect instantly:',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.textMutedColor(context)),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: ctrl,
+                      style: TextStyle(color: AppTheme.textPrimaryColor(context)),
+                      decoration: const InputDecoration(
+                        labelText: 'Server URL',
+                        hintText: 'https://pcos-control-plane... or http://192.168.1.50:8080',
+                        prefixIcon: Icon(Icons.link_rounded),
                       ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primary.withOpacity(0.15),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: QrImageView(
-                          data: qrPayload,
-                          version: QrVersions.auto,
-                          size: 180,
-                          backgroundColor: Colors.white,
-                          dataModuleStyle: const QrDataModuleStyle(
-                            dataModuleShape: QrDataModuleShape.square,
-                            color: Color(0xFF1E1E2E),
+                    ),
+                    const SizedBox(height: 12),
+                    if (testResult != null) ...[
+                      _buildStatusBadge(testResult!, testSuccess ?? false),
+                      const SizedBox(height: 12),
+                    ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: testing
+                                ? null
+                                : () async {
+                                    setDialogState(() {
+                                      testing = true;
+                                      testResult = null;
+                                    });
+                                    final err = await api.testServerUrl(ctrl.text.trim());
+                                    setDialogState(() {
+                                      testing = false;
+                                      testSuccess = (err == null);
+                                      testResult = err ?? 'Connection successful!';
+                                    });
+                                  },
+                            icon: testing
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.wifi_find_rounded, size: 14),
+                            label: Text(testing ? 'Testing...' : 'Test',
+                                style: const TextStyle(fontSize: 12)),
                           ),
-                          eyeStyle: const QrEyeStyle(
-                            eyeShape: QrEyeShape.square,
-                            color: Color(0xFF11111B),
-                          ),
                         ),
-                      ),
-                      const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.backgroundColor(context),
-                          borderRadius: BorderRadius.circular(8),
-                          border:
-                              Border.all(color: AppTheme.borderColor(context)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.link_rounded,
-                                size: 14, color: AppTheme.primary),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                qrPayload,
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppTheme.textPrimaryColor(context)),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            InkWell(
-                              onTap: () {
-                                Clipboard.setData(
-                                    ClipboardData(text: qrPayload));
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () async {
+                              final newUrl = ctrl.text.trim();
+                              if (newUrl.isNotEmpty) {
+                                await api.setServerUrl(newUrl);
+                                if (mounted) setState(() {});
+                              }
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Pairing link copied to clipboard!'),
-                                    duration: Duration(seconds: 2),
+                                  SnackBar(
+                                    content: Text('Server updated: ${api.currentServerUrl}'),
+                                    backgroundColor: AppTheme.success,
                                   ),
                                 );
-                              },
-                              child: const Icon(Icons.copy_rounded,
-                                  size: 14, color: AppTheme.primary),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.check_circle_outline_rounded,
-                              size: 14, color: AppTheme.success),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Works with iOS, Android Camera, Google Lens, or PCOS App',
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.textMutedColor(context)),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        margin: const EdgeInsets.only(top: 14),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.backgroundColor(context),
-                          borderRadius: BorderRadius.circular(12),
-                          border:
-                              Border.all(color: AppTheme.borderColor(context)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.info_outline_rounded,
-                                    size: 16, color: AppTheme.primary),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'How Device Pairing Works',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.textPrimaryColor(context),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              '1. Scanning this QR code automatically sets your mobile app to this server.\n'
-                              '2. To generate an active 6-digit pairing code for your account, sign in on this computer and click "Pair Phone / Device" on your dashboard.\n'
-                              '3. Or on your phone, tap "Back to Sign In" to log in directly with your email & password.',
-                              style: TextStyle(
-                                fontSize: 11,
-                                height: 1.4,
-                                color: AppTheme.textMutedColor(context),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    // Tab 1: Scan QR Code with Camera
-                    if (currentTab == 1) ...[
-                      Text(
-                        'Scan a PCOS QR code displayed on your PC screen or terminal to pair this device:',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.textMutedColor(context)),
-                      ),
-                      const SizedBox(height: 24),
-                      Container(
-                        width: 90,
-                        height: 90,
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withOpacity(0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.qr_code_scanner_rounded,
-                            size: 48, color: AppTheme.primary),
-                      ),
-                      const SizedBox(height: 20),
-                      FilledButton.icon(
-                        key: const Key('dialog_open_camera_scanner_button'),
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          context.go('/connect');
-                        },
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 46),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        icon: const Icon(Icons.camera_alt_rounded, size: 18),
-                        label: const Text('Open Camera Scanner',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Uses device camera with live barcode recognition.',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.textMutedColor(context)),
-                      ),
-                    ],
-
-                    // Tab 2: 6-Digit Code
-                    if (currentTab == 2) ...[
-                      Text(
-                        'Enter the 6-digit one-time code shown on your host screen:',
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.textMutedColor(context)),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: codeCtrl,
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        maxLength: 6,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 4,
-                          color: AppTheme.textPrimaryColor(context),
-                        ),
-                        decoration: const InputDecoration(
-                          hintText: '856408',
-                          counterText: '',
-                          prefixIcon: Icon(Icons.pin_rounded),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton.icon(
-                            onPressed: () async {
-                              final data =
-                                  await Clipboard.getData('text/plain');
-                              final text = data?.text?.trim() ?? '';
-                              if (text.isNotEmpty) {
-                                if (text.contains('code=')) {
-                                  final uri = Uri.tryParse(text);
-                                  if (uri != null &&
-                                      uri.queryParameters['code'] != null) {
-                                    codeCtrl.text =
-                                        uri.queryParameters['code']!;
-                                  }
-                                } else if (text.length == 6 &&
-                                    int.tryParse(text) != null) {
-                                  codeCtrl.text = text;
-                                }
-                                setDialogState(() {});
                               }
                             },
-                            icon: const Icon(Icons.paste_rounded, size: 14),
-                            label: const Text('Paste Code',
-                                style: TextStyle(fontSize: 12)),
+                            child: const Text('Save Server', style: TextStyle(fontSize: 12)),
                           ),
-                        ],
-                      ),
-                      if (testResult != null && testSuccess == false) ...[
-                        const SizedBox(height: 10),
-                        _buildStatusBadge(testResult!, false),
-                      ],
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: pairing
-                            ? null
-                            : () async {
-                                final code = codeCtrl.text.trim();
-                                if (code.length != 6) {
-                                  setDialogState(() {
-                                    testResult =
-                                        'Please enter a full 6-digit code';
-                                    testSuccess = false;
-                                  });
-                                  return;
-                                }
-                                setDialogState(() {
-                                  pairing = true;
-                                  testResult = null;
-                                });
-                                try {
-                                  await api.redeemPairingCode(code,
-                                      serverUrl: serverUrl);
-                                  if (ctx.mounted) Navigator.pop(ctx);
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Device paired successfully! Welcome to PCOS.'),
-                                        backgroundColor: AppTheme.success,
-                                      ),
-                                    );
-                                    GoRouter.of(context).go('/dashboard');
-                                  }
-                                } catch (e) {
-                                  setDialogState(() {
-                                    pairing = false;
-                                    testSuccess = false;
-                                    testResult = ApiClient.formatError(e);
-                                  });
-                                }
-                              },
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 46),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: pairing
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Text('Connect & Sign In',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-
-                    // Tab 3: Server URL
-                    if (currentTab == 3) ...[
-                      Text(
-                        'Configure target PCOS server IP / domain (e.g. for self-hosted or LAN nodes):',
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.textMutedColor(context)),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: ctrl,
-                        style: TextStyle(
-                            color: AppTheme.textPrimaryColor(context)),
-                        decoration: const InputDecoration(
-                          labelText: 'Server IP / URL',
-                          hintText:
-                              'https://pcos-control-plane... or http://192.168.1.50',
-                          prefixIcon: Icon(Icons.link_rounded),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (testResult != null) ...[
-                        _buildStatusBadge(testResult!, testSuccess ?? false),
-                        const SizedBox(height: 12),
                       ],
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: testing
-                                  ? null
-                                  : () async {
-                                      setDialogState(() {
-                                        testing = true;
-                                        testResult = null;
-                                      });
-                                      final err = await api
-                                          .testServerUrl(ctrl.text.trim());
-                                      setDialogState(() {
-                                        testing = false;
-                                        testSuccess = (err == null);
-                                        testResult =
-                                            err ?? 'Connection successful!';
-                                      });
-                                    },
-                              icon: testing
-                                  ? const SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    )
-                                  : const Icon(Icons.wifi_find_rounded,
-                                      size: 14),
-                              label: Text(testing ? 'Testing...' : 'Test',
-                                  style: const TextStyle(fontSize: 12)),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: () async {
-                                final newUrl = ctrl.text.trim();
-                                if (newUrl.isNotEmpty) {
-                                  await api.setServerUrl(newUrl);
-                                  if (mounted) setState(() {});
-                                }
-                                if (ctx.mounted) Navigator.pop(ctx);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Server connected: ${api.currentServerUrl}'),
-                                      backgroundColor: AppTheme.success,
-                                    ),
-                                  );
-                                }
-                              },
-                              child: const Text('Save Server',
-                                  style: TextStyle(fontSize: 12)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ],
                 ),
               ),
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildDialogTabItem({
-    required BuildContext context,
-    required int index,
-    required int activeIndex,
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    final isActive = index == activeIndex;
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive ? AppTheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color:
-                    isActive ? Colors.white : AppTheme.textMutedColor(context),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                  color: isActive
-                      ? Colors.white
-                      : AppTheme.textMutedColor(context),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -23,8 +23,11 @@ impl Default for AgentConfig {
             .to_string_lossy()
             .to_string();
 
+        let server_url = std::env::var("PCOS_SERVER_URL")
+            .unwrap_or_else(|_| "https://pcos-control-plane.dayashimoga.workers.dev".to_string());
+
         Self {
-            server_url: "http://localhost:8080".to_string(),
+            server_url,
             auth_token: String::new(),
             device_id: String::new(),
             user_id: String::new(),

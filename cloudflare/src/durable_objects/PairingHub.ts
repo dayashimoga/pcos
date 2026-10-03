@@ -9,6 +9,7 @@ export class PairingHub implements DurableObject {
   private codeToId: Map<string, string> = new Map();
   private tokenToId: Map<string, string> = new Map();
   private websockets: Map<string, Set<WebSocket>> = new Map(); // sessionId -> WebSockets
+  private ipAttempts: Map<string, { count: number; blockedUntil: number }> = new Map();
 
   constructor(state: DurableObjectState) {
     this.state = state;
@@ -106,6 +107,18 @@ export class PairingHub implements DurableObject {
     }
 
     if (request.method === 'POST' && url.pathname === '/claim') {
+      const clientIp = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || '127.0.0.1';
+      const now = Date.now();
+      const ipRecord = this.ipAttempts.get(clientIp);
+
+      if (ipRecord && ipRecord.blockedUntil > now) {
+        const retryAfter = Math.ceil((ipRecord.blockedUntil - now) / 1000);
+        return Response.json(
+          { error: `Too many failed pairing attempts. Please wait ${retryAfter}s before retrying.` },
+          { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+        );
+      }
+
       const body = (await request.json()) as {
         key: string;
         candidate: NonNullable<PairingSessionData['candidate_device']>;
@@ -113,8 +126,21 @@ export class PairingHub implements DurableObject {
 
       const id = this.codeToId.get(body.key) || this.tokenToId.get(body.key);
       if (!id || !this.sessions.has(id)) {
+        const count = ((ipRecord && ipRecord.blockedUntil <= now) ? ipRecord.count : 0) + 1;
+        if (count >= 5) {
+          this.ipAttempts.set(clientIp, { count, blockedUntil: now + 300000 }); // 5 min block
+          return Response.json(
+            { error: 'Too many invalid pairing attempts. Pairing temporarily blocked for 5 minutes.' },
+            { status: 429, headers: { 'Retry-After': '300' } }
+          );
+        } else {
+          this.ipAttempts.set(clientIp, { count, blockedUntil: 0 });
+        }
         return Response.json({ error: 'Invalid or expired pairing code' }, { status: 401 });
       }
+
+      // Valid key: clear failed IP attempts
+      this.ipAttempts.delete(clientIp);
 
       const session = this.sessions.get(id)!;
       if (new Date(session.expires_at) <= new Date()) {
@@ -171,6 +197,7 @@ export class PairingHub implements DurableObject {
       }
 
       session.status = 'approved';
+      session.redeem_result = body.redeemResult;
       await this.persist();
 
       // Broadcast approved event with tokens to mobile device
