@@ -13,6 +13,10 @@ pub struct AgentConfig {
     pub sync_folders: Vec<String>,
     pub sync_interval_secs: u64,
     pub ignore_patterns: Vec<String>,
+    #[serde(default)]
+    pub allowed_disks: Vec<String>,
+    #[serde(default)]
+    pub excluded_disks: Vec<String>,
 }
 
 impl Default for AgentConfig {
@@ -36,6 +40,8 @@ impl Default for AgentConfig {
             data_dir,
             sync_folders: vec![],
             sync_interval_secs: 30,
+            allowed_disks: vec![],
+            excluded_disks: vec![],
             ignore_patterns: vec![
                 "*.tmp".to_string(),
                 "*.swp".to_string(),

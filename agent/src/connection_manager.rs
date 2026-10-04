@@ -28,6 +28,8 @@ pub struct ConnectionManager {
     user_id: String,
     auth_token: String,
     storage_path: String,
+    allowed_disks: Vec<String>,
+    excluded_disks: Vec<String>,
 }
 
 impl ConnectionManager {
@@ -37,6 +39,8 @@ impl ConnectionManager {
         user_id: String,
         auth_token: String,
         storage_path: String,
+        allowed_disks: Vec<String>,
+        excluded_disks: Vec<String>,
     ) -> Self {
         Self {
             server_url,
@@ -44,6 +48,8 @@ impl ConnectionManager {
             user_id,
             auth_token,
             storage_path,
+            allowed_disks,
+            excluded_disks,
         }
     }
 
@@ -132,6 +138,8 @@ impl ConnectionManager {
                     let user_id = self.user_id.clone();
                     let server_url = self.server_url.clone();
                     let auth_token = self.auth_token.clone();
+                    let allowed_disks = self.allowed_disks.clone();
+                    let excluded_disks = self.excluded_disks.clone();
 
                     // Physical storage advertisement & heartbeat sender task
                     let heartbeat_task = tokio::spawn(async move {
@@ -148,6 +156,8 @@ impl ConnectionManager {
                                     &auth_token,
                                     &device_id,
                                     ffmpeg_ok,
+                                    &allowed_disks,
+                                    &excluded_disks,
                                 )
                                 .await
                                 {
@@ -184,6 +194,8 @@ impl ConnectionManager {
                     });
 
                     let storage_root = self.storage_path.clone();
+                    let allowed_policy = self.allowed_disks.clone();
+                    let excluded_policy = self.excluded_disks.clone();
 
                     // Incoming control messages receiver
                     while let Some(msg_result) = read.next().await {
@@ -193,7 +205,12 @@ impl ConnectionManager {
                                 if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
                                     // 1. Filesystem Data Plane Operations
                                     if parsed.get("op").is_some() {
-                                        let resp = handle_fs_command(std::path::Path::new(&storage_root), &parsed).await;
+                                        let resp = handle_fs_command(
+                                            std::path::Path::new(&storage_root),
+                                            &parsed,
+                                            &allowed_policy,
+                                            &excluded_policy,
+                                        ).await;
                                         let resp_json = resp.to_string();
                                         if let Err(e) = write.send(Message::Text(resp_json)).await {
                                             error!(error = %e, "Failed to send filesystem response over WSS tunnel");
@@ -241,7 +258,12 @@ impl ConnectionManager {
 }
 
 /// Handle filesystem operations requested by remote clients through the control plane tunnel
-async fn handle_fs_command(default_root: &std::path::Path, req: &serde_json::Value) -> serde_json::Value {
+async fn handle_fs_command(
+    default_root: &std::path::Path,
+    req: &serde_json::Value,
+    allowed: &[String],
+    excluded: &[String],
+) -> serde_json::Value {
     let request_id = req["request_id"].as_str().unwrap_or("").to_string();
     let op = req["op"].as_str().unwrap_or("");
     let rel_path = req["relative_path"].as_str().unwrap_or("");
@@ -256,6 +278,31 @@ async fn handle_fs_command(default_root: &std::path::Path, req: &serde_json::Val
     } else {
         default_root
     };
+
+    // Enforce node disk policy
+    let root_str = root.to_string_lossy().to_string();
+    let clean_root = root_str.trim().trim_end_matches(['\\', '/']).to_lowercase();
+
+    let is_forbidden = if !allowed.is_empty() {
+        !allowed.iter().any(|al| {
+            let clean_al = al.trim().trim_end_matches(['\\', '/']).to_lowercase();
+            clean_root == clean_al || clean_root.starts_with(&clean_al) || clean_al.starts_with(&clean_root)
+        })
+    } else {
+        excluded.iter().any(|ex| {
+            let clean_ex = ex.trim().trim_end_matches(['\\', '/']).to_lowercase();
+            clean_root == clean_ex || clean_root.starts_with(&clean_ex)
+        })
+    };
+
+    if is_forbidden {
+        return serde_json::json!({
+            "type": "fs_response",
+            "request_id": request_id,
+            "success": false,
+            "error": format!("Access to storage path '{}' is restricted by node policy in agent.toml", root.display())
+        });
+    }
 
     match op {
         "fs_list_dir" => {

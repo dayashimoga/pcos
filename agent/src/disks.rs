@@ -30,8 +30,12 @@ pub struct AdvertisePayload {
     pub disks: Vec<DiscoveredDisk>,
 }
 
-/// Enumerate all physically mounted disks and volumes on this machine.
-pub fn discover_physical_disks(ffmpeg_available: bool) -> Vec<DiscoveredDisk> {
+/// Enumerate physically mounted disks and volumes on this machine, respecting allow/exclude policies.
+pub fn discover_physical_disks(
+    ffmpeg_available: bool,
+    allowed: &[String],
+    excluded: &[String],
+) -> Vec<DiscoveredDisk> {
     let disks = Disks::new_with_refreshed_list();
     let mut discovered = Vec::new();
 
@@ -43,6 +47,28 @@ pub fn discover_physical_disks(ffmpeg_available: bool) -> Vec<DiscoveredDisk> {
         // Skip zero-byte virtual mounts (e.g. procfs, devfs, loop devices without storage)
         if total == 0 {
             continue;
+        }
+
+        let clean_mount = mount_point.trim().trim_end_matches(['\\', '/']).to_lowercase();
+
+        // Check exclusions (e.g. "C:\\" or "C:" or "C")
+        let is_excluded = excluded.iter().any(|ex| {
+            let clean_ex = ex.trim().trim_end_matches(['\\', '/']).to_lowercase();
+            clean_ex == clean_mount || clean_ex == clean_mount.trim_end_matches(':')
+        });
+        if is_excluded {
+            continue;
+        }
+
+        // If allowlist is defined, disk must match allowlist
+        if !allowed.is_empty() {
+            let is_allowed = allowed.iter().any(|al| {
+                let clean_al = al.trim().trim_end_matches(['\\', '/']).to_lowercase();
+                clean_al == clean_mount || clean_al == clean_mount.trim_end_matches(':')
+            });
+            if !is_allowed {
+                continue;
+            }
         }
 
         let raw_name = disk.name().to_string_lossy().to_string();
@@ -74,6 +100,38 @@ pub fn discover_physical_disks(ffmpeg_available: bool) -> Vec<DiscoveredDisk> {
                 ollama: false,
             },
         });
+    }
+
+    // Also support custom directories specified in allowed_disks (e.g. "C:\\Users\\dayan\\PCOS")
+    for custom in allowed {
+        let custom_path = std::path::Path::new(custom);
+        if custom_path.exists() && custom_path.is_dir() {
+            let custom_str = custom.trim().to_string();
+            let clean_custom = custom_str.trim_end_matches(['\\', '/']).to_lowercase();
+            // If not already covered by a root mount point
+            if !discovered.iter().any(|d| d.mount_point.trim_end_matches(['\\', '/']).to_lowercase() == clean_custom) {
+                let free_gb = get_disk_free_gb(&custom_str);
+                let available_bytes = (free_gb * 1024.0 * 1024.0 * 1024.0) as u64;
+                let uuid = format!(
+                    "{:x}",
+                    sha2::Sha256::digest(format!("CustomDir:{}", custom_str).as_bytes())
+                );
+                discovered.push(DiscoveredDisk {
+                    volume_uuid: Some(uuid[..16].to_string()),
+                    mount_point: custom_str.clone(),
+                    name: format!("Storage Folder ({})", custom_str),
+                    fs_type: "directory".into(),
+                    total_capacity_bytes: available_bytes,
+                    available_capacity_bytes: available_bytes,
+                    capabilities: DiskCapabilities {
+                        ffmpeg: ffmpeg_available,
+                        ocr: false,
+                        tantivy: false,
+                        ollama: false,
+                    },
+                });
+            }
+        }
     }
 
     discovered
@@ -115,10 +173,12 @@ pub async fn advertise_storage_nodes(
     auth_token: &str,
     device_id: &str,
     ffmpeg_available: bool,
+    allowed: &[String],
+    excluded: &[String],
 ) -> anyhow::Result<Vec<DiscoveredDisk>> {
-    let disks = discover_physical_disks(ffmpeg_available);
+    let disks = discover_physical_disks(ffmpeg_available, allowed, excluded);
     if disks.is_empty() {
-        warn!("No physical disks with non-zero capacity detected on this node.");
+        warn!("No physical disks matched the storage policy on this node.");
         return Ok(disks);
     }
 
@@ -157,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_discover_physical_disks_finds_host_drives() {
-        let disks = discover_physical_disks(false);
+        let disks = discover_physical_disks(false, &[], &[]);
         // On any host running tests, there is at least one mounted volume
         assert!(!disks.is_empty(), "Expected to discover at least one physical disk");
         for d in &disks {

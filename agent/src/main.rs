@@ -270,6 +270,8 @@ async fn main() -> anyhow::Result<()> {
         agent_config.user_id.clone(),
         agent_config.auth_token.clone(),
         agent_config.data_dir.clone(),
+        agent_config.allowed_disks.clone(),
+        agent_config.excluded_disks.clone(),
     );
     let cm_handle = tokio::spawn(async move {
         cm.start_outbound_loop().await;
@@ -327,6 +329,12 @@ fn print_status(config: &config::AgentConfig, db: &db::LocalDb) -> anyhow::Resul
     println!("Sync folders: {}", config.sync_folders.len());
     for folder in &config.sync_folders {
         println!("  - {}", folder);
+    }
+    if !config.allowed_disks.is_empty() {
+        println!("Allowed storage disks: {:?}", config.allowed_disks);
+    }
+    if !config.excluded_disks.is_empty() {
+        println!("Excluded storage disks: {:?}", config.excluded_disks);
     }
     let stats = db.stats()?;
     println!("Cached files: {}", stats.total_files);
