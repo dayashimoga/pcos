@@ -396,6 +396,9 @@ class ApiClient {
   /// Check if user has stored tokens.
   bool get hasTokens => prefs.containsKey(_accessTokenKey);
 
+  /// Get the stored access token.
+  String? get accessToken => prefs.getString(_accessTokenKey);
+
   /// Get the stored refresh token.
   String? get refreshToken => prefs.getString(_refreshTokenKey);
 

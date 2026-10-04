@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../files/pages/files_page.dart' show formatFileSize;
+import 'physical_storage_browser_page.dart';
 
 /// Comprehensive Plug-and-Play Storage Nodes and Drive Pool Management Page.
 class StoragePage extends StatefulWidget {
@@ -98,56 +101,131 @@ class _StoragePageState extends State<StoragePage> {
   }
 
   void _showAddStorageDialog() {
-    final nameCtrl = TextEditingController(text: 'Local Storage Drive');
-    final pathCtrl = TextEditingController(text: 'D:\\PCOS');
-    final totalGbCtrl = TextEditingController(text: '2000');
-    final availGbCtrl = TextEditingController(text: '1450');
-    String? selectedDeviceId =
-        _devices.isNotEmpty ? _devices.first['id']?.toString() : null;
-
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (dialogCtx, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.surfaceColor(context),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.add_to_drive_rounded,
-                  color: AppTheme.primary, size: 22),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(width: 12),
-            const Text('Connect Storage Drive',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ]),
-          content: SingleChildScrollView(
-            child: SizedBox(
-              width: 440,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child: const Icon(Icons.storage_rounded,
+                color: AppTheme.primary, size: 22),
+          ),
+          const SizedBox(width: 12),
+          const Text('Physical Storage Pools',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ]),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppTheme.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.verified_rounded,
+                        color: AppTheme.primary, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Zero-Assumption Architecture: Storage nodes are discovered, measured, and verified automatically by the physical PCOS Agent. Drives cannot be added with fake browser text paths.',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textPrimaryColor(context)),
+                      ),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 18),
+                Text('How to Attach Real Storage:',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: AppTheme.textPrimaryColor(context))),
+                const SizedBox(height: 8),
+                Text(
+                  '1. Pair your laptop, desktop, server, or NAS with PCOS.\n'
+                  '2. Run the PCOS Agent daemon on that machine.\n'
+                  '3. All physical disks, USBs, and SSD volumes are automatically discovered, measured, and mounted with no manual configuration.',
+                  style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: AppTheme.textMutedColor(context)),
+                ),
+                const SizedBox(height: 16),
+                Text('Agent Command (Run on Node):',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryColor(context))),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: SelectableText(
+                          'pcos-agent --daemon',
+                          style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                              color: Colors.greenAccent),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Copy Command',
+                        icon: const Icon(Icons.copy_rounded, size: 16),
+                        onPressed: () {
+                          Clipboard.setData(
+                              const ClipboardData(text: 'pcos-agent --daemon'));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Copied daemon command to clipboard'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                if (_devices.isEmpty) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppTheme.success.withOpacity(0.1),
+                      color: AppTheme.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border:
-                          Border.all(color: AppTheme.success.withOpacity(0.3)),
+                      border: Border.all(
+                          color: AppTheme.warning.withValues(alpha: 0.3)),
                     ),
                     child: Row(children: [
-                      const Icon(Icons.shield_outlined,
-                          color: AppTheme.success, size: 18),
+                      const Icon(Icons.info_outline_rounded,
+                          color: AppTheme.warning, size: 18),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Safe Plug-and-Play: Existing files are preserved. PCOS will NEVER format or delete your drive.',
+                          'No devices connected yet. Pair your first computer or mobile device to start.',
                           style: TextStyle(
                               fontSize: 12,
                               color: AppTheme.textPrimaryColor(context)),
@@ -155,186 +233,89 @@ class _StoragePageState extends State<StoragePage> {
                       ),
                     ]),
                   ),
-                  const SizedBox(height: 16),
-                  if (_devices.isNotEmpty) ...[
-                    Text('Host Device',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textMutedColor(context))),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      value: selectedDeviceId,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: AppTheme.surfaceLightColor(context),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                ] else ...[
+                  Text('Paired Host Devices (${_devices.length}):',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimaryColor(context))),
+                  const SizedBox(height: 8),
+                  ..._devices.map((d) {
+                    final bool isOnline = d['is_online'] == 1 || d['is_online'] == true;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceLightColor(context),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      items: _devices
-                          .map((d) => DropdownMenuItem(
-                                value: d['id']?.toString(),
-                                child: Text(
-                                    '${d['name'] ?? 'Device'} (${d['device_type'] ?? 'node'})'),
-                              ))
-                          .toList(),
-                      onChanged: (val) =>
-                          setDialogState(() => selectedDeviceId = val),
-                    ),
-                    const SizedBox(height: 14),
-                  ],
-                  Text('Storage Pool Name',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textMutedColor(context))),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'e.g. Desktop 2TB SSD, NAS Array, USB Drive',
-                      filled: true,
-                      fillColor: AppTheme.surfaceLightColor(context),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text('Storage Mount Path',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textMutedColor(context))),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: pathCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'e.g. D:\\PCOS or /mnt/storage',
-                      filled: true,
-                      fillColor: AppTheme.surfaceLightColor(context),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(children: [
-                    Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Total Capacity (GB)',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.textMutedColor(context))),
-                            const SizedBox(height: 6),
-                            TextField(
-                              controller: totalGbCtrl,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                filled: true,
-                                fillColor: AppTheme.surfaceLightColor(context),
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10)),
-                              ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isOnline ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+                            size: 16,
+                            color: isOnline ? AppTheme.success : AppTheme.textMutedColor(context),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${d['name'] ?? 'Device'} (${d['os'] ?? 'OS'})',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textPrimaryColor(context)),
                             ),
-                          ]),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Free Space (GB)',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.textMutedColor(context))),
-                            const SizedBox(height: 6),
-                            TextField(
-                              controller: availGbCtrl,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                filled: true,
-                                fillColor: AppTheme.surfaceLightColor(context),
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10)),
-                              ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (isOnline ? AppTheme.success : Colors.grey)
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
                             ),
-                          ]),
-                    ),
-                  ]),
+                            child: Text(
+                              isOnline ? 'ONLINE' : 'OFFLINE',
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: isOnline ? AppTheme.success : Colors.grey),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                 ],
-              ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () async {
-                final name = nameCtrl.text.trim();
-                final path = pathCtrl.text.trim();
-                final totalGb =
-                    double.tryParse(totalGbCtrl.text.trim()) ?? 1000;
-                final freeGb = double.tryParse(availGbCtrl.text.trim()) ?? 800;
-
-                if (path.isEmpty) return;
-
-                Navigator.pop(ctx);
-                try {
-                  final api = getIt<ApiClient>();
-                  final targetDevice = selectedDeviceId ??
-                      (_devices.isNotEmpty ? _devices.first['id'] : null);
-                  if (targetDevice == null) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text(
-                                'Please pair or register a device before adding storage.')),
-                      );
-                    }
-                    return;
-                  }
-
-                  await api.dio.post('/api/v1/storage/nodes', data: {
-                    'device_id': targetDevice,
-                    'name': name.isEmpty ? 'Storage Pool' : name,
-                    'storage_path': path,
-                    'total_capacity_bytes':
-                        (totalGb * 1024 * 1024 * 1024).toInt(),
-                    'available_capacity_bytes':
-                        (freeGb * 1024 * 1024 * 1024).toInt(),
-                    'capabilities_json': '["ffmpeg","tantivy"]',
-                  });
-
-                  _loadStorageData();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content:
-                              Text('Storage drive registered successfully!')),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                              'Failed to connect storage: ${ApiClient.formatError(e)}')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Connect Drive'),
-            ),
-          ],
         ),
+        actions: [
+          if (_devices.isEmpty)
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.go('/devices/pair');
+              },
+              icon: const Icon(Icons.qr_code_rounded, size: 16),
+              label: const Text('Pair Device Now'),
+            ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _loadStorageData();
+            },
+            child: const Text('Refresh Storage Pools'),
+          ),
+        ],
       ),
     );
   }
@@ -432,9 +413,9 @@ class _StoragePageState extends State<StoragePage> {
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: AppTheme.warning.withOpacity(0.1),
+                  color: AppTheme.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.warning.withValues(alpha: 0.3)),
                 ),
                 child: Row(children: [
                   const Icon(Icons.warning_amber_rounded,
@@ -565,7 +546,7 @@ class _StoragePageState extends State<StoragePage> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.1),
+                      color: AppTheme.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.storage_rounded,
@@ -631,7 +612,7 @@ class _StoragePageState extends State<StoragePage> {
                                 color: (isOnline
                                         ? AppTheme.success
                                         : AppTheme.textMuted)
-                                    .withOpacity(0.12),
+                                    .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
@@ -662,7 +643,7 @@ class _StoragePageState extends State<StoragePage> {
                                           color: (isOnline
                                                   ? AppTheme.success
                                                   : AppTheme.textMuted)
-                                              .withOpacity(0.15),
+                                              .withValues(alpha: 0.15),
                                           borderRadius:
                                               BorderRadius.circular(4),
                                         ),
@@ -726,7 +707,7 @@ class _StoragePageState extends State<StoragePage> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primary.withOpacity(0.08),
+                                    color: AppTheme.primary.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: const Text('SMART: Healthy',
@@ -738,7 +719,7 @@ class _StoragePageState extends State<StoragePage> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.accent.withOpacity(0.08),
+                                    color: AppTheme.accent.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: const Text('Direct LAN',
@@ -748,6 +729,51 @@ class _StoragePageState extends State<StoragePage> {
                                 ),
                               ],
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isOnline
+                                    ? AppTheme.primary
+                                    : Colors.grey.shade700,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                              ),
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => PhysicalStorageBrowserPage(
+                                      nodeId: node['id'] ?? '',
+                                      nodeName:
+                                          node['name'] ?? 'Storage Node',
+                                      storagePath: node['storage_path'] ?? '',
+                                      isOnline: isOnline,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.folder_open_rounded,
+                                  size: 16),
+                              label: const Text(
+                                'Browse Physical Files',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (!isOnline)
+                              Text(
+                                'Agent offline: start pcos-agent to connect',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.textMutedColor(context),
+                                ),
+                              ),
                           ],
                         ),
                       ],

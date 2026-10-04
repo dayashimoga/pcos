@@ -57,6 +57,8 @@ export interface StorageNode {
   user_id: string;
   name: string;
   storage_path: string;
+  volume_uuid?: string;
+  fs_type?: string;
   total_capacity_bytes: number;
   available_capacity_bytes: number;
   is_online: boolean;

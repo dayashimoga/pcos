@@ -90,4 +90,99 @@ class FileRepository {
 
   String downloadUrl(String fileId) => '/api/v1/files/$fileId/download';
   String previewUrl(String fileId) => '/api/v1/files/$fileId/preview';
+
+  // ─── Physical Storage Node Data Plane Operations ───
+
+  Future<Map<String, dynamic>> listStorageNodeFs(String nodeId, {String path = ''}) async {
+    final r = await apiClient.dio.get(
+      '/api/v1/storage/nodes/$nodeId/fs/list',
+      queryParameters: {'path': path},
+    );
+    return r.data is Map ? Map<String, dynamic>.from(r.data) : {};
+  }
+
+  Future<Map<String, dynamic>> statStorageNodeFs(String nodeId, String path) async {
+    final r = await apiClient.dio.get(
+      '/api/v1/storage/nodes/$nodeId/fs/stat',
+      queryParameters: {'path': path},
+    );
+    return r.data is Map ? Map<String, dynamic>.from(r.data) : {};
+  }
+
+  Future<Map<String, dynamic>> readStorageNodeFsChunk(
+    String nodeId,
+    String path, {
+    int offset = 0,
+    int length = 65536,
+  }) async {
+    final r = await apiClient.dio.get(
+      '/api/v1/storage/nodes/$nodeId/fs/read',
+      queryParameters: {
+        'path': path,
+        'offset': offset,
+        'length': length,
+      },
+    );
+    return r.data is Map ? Map<String, dynamic>.from(r.data) : {};
+  }
+
+  Future<Map<String, dynamic>> writeStorageNodeFsChunk(
+    String nodeId,
+    String path,
+    String base64Data, {
+    int offset = 0,
+  }) async {
+    final r = await apiClient.dio.post(
+      '/api/v1/storage/nodes/$nodeId/fs/write',
+      data: {
+        'path': path,
+        'data_base64': base64Data,
+        'offset': offset,
+      },
+    );
+    return r.data is Map ? Map<String, dynamic>.from(r.data) : {};
+  }
+
+  Future<Map<String, dynamic>> deleteStorageNodeFs(
+    String nodeId,
+    String path, {
+    bool recursive = false,
+  }) async {
+    final r = await apiClient.dio.delete(
+      '/api/v1/storage/nodes/$nodeId/fs/delete',
+      queryParameters: {
+        'path': path,
+        'recursive': recursive ? 'true' : 'false',
+      },
+    );
+    return r.data is Map ? Map<String, dynamic>.from(r.data) : {};
+  }
+
+  Future<Map<String, dynamic>> mkdirStorageNodeFs(String nodeId, String path) async {
+    final r = await apiClient.dio.post(
+      '/api/v1/storage/nodes/$nodeId/fs/mkdir',
+      data: {'path': path},
+    );
+    return r.data is Map ? Map<String, dynamic>.from(r.data) : {};
+  }
+
+  Future<Map<String, dynamic>> probeStorageNodeMedia(String nodeId, String path) async {
+    final r = await apiClient.dio.get(
+      '/api/v1/storage/nodes/$nodeId/fs/media_probe',
+      queryParameters: {'path': path},
+    );
+    return r.data is Map ? Map<String, dynamic>.from(r.data) : {};
+  }
+
+  String nodeFsStreamUrl(String nodeId, String path) {
+    final base = apiClient.dio.options.baseUrl;
+    final token = apiClient.accessToken;
+    final encPath = Uri.encodeComponent(path);
+    final prefix = base.isEmpty ? '' : base;
+    if (token != null && token.isNotEmpty) {
+      return '$prefix/api/v1/storage/nodes/$nodeId/fs/read?path=$encPath&token=$token';
+    }
+    return '$prefix/api/v1/storage/nodes/$nodeId/fs/read?path=$encPath';
+  }
 }
+

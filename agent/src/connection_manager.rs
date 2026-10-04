@@ -133,10 +133,29 @@ impl ConnectionManager {
                     let server_url = self.server_url.clone();
                     let auth_token = self.auth_token.clone();
 
-                    // Heartbeat sender task
+                    // Physical storage advertisement & heartbeat sender task
                     let heartbeat_task = tokio::spawn(async move {
                         let client = reqwest::Client::new();
+                        let mut loop_count: usize = 0;
+
                         loop {
+                            // Discover and advertise physical disks on initial connect and periodically (~5 mins)
+                            if loop_count % 10 == 0 {
+                                let (ffmpeg_ok, _) = crate::doctor::check_ffmpeg();
+                                if let Err(e) = crate::disks::advertise_storage_nodes(
+                                    &client,
+                                    &server_url,
+                                    &auth_token,
+                                    &device_id,
+                                    ffmpeg_ok,
+                                )
+                                .await
+                                {
+                                    warn!(error = %e, "Physical storage node advertisement failed");
+                                }
+                            }
+                            loop_count = loop_count.wrapping_add(1);
+
                             let lan_ip = Self::discover_host_lan_ip();
                             let heartbeat_payload = serde_json::json!({
                                 "deviceId": device_id,
@@ -146,7 +165,7 @@ impl ConnectionManager {
                                 "lanIp": lan_ip,
                             });
 
-                            let _ = client
+                            let res = client
                                 .post(format!(
                                     "{}/api/v1/devices/{}/heartbeat",
                                     server_url, device_id
@@ -156,27 +175,41 @@ impl ConnectionManager {
                                 .send()
                                 .await;
 
+                            if let Err(e) = res {
+                                warn!(error = %e, "Agent heartbeat failed to deliver to control plane");
+                            }
+
                             sleep(Duration::from_secs(30)).await;
                         }
                     });
+
+                    let storage_root = self.storage_path.clone();
 
                     // Incoming control messages receiver
                     while let Some(msg_result) = read.next().await {
                         match msg_result {
                             Ok(Message::Text(text)) => {
                                 info!(msg = %text, "Received control plane command");
-                                // Handle incoming commands (e.g. Play-on-TV, Send-to-Device)
-                                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text)
-                                {
-                                    let command = parsed["command"].as_str().unwrap_or("");
-                                    match command {
-                                        "play_on_tv" => {
-                                            info!(payload = ?parsed["payload"], "Play-on-TV command received — initiating stream");
+                                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
+                                    // 1. Filesystem Data Plane Operations
+                                    if parsed.get("op").is_some() {
+                                        let resp = handle_fs_command(std::path::Path::new(&storage_root), &parsed).await;
+                                        let resp_json = resp.to_string();
+                                        if let Err(e) = write.send(Message::Text(resp_json)).await {
+                                            error!(error = %e, "Failed to send filesystem response over WSS tunnel");
                                         }
-                                        "send_to_device" => {
-                                            info!(payload = ?parsed["payload"], "Send-to-Device payload received");
+                                    } else {
+                                        // 2. Remote control plane commands (e.g. Play-on-TV, Send-to-Device)
+                                        let command = parsed["command"].as_str().unwrap_or("");
+                                        match command {
+                                            "play_on_tv" => {
+                                                info!(payload = ?parsed["payload"], "Play-on-TV command received — initiating stream");
+                                            }
+                                            "send_to_device" => {
+                                                info!(payload = ?parsed["payload"], "Send-to-Device payload received");
+                                            }
+                                            _ => {}
                                         }
-                                        _ => {}
                                     }
                                 }
                             }
@@ -204,5 +237,177 @@ impl ConnectionManager {
 
             sleep(Duration::from_secs(5)).await;
         }
+    }
+}
+
+/// Handle filesystem operations requested by remote clients through the control plane tunnel
+async fn handle_fs_command(default_root: &std::path::Path, req: &serde_json::Value) -> serde_json::Value {
+    let request_id = req["request_id"].as_str().unwrap_or("").to_string();
+    let op = req["op"].as_str().unwrap_or("");
+    let rel_path = req["relative_path"].as_str().unwrap_or("");
+
+    // Determine target root
+    let root = if let Some(custom_root) = req["storage_path"].as_str() {
+        if !custom_root.trim().is_empty() {
+            std::path::Path::new(custom_root)
+        } else {
+            default_root
+        }
+    } else {
+        default_root
+    };
+
+    match op {
+        "fs_list_dir" => {
+            match crate::fs_handler::FsHandler::list_dir(root, rel_path) {
+                Ok(result) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": true,
+                    "result": result
+                }),
+                Err(e) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": e.to_string()
+                }),
+            }
+        }
+        "fs_stat" => {
+            match crate::fs_handler::FsHandler::stat(root, rel_path) {
+                Ok(result) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": true,
+                    "result": result
+                }),
+                Err(e) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": e.to_string()
+                }),
+            }
+        }
+        "fs_read_chunk" => {
+            let offset = req["offset"].as_u64().unwrap_or(0);
+            let length = req["length"].as_u64().unwrap_or(256 * 1024) as usize;
+            match crate::fs_handler::FsHandler::read_chunk(root, rel_path, offset, length) {
+                Ok(result) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": true,
+                    "result": result
+                }),
+                Err(e) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": e.to_string()
+                }),
+            }
+        }
+        "fs_write_chunk" => {
+            let offset = req["offset"].as_u64().unwrap_or(0);
+            let b64 = req["data_base64"].as_str().unwrap_or("");
+            match crate::fs_handler::base64_decode(b64) {
+                Ok(bytes) => {
+                    match crate::fs_handler::FsHandler::write_chunk(root, rel_path, offset, &bytes) {
+                        Ok(result) => serde_json::json!({
+                            "type": "fs_response",
+                            "request_id": request_id,
+                            "success": true,
+                            "result": result
+                        }),
+                        Err(e) => serde_json::json!({
+                            "type": "fs_response",
+                            "request_id": request_id,
+                            "success": false,
+                            "error": e.to_string()
+                        }),
+                    }
+                }
+                Err(err) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": format!("Base64 decode error: {}", err)
+                }),
+            }
+        }
+        "fs_delete" => {
+            let recursive = req["recursive"].as_bool().unwrap_or(false);
+            match crate::fs_handler::FsHandler::delete(root, rel_path, recursive) {
+                Ok(deleted) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": true,
+                    "result": { "deleted": deleted }
+                }),
+                Err(e) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": e.to_string()
+                }),
+            }
+        }
+        "fs_mkdir" => {
+            match crate::fs_handler::FsHandler::mkdir(root, rel_path) {
+                Ok(created) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": true,
+                    "result": { "created": created }
+                }),
+                Err(e) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": e.to_string()
+                }),
+            }
+        }
+        "media_probe" => {
+            let canonical_root = match root.canonicalize() {
+                Ok(p) => p,
+                Err(e) => return serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": format!("Invalid root: {}", e)
+                }),
+            };
+            let target_path = match crate::fs_handler::FsHandler::safe_resolve(&canonical_root, rel_path) {
+                Ok(p) => p,
+                Err(e) => return serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": e.to_string()
+                }),
+            };
+            match crate::transcoder::Transcoder::probe(&target_path).await {
+                Ok(probe_result) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": true,
+                    "result": probe_result
+                }),
+                Err(e) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": e
+                }),
+            }
+        }
+        _ => serde_json::json!({
+            "type": "fs_response",
+            "request_id": request_id,
+            "success": false,
+            "error": format!("Unknown filesystem operation: '{}'", op)
+        }),
     }
 }

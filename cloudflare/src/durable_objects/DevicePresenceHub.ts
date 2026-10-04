@@ -17,6 +17,7 @@ export class DevicePresenceHub implements DurableObject {
   private state: DurableObjectState;
   private activeDevices: Map<string, ActiveDevice> = new Map();
   private deviceSockets: Map<string, Set<WebSocket>> = new Map();
+  private pendingRequests: Map<string, (resp: any) => void> = new Map();
 
   constructor(state: DurableObjectState) {
     this.state = state;
@@ -36,7 +37,7 @@ export class DevicePresenceHub implements DurableObject {
     const url = new URL(request.url);
     this.cleanupStaleDevices();
 
-    // WebSocket upgrade for device real-time control (Send-to-Device, Play-on-TV)
+    // WebSocket upgrade for device real-time control (Send-to-Device, Play-on-TV, Filesystem data plane)
     if (request.headers.get('Upgrade')?.toLowerCase() === 'websocket') {
       const deviceId = url.searchParams.get('deviceId') || '';
       if (!deviceId) {
@@ -51,6 +52,18 @@ export class DevicePresenceHub implements DurableObject {
         this.deviceSockets.set(deviceId, new Set());
       }
       this.deviceSockets.get(deviceId)!.add(server);
+
+      server.addEventListener('message', (event) => {
+        try {
+          const raw = typeof event.data === 'string' ? event.data : new TextDecoder().decode(event.data as ArrayBuffer);
+          const data = JSON.parse(raw);
+          if (data.request_id && this.pendingRequests.has(data.request_id)) {
+            const resolver = this.pendingRequests.get(data.request_id)!;
+            this.pendingRequests.delete(data.request_id);
+            resolver(data);
+          }
+        } catch (_) {}
+      });
 
       server.addEventListener('close', () => {
         this.deviceSockets.get(deviceId)?.delete(server);
@@ -150,6 +163,83 @@ export class DevicePresenceHub implements DurableObject {
         (d) => !userId || d.userId === userId
       );
       return Response.json({ devices: list });
+    }
+
+    if (request.method === 'POST' && url.pathname === '/proxy/fs') {
+      const body = (await request.json()) as {
+        deviceId: string;
+        op: string;
+        storage_path?: string;
+        relative_path?: string;
+        offset?: number;
+        length?: number;
+        data_base64?: string;
+        recursive?: boolean;
+      };
+
+      const sockets = this.deviceSockets.get(body.deviceId);
+      if (!sockets || sockets.size === 0) {
+        return Response.json(
+          {
+            success: false,
+            error: 'STORAGE_NODE_OFFLINE',
+            message: 'Physical agent node is currently offline or disconnected.',
+          },
+          { status: 503 }
+        );
+      }
+
+      // Select active WebSocket connection
+      const ws = Array.from(sockets)[sockets.size - 1];
+      const requestId = crypto.randomUUID();
+
+      const cmd = {
+        request_id: requestId,
+        op: body.op,
+        storage_path: body.storage_path,
+        relative_path: body.relative_path || '',
+        offset: body.offset,
+        length: body.length,
+        data_base64: body.data_base64,
+        recursive: body.recursive,
+      };
+
+      const responsePromise = new Promise<any>((resolve) => {
+        this.pendingRequests.set(requestId, resolve);
+      });
+
+      const timeoutPromise = new Promise<any>((resolve) => {
+        setTimeout(() => {
+          if (this.pendingRequests.has(requestId)) {
+            this.pendingRequests.delete(requestId);
+            resolve({
+              type: 'fs_response',
+              request_id: requestId,
+              success: false,
+              error: 'Physical agent response timed out (15 seconds)',
+              code: 'AGENT_TIMEOUT',
+            });
+          }
+        }, 15000);
+      });
+
+      try {
+        ws.send(JSON.stringify(cmd));
+      } catch (err: any) {
+        this.pendingRequests.delete(requestId);
+        return Response.json(
+          {
+            success: false,
+            error: 'TRANSPORT_ERROR',
+            message: `Failed to write command to agent tunnel: ${err.message}`,
+          },
+          { status: 502 }
+        );
+      }
+
+      const agentResult = await Promise.race([responsePromise, timeoutPromise]);
+      const status = agentResult.success ? 200 : (agentResult.code === 'AGENT_TIMEOUT' ? 504 : 400);
+      return Response.json(agentResult, { status });
     }
 
     return new Response('Not Found', { status: 404 });

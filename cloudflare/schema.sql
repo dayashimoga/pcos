@@ -47,15 +47,19 @@ CREATE TABLE IF NOT EXISTS storage_nodes (
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     storage_path TEXT NOT NULL,
+    volume_uuid TEXT,
+    fs_type TEXT,
     total_capacity_bytes INTEGER NOT NULL DEFAULT 0,
     available_capacity_bytes INTEGER NOT NULL DEFAULT 0,
     is_online INTEGER NOT NULL DEFAULT 0,
     capabilities_json TEXT NOT NULL DEFAULT '{"ffmpeg":false,"ocr":false,"tantivy":false,"ollama":false}',
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    UNIQUE(device_id, storage_path)
 );
 
 CREATE INDEX IF NOT EXISTS idx_storage_nodes_user ON storage_nodes(user_id);
+CREATE INDEX IF NOT EXISTS idx_storage_nodes_device ON storage_nodes(device_id);
 
 CREATE TABLE IF NOT EXISTS file_locations (
     file_id TEXT PRIMARY KEY,

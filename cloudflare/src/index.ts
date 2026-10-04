@@ -283,15 +283,14 @@ async function handleApiRequest(
   }
 
   // ─── JWT_SECRET Gate (fail-closed for all authenticated endpoints) ───
-  const effectiveJwtSecret = env.JWT_SECRET || (env.PCOS_ENV === 'production' ? '' : 'pcos_dev_jwt_secret_do_not_use_in_production');
-  if (!effectiveJwtSecret) {
-    console.error('FATAL: JWT_SECRET environment variable is not configured in production');
+  const jwtSecret = env.JWT_SECRET?.trim() || '';
+  if (!jwtSecret) {
+    console.error('FATAL: JWT_SECRET environment variable is not configured. Failing closed.');
     return Response.json(
-      { error: 'Server configuration error', code: 'CONFIG_ERROR', message: 'The server is not fully configured. Contact your administrator.' },
+      { error: 'Server configuration error', code: 'CONFIG_ERROR', message: 'The server is not fully configured. JWT_SECRET is required.' },
       { status: 503 }
     );
   }
-  const jwtSecret = effectiveJwtSecret;
 
   // ─── Free-Tier Usage & Budget Dashboard ───
   if (url.pathname === '/api/v1/usage/budget') {
@@ -585,7 +584,7 @@ async function handleApiRequest(
     const now = new Date().toISOString();
     await env.DB.prepare(
       `INSERT INTO device_identities (id, user_id, cloud_id, name, device_type, os, os_version, agent_version, is_online, last_seen_at, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1, ?9, ?9, ?9)`
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, NULL, ?9, ?9)`
     )
       .bind(
         deviceId,
@@ -608,7 +607,7 @@ async function handleApiRequest(
         name: candidate.device_name,
         device_type: candidate.device_type,
         os: candidate.os,
-        is_online: true,
+        is_online: false,
       },
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
@@ -726,7 +725,7 @@ async function handleApiRequest(
     const now = new Date().toISOString();
     await env.DB.prepare(
       `INSERT INTO device_identities (id, user_id, cloud_id, name, device_type, os, os_version, agent_version, is_online, last_seen_at, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, '', '0.1.0', 1, ?7, ?7, ?7)`
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, '', '0.1.0', 0, NULL, ?7, ?7)`
     )
       .bind(
         deviceId,
@@ -747,7 +746,7 @@ async function handleApiRequest(
         name: body.device_name || 'Device',
         device_type: body.device_type || 'phone',
         os: body.os || 'unknown',
-        is_online: true,
+        is_online: false,
       },
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
@@ -760,11 +759,32 @@ async function handleApiRequest(
     url.pathname.startsWith('/api/v1/devices/') &&
     url.pathname.endsWith('/heartbeat')
   ) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) {
+      return Response.json({ error: 'Unauthorized: valid agent token required' }, { status: 401 });
+    }
+
     const parts = url.pathname.split('/');
     const deviceId = parts[4]; // /api/v1/devices/<deviceId>/heartbeat
+    if (!deviceId) {
+      return Response.json({ error: 'Device ID is required' }, { status: 400 });
+    }
+
+    // Verify device exists and belongs to authenticated user
+    const deviceRow = await env.DB.prepare(
+      'SELECT id, name, device_type FROM device_identities WHERE id = ?1 AND user_id = ?2'
+    )
+      .bind(deviceId, userPayload.sub)
+      .first<{ id: string; name: string; device_type: string }>();
+
+    if (!deviceRow) {
+      return Response.json(
+        { error: 'Device not found or not owned by authenticated user' },
+        { status: 404 }
+      );
+    }
+
     const body = (await request.json().catch(() => ({}))) as {
-      deviceId?: string;
-      userId?: string;
       lanIp?: string;
       lan_ip?: string;
       name?: string;
@@ -778,9 +798,18 @@ async function handleApiRequest(
     await env.DB.prepare(
       `UPDATE device_identities
        SET is_online = 1, last_seen_at = ?1, last_lan_ip = COALESCE(?2, last_lan_ip), updated_at = ?1
-       WHERE id = ?3`
+       WHERE id = ?3 AND user_id = ?4`
     )
-      .bind(now, lanIp, deviceId)
+      .bind(now, lanIp, deviceId, userPayload.sub)
+      .run();
+
+    // Also mark active storage nodes for this device as online
+    await env.DB.prepare(
+      `UPDATE storage_nodes
+       SET is_online = 1, updated_at = ?1
+       WHERE device_id = ?2 AND user_id = ?3`
+    )
+      .bind(now, deviceId, userPayload.sub)
       .run();
 
     // 2. Forward to DevicePresenceHub DO
@@ -793,9 +822,9 @@ async function handleApiRequest(
       headers: { 'cf-connecting-ip': clientIp },
       body: JSON.stringify({
         deviceId,
-        userId: body.userId,
-        name: body.name,
-        deviceType: body.deviceType,
+        userId: userPayload.sub,
+        name: body.name || deviceRow.name,
+        deviceType: body.deviceType || deviceRow.device_type,
         lanIp,
       }),
     });
@@ -828,71 +857,20 @@ async function handleApiRequest(
     }
 
     if (request.method === 'POST') {
-      const body = (await request.json().catch(() => ({}))) as {
-        name?: string;
-        device_type?: string;
-        os?: string;
-        os_version?: string;
-        agent_version?: string;
-        public_key?: string;
-      };
-
-      if (!body.name) {
-        return Response.json({ error: 'Device name is required' }, { status: 400 });
-      }
-
-      const cloudRow = await env.DB.prepare('SELECT cloud_id FROM cloud_identities WHERE user_id = ?1')
-        .bind(userPayload.sub)
-        .first<{ cloud_id: string }>();
-
-      const deviceId = crypto.randomUUID();
-      const now = new Date().toISOString();
-      const cloudId = cloudRow?.cloud_id || 'pcos';
-      const deviceType = body.device_type || 'desktop';
-      const osName = body.os || 'unknown';
-      const osVersion = body.os_version || '';
-      const agentVersion = body.agent_version || '0.1.0';
-
-      await env.DB.prepare(
-        `INSERT INTO device_identities (id, user_id, cloud_id, name, device_type, os, os_version, agent_version, public_key, is_online, last_seen_at, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 1, ?10, ?10, ?10)`
-      )
-        .bind(
-          deviceId,
-          userPayload.sub,
-          cloudId,
-          body.name.trim(),
-          deviceType,
-          osName,
-          osVersion,
-          agentVersion,
-          body.public_key || null,
-          now
-        )
-        .run();
-
-      const createdDevice = {
-        id: deviceId,
-        user_id: userPayload.sub,
-        cloud_id: cloudId,
-        name: body.name.trim(),
-        device_type: deviceType,
-        os: osName,
-        os_version: osVersion,
-        agent_version: agentVersion,
-        is_online: 1,
-        last_seen_at: now,
-        created_at: now,
-        updated_at: now,
-      };
-
-      return Response.json(createdDevice, { status: 201 });
+      return Response.json(
+        {
+          error: 'Direct device creation without physical hardware proof is disabled',
+          message: 'Devices must be registered via the cryptographic pairing protocol (/api/v1/pairing/*) or agent enrollment.',
+          code: 'MANUAL_DEVICE_CREATION_DISABLED',
+        },
+        { status: 405 }
+      );
     }
   }
 
   // ─── Devices: Single Device Operations (GET / DELETE) ───
   if (
-    url.pathname.match(/^\/api\/v1\/devices\/[0-9a-fA-F-]+$/) &&
+    url.pathname.match(/^\/api\/v1\/devices\/[0-9a-zA-Z_-]+$/) &&
     !url.pathname.endsWith('/heartbeat') &&
     !url.pathname.includes('/pair')
   ) {
@@ -1767,87 +1745,483 @@ async function handleApiRequest(
     }
 
     if (request.method === 'POST') {
-      const body = (await request.json().catch(() => ({}))) as {
-        id?: string;
-        device_id?: string;
-        name?: string;
-        storage_path?: string;
-        total_capacity_bytes?: number;
-        available_capacity_bytes?: number;
-        capabilities_json?: string;
-      };
-
-      if (!body.device_id || !body.storage_path) {
-        return Response.json(
-          { error: 'device_id and storage_path are required' },
-          { status: 400 }
-        );
-      }
-
-      // Verify device belongs to user
-      const device = await env.DB.prepare(
-        'SELECT id, name FROM device_identities WHERE id = ?1 AND user_id = ?2'
-      )
-        .bind(body.device_id, userPayload.sub)
-        .first();
-
-      if (!device) {
-        return Response.json(
-          { error: 'Referenced device not found or does not belong to user' },
-          { status: 404 }
-        );
-      }
-
-      const nodeId = body.id || crypto.randomUUID();
-      const nodeName = body.name || `${device.name} Storage`;
-      const now = new Date().toISOString();
-      const caps = body.capabilities_json || '{"ffmpeg":false,"ocr":false,"tantivy":false,"ollama":false}';
-      const totalBytes = body.total_capacity_bytes || 0;
-      const availBytes = body.available_capacity_bytes || 0;
-
-      await env.DB.prepare(
-        `INSERT INTO storage_nodes (id, device_id, user_id, name, storage_path, total_capacity_bytes, available_capacity_bytes, is_online, capabilities_json, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?9, ?9)
-         ON CONFLICT(id) DO UPDATE SET
-           storage_path = ?5,
-           total_capacity_bytes = ?6,
-           available_capacity_bytes = ?7,
-           is_online = 1,
-           capabilities_json = ?8,
-           updated_at = ?9`
-      )
-        .bind(
-          nodeId,
-          body.device_id,
-          userPayload.sub,
-          nodeName,
-          body.storage_path,
-          totalBytes,
-          availBytes,
-          caps,
-          now
-        )
-        .run();
-
       return Response.json(
         {
-          id: nodeId,
-          device_id: body.device_id,
-          user_id: userPayload.sub,
-          name: nodeName,
-          storage_path: body.storage_path,
-          total_capacity_bytes: totalBytes,
-          available_capacity_bytes: availBytes,
-          is_online: 1,
-          capabilities_json: caps,
-          created_at: now,
-          updated_at: now,
+          error: 'Direct manual storage node registration disabled',
+          message: 'Storage nodes cannot be manually created with browser-entered paths. Storage nodes must be discovered and advertised by an authenticated physical PCOS Agent running on that machine with measured disk metrics.',
+          code: 'BROWSER_STORAGE_CREATION_DISABLED',
         },
-        { status: 201 }
+        { status: 405 }
       );
     }
   }
 
+  // ─── Agent: Physical Storage Node Advertisement ───
+  if (request.method === 'POST' && url.pathname === '/api/v1/agent/storage/advertise') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) {
+      return Response.json({ error: 'Unauthorized: valid agent token required' }, { status: 401 });
+    }
+
+    const body = (await request.json().catch(() => ({}))) as {
+      device_id?: string;
+      disks?: Array<{
+        volume_uuid?: string;
+        mount_point: string;
+        name?: string;
+        fs_type?: string;
+        total_capacity_bytes: number;
+        available_capacity_bytes: number;
+        capabilities?: {
+          ffmpeg?: boolean;
+          ocr?: boolean;
+          tantivy?: boolean;
+          ollama?: boolean;
+        };
+      }>;
+    };
+
+    if (!body.device_id || !Array.isArray(body.disks) || body.disks.length === 0) {
+      return Response.json(
+        { error: 'device_id and non-empty disks array are required' },
+        { status: 400 }
+      );
+    }
+
+    // Verify device exists and belongs to authenticated user
+    const device = await env.DB.prepare(
+      'SELECT id, name FROM device_identities WHERE id = ?1 AND user_id = ?2'
+    )
+      .bind(body.device_id, userPayload.sub)
+      .first<{ id: string; name: string }>();
+
+    if (!device) {
+      return Response.json(
+        { error: 'Referenced device not found or does not belong to authenticated user' },
+        { status: 404 }
+      );
+    }
+
+    const now = new Date().toISOString();
+    const advertisedNodes: any[] = [];
+
+    for (const disk of body.disks) {
+      if (!disk.mount_point || typeof disk.total_capacity_bytes !== 'number') {
+        continue;
+      }
+
+      // Check if this disk is already registered for this device
+      const existing = await env.DB.prepare(
+        'SELECT id FROM storage_nodes WHERE device_id = ?1 AND storage_path = ?2'
+      )
+        .bind(body.device_id, disk.mount_point)
+        .first<{ id: string }>();
+
+      let nodeId = existing?.id;
+      if (!nodeId) {
+        const seed = `${body.device_id}:${disk.volume_uuid || disk.mount_point}`;
+        const keyBuf = new TextEncoder().encode(seed);
+        const hashBuf = await crypto.subtle.digest('SHA-256', keyBuf);
+        const hex = Array.from(new Uint8Array(hashBuf))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')
+          .slice(0, 20);
+        nodeId = `sn_${hex}`;
+      }
+
+      const nodeName = disk.name || `${device.name} - ${disk.mount_point}`;
+      const caps = JSON.stringify(
+        disk.capabilities || {
+          ffmpeg: false,
+          ocr: false,
+          tantivy: false,
+          ollama: false,
+        }
+      );
+
+      if (existing) {
+        await env.DB.prepare(
+          `UPDATE storage_nodes
+           SET name = ?1, volume_uuid = ?2, fs_type = ?3, total_capacity_bytes = ?4,
+               available_capacity_bytes = ?5, is_online = 1, capabilities_json = ?6, updated_at = ?7
+           WHERE id = ?8`
+        )
+          .bind(
+            nodeName,
+            disk.volume_uuid || null,
+            disk.fs_type || 'unknown',
+            disk.total_capacity_bytes,
+            disk.available_capacity_bytes,
+            caps,
+            now,
+            nodeId
+          )
+          .run();
+      } else {
+        await env.DB.prepare(
+          `INSERT INTO storage_nodes (
+             id, device_id, user_id, name, storage_path, volume_uuid, fs_type,
+             total_capacity_bytes, available_capacity_bytes, is_online, capabilities_json, created_at, updated_at
+           )
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 1, ?10, ?11, ?11)`
+        )
+          .bind(
+            nodeId,
+            body.device_id,
+            userPayload.sub,
+            nodeName,
+            disk.mount_point,
+            disk.volume_uuid || null,
+            disk.fs_type || 'unknown',
+            disk.total_capacity_bytes,
+            disk.available_capacity_bytes,
+            caps,
+            now
+          )
+          .run();
+      }
+
+      advertisedNodes.push({
+        id: nodeId,
+        device_id: body.device_id,
+        user_id: userPayload.sub,
+        name: nodeName,
+        storage_path: disk.mount_point,
+        volume_uuid: disk.volume_uuid || null,
+        fs_type: disk.fs_type || 'unknown',
+        total_capacity_bytes: disk.total_capacity_bytes,
+        available_capacity_bytes: disk.available_capacity_bytes,
+        is_online: 1,
+        capabilities: JSON.parse(caps),
+        updated_at: now,
+      });
+    }
+
+    return Response.json(
+      {
+        success: true,
+        device_id: body.device_id,
+        storage_nodes: advertisedNodes,
+        total: advertisedNodes.length,
+      },
+      { status: 200 }
+    );
+  }
+
+  // ─── Storage: Physical Data Plane Proxy Routes (Client -> Cloud -> Agent) ───
+  const fsMatch = url.pathname.match(/^\/api\/v1\/storage\/nodes\/([^/]+)\/fs\/(list|stat|read|write|delete|mkdir|media_probe)$/);
+  if (fsMatch) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const nodeId = fsMatch[1];
+    const action = fsMatch[2];
+
+    // Verify storage node exists and belongs to authenticated user
+    const nodeRow = await env.DB.prepare(
+      'SELECT id, device_id, name, storage_path, is_online FROM storage_nodes WHERE id = ?1 AND user_id = ?2'
+    )
+      .bind(nodeId, userPayload.sub)
+      .first<{ id: string; device_id: string; name: string; storage_path: string; is_online: number }>();
+
+    if (!nodeRow) {
+      return Response.json(
+        { error: 'Storage node not found or unauthorized' },
+        { status: 404 }
+      );
+    }
+
+    const doId = env.PRESENCE_HUB.idFromName('global_presence_hub');
+    const stub = env.PRESENCE_HUB.get(doId);
+
+    // 1. List directory
+    if (action === 'list' && request.method === 'GET') {
+      const relPath = url.searchParams.get('path') || '';
+      const fsResp = await stub.fetch('http://do/proxy/fs', {
+        method: 'POST',
+        body: JSON.stringify({
+          deviceId: nodeRow.device_id,
+          op: 'fs_list_dir',
+          storage_path: nodeRow.storage_path,
+          relative_path: relPath,
+        }),
+      });
+
+      const data = (await fsResp.json()) as any;
+      if (!fsResp.ok || !data.success) {
+        return Response.json(
+          { error: data.error || 'Failed to list directory', code: data.code || 'FS_ERROR' },
+          { status: fsResp.status }
+        );
+      }
+
+      return Response.json({
+        storage_node_id: nodeId,
+        storage_node_name: nodeRow.name,
+        device_id: nodeRow.device_id,
+        ...data.result,
+      });
+    }
+
+    // 2. Stat file or folder
+    if (action === 'stat' && request.method === 'GET') {
+      const relPath = url.searchParams.get('path') || '';
+      const fsResp = await stub.fetch('http://do/proxy/fs', {
+        method: 'POST',
+        body: JSON.stringify({
+          deviceId: nodeRow.device_id,
+          op: 'fs_stat',
+          storage_path: nodeRow.storage_path,
+          relative_path: relPath,
+        }),
+      });
+
+      const data = (await fsResp.json()) as any;
+      if (!fsResp.ok || !data.success) {
+        return Response.json(
+          { error: data.error || 'Failed to stat file', code: data.code || 'FS_ERROR' },
+          { status: fsResp.status }
+        );
+      }
+
+      return Response.json({
+        storage_node_id: nodeId,
+        ...data.result,
+      });
+    }
+
+    // 3. Read chunk / stream file bytes from physical disk
+    if (action === 'read' && request.method === 'GET') {
+      const relPath = url.searchParams.get('path') || '';
+      if (!relPath) {
+        return Response.json({ error: 'path parameter is required' }, { status: 400 });
+      }
+
+      let offset = parseInt(url.searchParams.get('offset') || '0', 10);
+      let length = parseInt(url.searchParams.get('length') || '1048576', 10); // default 1MB chunk
+
+      // Handle HTTP Range header for video streaming & resume
+      const rangeHeader = request.headers.get('Range');
+      let isRange = false;
+      if (rangeHeader && rangeHeader.startsWith('bytes=')) {
+        isRange = true;
+        const rangeParts = rangeHeader.replace('bytes=', '').split('-');
+        const rangeStart = parseInt(rangeParts[0], 10);
+        if (!isNaN(rangeStart)) {
+          offset = rangeStart;
+          if (rangeParts[1]) {
+            const rangeEnd = parseInt(rangeParts[1], 10);
+            if (!isNaN(rangeEnd) && rangeEnd >= rangeStart) {
+              length = Math.min(length, rangeEnd - rangeStart + 1);
+            }
+          }
+        }
+      }
+
+      const fsResp = await stub.fetch('http://do/proxy/fs', {
+        method: 'POST',
+        body: JSON.stringify({
+          deviceId: nodeRow.device_id,
+          op: 'fs_read_chunk',
+          storage_path: nodeRow.storage_path,
+          relative_path: relPath,
+          offset,
+          length,
+        }),
+      });
+
+      const data = (await fsResp.json()) as any;
+      if (!fsResp.ok || !data.success) {
+        return Response.json(
+          { error: data.error || 'Failed to read file from agent', code: data.code || 'FS_ERROR' },
+          { status: fsResp.status }
+        );
+      }
+
+      // If JSON format explicitly requested
+      if (url.searchParams.get('format') === 'json') {
+        return Response.json(data.result);
+      }
+
+      // Convert Base64 data to binary Uint8Array
+      const b64 = data.result.data_base64 || '';
+      const binaryString = atob(b64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const totalSize = data.result.total_size || 0;
+      const endOffset = offset + bytes.length - 1;
+
+      const headers = new Headers();
+      const ext = relPath.includes('.') ? relPath.split('.').pop()?.toLowerCase() : '';
+      const mimeMap: Record<string, string> = {
+        mp4: 'video/mp4',
+        webm: 'video/webm',
+        mkv: 'video/x-matroska',
+        mp3: 'audio/mpeg',
+        flac: 'audio/flac',
+        wav: 'audio/wav',
+        ogg: 'audio/ogg',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        webp: 'image/webp',
+        svg: 'image/svg+xml',
+        pdf: 'application/pdf',
+        json: 'application/json',
+        txt: 'text/plain; charset=utf-8',
+        html: 'text/html; charset=utf-8',
+      };
+      const contentType = (ext && mimeMap[ext]) ? mimeMap[ext] : 'application/octet-stream';
+      headers.set('Content-Type', contentType);
+      headers.set('Content-Length', bytes.length.toString());
+      headers.set('Accept-Ranges', 'bytes');
+      headers.set('Cache-Control', 'private, no-cache');
+
+      if (isRange && totalSize > 0) {
+        headers.set('Content-Range', `bytes ${offset}-${endOffset}/${totalSize}`);
+        return new Response(bytes, { status: 206, headers });
+      }
+
+      return new Response(bytes, { status: 200, headers });
+    }
+
+    // 4. Write chunk to physical disk on agent
+    if (action === 'write' && request.method === 'POST') {
+      const body = (await request.json().catch(() => ({}))) as {
+        path?: string;
+        offset?: number;
+        data_base64?: string;
+      };
+
+      if (!body.path || !body.data_base64) {
+        return Response.json({ error: 'path and data_base64 are required' }, { status: 400 });
+      }
+
+      const fsResp = await stub.fetch('http://do/proxy/fs', {
+        method: 'POST',
+        body: JSON.stringify({
+          deviceId: nodeRow.device_id,
+          op: 'fs_write_chunk',
+          storage_path: nodeRow.storage_path,
+          relative_path: body.path,
+          offset: body.offset || 0,
+          data_base64: body.data_base64,
+        }),
+      });
+
+      const data = (await fsResp.json()) as any;
+      if (!fsResp.ok || !data.success) {
+        return Response.json(
+          { error: data.error || 'Failed to write chunk to agent', code: data.code || 'FS_ERROR' },
+          { status: fsResp.status }
+        );
+      }
+
+      return Response.json(data.result);
+    }
+
+    // 5. Delete file or directory
+    if (action === 'delete' && (request.method === 'DELETE' || request.method === 'POST')) {
+      const relPath = url.searchParams.get('path') || '';
+      const recursive = url.searchParams.get('recursive') === 'true';
+
+      if (!relPath) {
+        return Response.json({ error: 'path parameter is required' }, { status: 400 });
+      }
+
+      const fsResp = await stub.fetch('http://do/proxy/fs', {
+        method: 'POST',
+        body: JSON.stringify({
+          deviceId: nodeRow.device_id,
+          op: 'fs_delete',
+          storage_path: nodeRow.storage_path,
+          relative_path: relPath,
+          recursive,
+        }),
+      });
+
+      const data = (await fsResp.json()) as any;
+      if (!fsResp.ok || !data.success) {
+        return Response.json(
+          { error: data.error || 'Failed to delete on agent', code: data.code || 'FS_ERROR' },
+          { status: fsResp.status }
+        );
+      }
+
+      return Response.json(data.result);
+    }
+
+    // 6. Mkdir
+    if (action === 'mkdir' && request.method === 'POST') {
+      const body = (await request.json().catch(() => ({}))) as { path?: string };
+      const relPath = body.path || url.searchParams.get('path') || '';
+
+      if (!relPath) {
+        return Response.json({ error: 'path parameter is required' }, { status: 400 });
+      }
+
+      const fsResp = await stub.fetch('http://do/proxy/fs', {
+        method: 'POST',
+        body: JSON.stringify({
+          deviceId: nodeRow.device_id,
+          op: 'fs_mkdir',
+          storage_path: nodeRow.storage_path,
+          relative_path: relPath,
+        }),
+      });
+
+      const data = (await fsResp.json()) as any;
+      if (!fsResp.ok || !data.success) {
+        return Response.json(
+          { error: data.error || 'Failed to create directory on agent', code: data.code || 'FS_ERROR' },
+          { status: fsResp.status }
+        );
+      }
+
+      return Response.json(data.result);
+    }
+
+    // 7. Media Probe (ffprobe on physical file)
+    if (action === 'media_probe' && request.method === 'GET') {
+      const relPath = url.searchParams.get('path') || '';
+      if (!relPath) {
+        return Response.json({ error: 'path parameter is required' }, { status: 400 });
+      }
+
+      const fsResp = await stub.fetch('http://do/proxy/fs', {
+        method: 'POST',
+        body: JSON.stringify({
+          deviceId: nodeRow.device_id,
+          op: 'media_probe',
+          storage_path: nodeRow.storage_path,
+          relative_path: relPath,
+        }),
+      });
+
+      const data = (await fsResp.json()) as any;
+      if (!fsResp.ok || !data.success) {
+        return Response.json(
+          { error: data.error || 'Failed to probe media', code: data.code || 'MEDIA_ERROR' },
+          { status: fsResp.status }
+        );
+      }
+
+      return Response.json({
+        storage_node_id: nodeId,
+        storage_node_name: nodeRow.name,
+        device_id: nodeRow.device_id,
+        ...data.result,
+      });
+    }
+  }
+
+  // ─── Storage: Node Single Operations (DELETE) ───
   if (url.pathname.startsWith('/api/v1/storage/nodes/')) {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) {
@@ -1985,11 +2359,19 @@ async function extractAuthUser(
   request: Request,
   secret: string
 ): Promise<{ sub: string; email?: string } | null> {
+  let token: string | null = null;
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
+  } else {
+    try {
+      const url = new URL(request.url);
+      token = url.searchParams.get('token');
+    } catch (_) {}
+  }
+  if (!token) {
     return null;
   }
-  const token = authHeader.slice(7).trim();
   const payload = await verifyJwt(token, secret);
   if (!payload || !payload.sub) {
     return null;

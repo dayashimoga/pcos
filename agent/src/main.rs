@@ -4,11 +4,15 @@ mod config;
 mod connection_manager;
 mod db;
 mod delta;
+mod disks;
 mod discovery;
 mod doctor;
 mod enroll;
 mod identity;
+mod fs_handler;
+mod lan_server;
 mod sync;
+mod transcoder;
 mod watcher;
 
 use clap::{Parser, Subcommand};
@@ -56,7 +60,7 @@ enum Commands {
     /// Run node health diagnostics (storage, networking, CGNAT, control plane, FFmpeg)
     Doctor {
         /// Storage directory to test
-        #[arg(short, long, default_value = ".")]
+        #[arg(short = 'd', long, default_value = ".")]
         storage: String,
 
         /// PCOS Control Plane server URL
@@ -193,8 +197,22 @@ async fn main() -> anyhow::Result<()> {
         cm.start_outbound_loop().await;
     });
 
-    // Start LAN P2P discovery
-    let discovery = discovery::LanDiscovery::new(agent_config.device_id.clone(), 8080);
+    // Start Direct LAN HTTP Server
+    let lan_srv = lan_server::LanServer::new(
+        agent_config.device_id.clone(),
+        agent_config.auth_token.clone(),
+        8080,
+    );
+    let bound_lan_port = match lan_srv.start().await {
+        Ok(port) => port,
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to start LAN HTTP server");
+            8080
+        }
+    };
+
+    // Start LAN P2P discovery with the actual bound LAN port
+    let discovery = discovery::LanDiscovery::new(agent_config.device_id.clone(), bound_lan_port);
     let discovery_handle = {
         let disc = discovery.clone();
         tokio::spawn(async move {

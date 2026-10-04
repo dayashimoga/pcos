@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
@@ -102,130 +103,160 @@ class _DevicesContent extends StatelessWidget {
   }
 
   void _showAddDeviceDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    String selectedType = 'desktop';
-    String selectedOs = 'Windows';
-
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              backgroundColor: AppTheme.surfaceColor(context),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
-              child: Container(
-                width: 400,
-                padding: const EdgeInsets.all(28),
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+        return Dialog(
+          backgroundColor: AppTheme.surfaceColor(context),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            width: 480,
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.devices_rounded,
+                          color: AppTheme.primary, size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Connect Physical Device',
+                              style: Theme.of(context).textTheme.headlineMedium),
+                          const SizedBox(height: 2),
+                          Text('Zero-Assumption Cryptographic Onboarding',
+                              style: TextStyle(
+                                  color: AppTheme.textMutedColor(context),
+                                  fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppTheme.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Register Device',
-                          style: Theme.of(context).textTheme.headlineMedium),
-                      const SizedBox(height: 8),
-                      Text('Add a new device to your cloud',
+                      const Icon(Icons.verified_user_rounded,
+                          color: AppTheme.primary, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'PCOS requires real physical proof: database records cannot represent hardware without an authenticated PCOS agent or pairing handshake.',
                           style: TextStyle(
-                              color: AppTheme.textMutedColor(context),
-                              fontSize: 13)),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        key: const Key('device_name_field'),
-                        controller: nameController,
-                        style: TextStyle(
-                            color: AppTheme.textPrimaryColor(context)),
-                        decoration: const InputDecoration(
-                            labelText: 'Device Name',
-                            hintText: 'e.g. My Laptop'),
-                        validator: (v) => (v == null || v.isEmpty)
-                            ? 'Name is required'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: selectedType,
-                        decoration:
-                            const InputDecoration(labelText: 'Device Type'),
-                        dropdownColor: AppTheme.surfaceColor(context),
-                        style: TextStyle(
-                            color: AppTheme.textPrimaryColor(context)),
-                        items: const [
-                          DropdownMenuItem(
-                              value: 'desktop', child: Text('Desktop')),
-                          DropdownMenuItem(
-                              value: 'laptop', child: Text('Laptop')),
-                          DropdownMenuItem(
-                              value: 'phone', child: Text('Phone')),
-                          DropdownMenuItem(
-                              value: 'tablet', child: Text('Tablet')),
-                          DropdownMenuItem(
-                              value: 'server', child: Text('Server')),
-                          DropdownMenuItem(value: 'nas', child: Text('NAS')),
-                          DropdownMenuItem(
-                              value: 'raspberry_pi',
-                              child: Text('Raspberry Pi')),
-                        ],
-                        onChanged: (v) =>
-                            setDialogState(() => selectedType = v!),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: selectedOs,
-                        decoration: const InputDecoration(
-                            labelText: 'Operating System'),
-                        dropdownColor: AppTheme.surfaceColor(context),
-                        style: TextStyle(
-                            color: AppTheme.textPrimaryColor(context)),
-                        items: const [
-                          DropdownMenuItem(
-                              value: 'Windows', child: Text('Windows')),
-                          DropdownMenuItem(
-                              value: 'macOS', child: Text('macOS')),
-                          DropdownMenuItem(
-                              value: 'Linux', child: Text('Linux')),
-                          DropdownMenuItem(
-                              value: 'Android', child: Text('Android')),
-                          DropdownMenuItem(value: 'iOS', child: Text('iOS')),
-                        ],
-                        onChanged: (v) => setDialogState(() => selectedOs = v!),
-                      ),
-                      const SizedBox(height: 28),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Cancel')),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            key: const Key('device_register_submit'),
-                            onPressed: () {
-                              if (formKey.currentState?.validate() ?? false) {
-                                context
-                                    .read<DeviceBloc>()
-                                    .add(DeviceRegisterRequested(
-                                      name: nameController.text.trim(),
-                                      deviceType: selectedType,
-                                      os: selectedOs,
-                                      osVersion: '',
-                                    ));
-                                Navigator.pop(context);
-                              }
-                            },
-                            child: const Text('Register'),
-                          ),
-                        ],
+                              fontSize: 12,
+                              color: AppTheme.textPrimaryColor(context)),
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 24),
+                Text('Option 1: Phone or Tablet',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: AppTheme.textPrimaryColor(context))),
+                const SizedBox(height: 6),
+                Text(
+                  'Scan a one-time cryptographic QR code using the PCOS mobile app.',
+                  style: TextStyle(
+                      color: AppTheme.textMutedColor(context), fontSize: 13),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      context.go('/devices/pair');
+                    },
+                    icon: const Icon(Icons.qr_code_rounded, size: 18),
+                    label: const Text('Open QR Pairing Screen'),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text('Option 2: PC, Mac, Server, or NAS',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: AppTheme.textPrimaryColor(context))),
+                const SizedBox(height: 6),
+                Text(
+                  'Run the official Rust agent on the machine terminal to discover disks and join your cloud:',
+                  style: TextStyle(
+                      color: AppTheme.textMutedColor(context), fontSize: 13),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: SelectableText(
+                          'pcos-agent enroll',
+                          style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                              color: Colors.greenAccent),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Copy Command',
+                        icon: const Icon(Icons.copy_rounded, size: 16),
+                        onPressed: () {
+                          Clipboard.setData(
+                              const ClipboardData(text: 'pcos-agent enroll'));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Copied enrollment command to clipboard'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('Close')),
+                  ],
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

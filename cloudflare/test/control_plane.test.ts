@@ -366,8 +366,12 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
     expect(pagesResp.headers.get('Access-Control-Allow-Credentials')).toBe('true');
   });
 
-  it('should process device heartbeat and update status', async () => {
+  it('should process device heartbeat and update status with strict authentication', async () => {
     const worker = (await import('../src/index')).default;
+    const testSecret = 'test_secret_for_heartbeat_12345';
+    const testUserId = 'usr_hb_owner_1';
+    const token = await generateJwt({ sub: testUserId, email: 'hb@pcos.dev' }, testSecret, 3600);
+
     let updatedDeviceId = '';
     let updatedLanIp = '';
 
@@ -381,7 +385,12 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
             }
             return { success: true };
           },
-          first: async () => null,
+          first: async () => {
+            if (query.includes('SELECT id, name, device_type FROM device_identities')) {
+              return { id: args[0], name: 'Home NAS Node', device_type: 'nas' };
+            }
+            return null;
+          },
           all: async () => ({ results: [] }),
         }),
       }),
@@ -403,7 +412,7 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
       MAX_D1_READS_PER_MONTH: '5000000',
       MAX_R2_STORAGE_GB: '10',
       FREE_TIER_HARD_BUDGET: 'true',
-      JWT_SECRET: 'test_secret_for_heartbeat',
+      JWT_SECRET: testSecret,
     } as unknown as Env;
 
     const ctx = {
@@ -411,10 +420,26 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
       passThroughOnException: () => {},
     } as unknown as ExecutionContext;
 
+    // 1. Unauthenticated heartbeat must be rejected with 401
+    const unauthHbReq = new Request('http://edge.pcos.dev/api/v1/devices/dev_storage_node_99/heartbeat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        deviceId: 'dev_storage_node_99',
+        lanIp: '192.168.1.150',
+      }),
+    });
+    const unauthResp = await worker.fetch(unauthHbReq, mockEnv, ctx);
+    expect(unauthResp.status).toBe(401);
+
+    // 2. Authenticated heartbeat by device owner must succeed
     const hbReq = new Request('http://edge.pcos.dev/api/v1/devices/dev_storage_node_99/heartbeat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
         'cf-connecting-ip': '103.21.244.1',
       },
       body: JSON.stringify({
@@ -435,41 +460,25 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
     expect(updatedLanIp).toBe('192.168.1.150');
   });
 
-  it('should support device registration (POST) and deletion (DELETE)', async () => {
+  it('should enforce architectural constraint: reject manual device creation (POST 405) and support device deletion', async () => {
     const worker = (await import('../src/index')).default;
     const testSecret = 'device_mgmt_test_secret_12345';
     const testUserId = 'usr_mgmt_1';
     const token = await generateJwt({ sub: testUserId, email: 'mgmt@pcos.dev' }, testSecret, 3600);
 
-    const insertedDevices: any[] = [];
     let deletedDeviceId: string | null = null;
 
     const mockDb = {
       prepare: (query: string) => ({
         bind: (...args: any[]) => ({
           run: async () => {
-            if (query.includes('INSERT INTO device_identities')) {
-              insertedDevices.push({
-                id: args[0],
-                user_id: args[1],
-                cloud_id: args[2],
-                name: args[3],
-                device_type: args[4],
-                os: args[5],
-              });
-            }
             if (query.includes('DELETE FROM device_identities')) {
               deletedDeviceId = args[0];
             }
             return { success: true };
           },
-          first: async () => {
-            if (query.includes('SELECT cloud_id FROM cloud_identities')) {
-              return { cloud_id: 'pcos-cloud-123' };
-            }
-            return null;
-          },
-          all: async () => ({ results: insertedDevices }),
+          first: async () => null,
+          all: async () => ({ results: [] }),
         }),
       }),
     } as unknown as D1Database;
@@ -487,7 +496,7 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
 
     const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
 
-    // 1. Register a device
+    // 1. Direct POST /api/v1/devices must be rejected (405 Method Not Allowed)
     const regReq = new Request('http://edge.pcos.dev/api/v1/devices', {
       method: 'POST',
       headers: {
@@ -495,23 +504,20 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        name: 'Work MacBook Pro',
+        name: 'Fake Browser Laptop',
         device_type: 'laptop',
         os: 'macOS',
       }),
     });
 
     const regResp = await worker.fetch(regReq, mockEnv, ctx);
-    expect(regResp.status).toBe(201);
+    expect(regResp.status).toBe(405);
     const regBody = (await regResp.json()) as any;
-    expect(regBody.name).toBe('Work MacBook Pro');
-    expect(regBody.device_type).toBe('laptop');
-    expect(regBody.os).toBe('macOS');
-    expect(insertedDevices).toHaveLength(1);
-    expect(insertedDevices[0].id).toBe(regBody.id);
+    expect(regBody.code).toBe('MANUAL_DEVICE_CREATION_DISABLED');
 
-    // 2. Delete the device
-    const delReq = new Request(`http://edge.pcos.dev/api/v1/devices/${regBody.id}`, {
+    // 2. Delete the device via DELETE /api/v1/devices/:id
+    const targetDevId = 'dev_to_delete_123';
+    const delReq = new Request(`http://edge.pcos.dev/api/v1/devices/${targetDevId}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -522,10 +528,10 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
     expect(delResp.status).toBe(200);
     const delBody = (await delResp.json()) as any;
     expect(delBody.success).toBe(true);
-    expect(deletedDeviceId).toBe(regBody.id);
+    expect(deletedDeviceId).toBe(targetDevId);
   });
 
-  it('should support storage node registration, listing, and deletion', async () => {
+  it('should reject browser storage registration (POST 405) and support physical agent storage advertisement, listing, and deletion', async () => {
     const worker = (await import('../src/index')).default;
     const testSecret = 'storage_nodes_test_secret_12345';
     const testUserId = 'usr_sn_1';
@@ -545,9 +551,12 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
                 user_id: args[2],
                 name: args[3],
                 storage_path: args[4],
-                total_capacity_bytes: args[5],
-                available_capacity_bytes: args[6],
-                capabilities_json: args[7],
+                volume_uuid: args[5],
+                fs_type: args[6],
+                total_capacity_bytes: args[7],
+                available_capacity_bytes: args[8],
+                is_online: 1,
+                capabilities_json: args[9],
               };
               storageNodes.push(node);
             }
@@ -558,7 +567,10 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
           },
           first: async () => {
             if (query.includes('SELECT id, name FROM device_identities')) {
-              return { id: args[0], name: 'My Primary NAS' };
+              return { id: args[0], name: 'Physical Server 01' };
+            }
+            if (query.includes('SELECT id FROM storage_nodes WHERE device_id')) {
+              return null; // No existing node yet
             }
             return null;
           },
@@ -580,8 +592,8 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
 
     const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
 
-    // 1. Register a storage node
-    const createReq = new Request('http://edge.pcos.dev/api/v1/storage/nodes', {
+    // 1. Direct browser registration to /api/v1/storage/nodes must be rejected with 405
+    const browserCreateReq = new Request('http://edge.pcos.dev/api/v1/storage/nodes', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -589,23 +601,50 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
       },
       body: JSON.stringify({
         device_id: 'dev_nas_001',
-        name: '4TB Western Digital RED',
-        storage_path: '/mnt/storage/pcos',
-        total_capacity_bytes: 4000000000000,
-        available_capacity_bytes: 2500000000000,
-        capabilities_json: JSON.stringify({ ffmpeg: true, tantivy: true }),
+        storage_path: 'D:\\PCOS',
       }),
     });
 
-    const createResp = await worker.fetch(createReq, mockEnv, ctx);
-    expect(createResp.status).toBe(201);
-    const createdNode = (await createResp.json()) as any;
-    expect(createdNode.name).toBe('4TB Western Digital RED');
-    expect(createdNode.storage_path).toBe('/mnt/storage/pcos');
-    expect(createdNode.total_capacity_bytes).toBe(4000000000000);
+    const browserResp = await worker.fetch(browserCreateReq, mockEnv, ctx);
+    expect(browserResp.status).toBe(405);
+    const browserBody = (await browserResp.json()) as any;
+    expect(browserBody.code).toBe('BROWSER_STORAGE_CREATION_DISABLED');
+
+    // 2. Physical agent storage advertisement with measured disk metrics
+    const advertiseReq = new Request('http://edge.pcos.dev/api/v1/agent/storage/advertise', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        device_id: 'dev_nas_001',
+        disks: [
+          {
+            volume_uuid: 'VOL-UUID-7788-99AA',
+            mount_point: '/mnt/storage/pcos',
+            name: '4TB Western Digital RED',
+            fs_type: 'ext4',
+            total_capacity_bytes: 4000000000000,
+            available_capacity_bytes: 2500000000000,
+            capabilities: { ffmpeg: true, tantivy: true, ocr: false, ollama: false },
+          },
+        ],
+      }),
+    });
+
+    const advResp = await worker.fetch(advertiseReq, mockEnv, ctx);
+    expect(advResp.status).toBe(200);
+    const advBody = (await advResp.json()) as any;
+    expect(advBody.success).toBe(true);
+    expect(advBody.storage_nodes).toHaveLength(1);
+    expect(advBody.storage_nodes[0].storage_path).toBe('/mnt/storage/pcos');
+    expect(advBody.storage_nodes[0].volume_uuid).toBe('VOL-UUID-7788-99AA');
+    expect(advBody.storage_nodes[0].fs_type).toBe('ext4');
+    expect(advBody.storage_nodes[0].total_capacity_bytes).toBe(4000000000000);
     expect(storageNodes).toHaveLength(1);
 
-    // 2. List storage nodes
+    // 3. List storage nodes
     const listReq = new Request('http://edge.pcos.dev/api/v1/storage/nodes', {
       method: 'GET',
       headers: {
@@ -619,8 +658,9 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
     expect(listBody.total).toBe(1);
     expect(listBody.storage_nodes[0].storage_path).toBe('/mnt/storage/pcos');
 
-    // 3. Delete storage node
-    const delReq = new Request(`http://edge.pcos.dev/api/v1/storage/nodes/${createdNode.id}`, {
+    // 4. Delete storage node
+    const nodeIdToDelete = advBody.storage_nodes[0].id;
+    const delReq = new Request(`http://edge.pcos.dev/api/v1/storage/nodes/${nodeIdToDelete}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -631,7 +671,486 @@ describe('Worker Edge Routes: CORS, Heartbeat & Security', () => {
     expect(delResp.status).toBe(200);
     const delBody = (await delResp.json()) as any;
     expect(delBody.success).toBe(true);
-    expect(deletedNodeId).toBe(createdNode.id);
+    expect(deletedNodeId).toBe(nodeIdToDelete);
+  });
+
+  it('should validate agent storage advertisement parameters and reject unauthorized devices', async () => {
+    const worker = (await import('../src/index')).default;
+    const testSecret = 'storage_val_secret_12345';
+    const testUserId = 'usr_val_1';
+    const token = await generateJwt({ sub: testUserId, email: 'val@pcos.dev' }, testSecret, 3600);
+
+    const mockDb = {
+      prepare: (query: string) => ({
+        bind: () => ({
+          run: async () => ({ success: true }),
+          first: async () => {
+            // No device found for another user
+            if (query.includes('SELECT id, name FROM device_identities')) {
+              return null;
+            }
+            return null;
+          },
+          all: async () => ({ results: [] }),
+        }),
+      }),
+    } as unknown as D1Database;
+
+    const mockEnv = {
+      DB: mockDb,
+      PCOS_ENV: 'test',
+      MAX_WORKERS_PER_DAY: '100000',
+      MAX_D1_WRITES_PER_DAY: '100000',
+      MAX_D1_READS_PER_MONTH: '5000000',
+      MAX_R2_STORAGE_GB: '10',
+      FREE_TIER_HARD_BUDGET: 'true',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    // Reject empty disks array
+    const emptyReq = new Request('http://edge.pcos.dev/api/v1/agent/storage/advertise', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        device_id: 'dev_123',
+        disks: [],
+      }),
+    });
+    expect((await worker.fetch(emptyReq, mockEnv, ctx)).status).toBe(400);
+
+    // Reject unowned device
+    const unownedReq = new Request('http://edge.pcos.dev/api/v1/agent/storage/advertise', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        device_id: 'dev_other_user',
+        disks: [{ mount_point: '/data', total_capacity_bytes: 1000, available_capacity_bytes: 500 }],
+      }),
+    });
+    expect((await worker.fetch(unownedReq, mockEnv, ctx)).status).toBe(404);
+  });
+});
+
+describe('Remote Physical Data Plane Proxy Routes (Client -> Cloud -> Agent)', () => {
+  const testSecret = 'data_plane_secret_12345';
+  const testUserId = 'usr_dp_owner';
+
+  it('should proxy directory listing through agent tunnel', async () => {
+    const worker = (await import('../src/index')).default;
+    const token = await generateJwt({ sub: testUserId, email: 'dp@pcos.dev' }, testSecret, 3600);
+
+    const mockDb = {
+      prepare: (query: string) => ({
+        bind: () => ({
+          first: async () => {
+            if (query.includes('SELECT id, device_id, name, storage_path')) {
+              return {
+                id: 'sn_test_laptop',
+                device_id: 'dev_laptop_1',
+                name: 'Laptop NVMe SSD',
+                storage_path: 'C:\\Users\\dayan\\PCOS',
+                is_online: 1,
+              };
+            }
+            return null;
+          },
+          all: async () => ({ results: [] }),
+          run: async () => ({ success: true }),
+        }),
+      }),
+    } as unknown as D1Database;
+
+    const mockPresenceHub = {
+      idFromName: () => 'presence_id',
+      get: () => ({
+        fetch: async (_url: string, init?: RequestInit) => {
+          const body = JSON.parse(init?.body as string);
+          expect(body.deviceId).toBe('dev_laptop_1');
+          expect(body.op).toBe('fs_list_dir');
+          expect(body.relative_path).toBe('Documents');
+
+          return Response.json({
+            success: true,
+            type: 'fs_response',
+            result: {
+              relative_path: 'Documents',
+              total_count: 2,
+              entries: [
+                {
+                  name: 'Projects',
+                  relative_path: 'Documents/Projects',
+                  entry_type: 'folder',
+                  size_bytes: 0,
+                  is_readonly: false,
+                },
+                {
+                  name: 'architecture.pdf',
+                  relative_path: 'Documents/architecture.pdf',
+                  entry_type: 'file',
+                  size_bytes: 2048576,
+                  mime_type: 'application/pdf',
+                  is_readonly: false,
+                },
+              ],
+            },
+          });
+        },
+      }),
+    } as unknown as DurableObjectNamespace;
+
+    const mockEnv = {
+      DB: mockDb,
+      PRESENCE_HUB: mockPresenceHub,
+      PCOS_ENV: 'test',
+      MAX_WORKERS_PER_DAY: '100000',
+      MAX_D1_WRITES_PER_DAY: '100000',
+      MAX_D1_READS_PER_MONTH: '5000000',
+      MAX_R2_STORAGE_GB: '10',
+      FREE_TIER_HARD_BUDGET: 'true',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    const listReq = new Request(
+      'http://edge.pcos.dev/api/v1/storage/nodes/sn_test_laptop/fs/list?path=Documents',
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const listResp = await worker.fetch(listReq, mockEnv, ctx);
+    expect(listResp.status).toBe(200);
+    const body = (await listResp.json()) as any;
+    expect(body.storage_node_id).toBe('sn_test_laptop');
+    expect(body.total_count).toBe(2);
+    expect(body.entries[0].name).toBe('Projects');
+    expect(body.entries[1].name).toBe('architecture.pdf');
+  });
+
+  it('should stream binary file chunks with HTTP Range support for video/media streaming', async () => {
+    const worker = (await import('../src/index')).default;
+    const token = await generateJwt({ sub: testUserId, email: 'dp@pcos.dev' }, testSecret, 3600);
+
+    const mockDb = {
+      prepare: (query: string) => ({
+        bind: () => ({
+          first: async () => {
+            if (query.includes('SELECT id, device_id, name, storage_path')) {
+              return {
+                id: 'sn_test_laptop',
+                device_id: 'dev_laptop_1',
+                name: 'Laptop NVMe SSD',
+                storage_path: 'C:\\Users\\dayan\\PCOS',
+                is_online: 1,
+              };
+            }
+            return null;
+          },
+          all: async () => ({ results: [] }),
+          run: async () => ({ success: true }),
+        }),
+      }),
+    } as unknown as D1Database;
+
+    const testVideoChunk = new TextEncoder().encode('PCOS_REAL_MEDIA_FRAME_BYTES_0123');
+    let binaryStr = '';
+    for (let i = 0; i < testVideoChunk.length; i++) {
+      binaryStr += String.fromCharCode(testVideoChunk[i]);
+    }
+    const b64Data = btoa(binaryStr);
+
+    const mockPresenceHub = {
+      idFromName: () => 'presence_id',
+      get: () => ({
+        fetch: async (_url: string, init?: RequestInit) => {
+          const body = JSON.parse(init?.body as string);
+          expect(body.op).toBe('fs_read_chunk');
+          expect(body.offset).toBe(0);
+
+          return Response.json({
+            success: true,
+            type: 'fs_response',
+            result: {
+              relative_path: 'Videos/trailer.mp4',
+              offset: 0,
+              length: testVideoChunk.length,
+              total_size: 50000000,
+              data_base64: b64Data,
+            },
+          });
+        },
+      }),
+    } as unknown as DurableObjectNamespace;
+
+    const mockEnv = {
+      DB: mockDb,
+      PRESENCE_HUB: mockPresenceHub,
+      PCOS_ENV: 'test',
+      MAX_WORKERS_PER_DAY: '100000',
+      MAX_D1_WRITES_PER_DAY: '100000',
+      MAX_D1_READS_PER_MONTH: '5000000',
+      MAX_R2_STORAGE_GB: '10',
+      FREE_TIER_HARD_BUDGET: 'true',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    // Test with HTTP Range request (video player seeking)
+    const streamReq = new Request(
+      'http://edge.pcos.dev/api/v1/storage/nodes/sn_test_laptop/fs/read?path=Videos/trailer.mp4',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Range: 'bytes=0-31',
+        },
+      }
+    );
+
+    const streamResp = await worker.fetch(streamReq, mockEnv, ctx);
+    expect(streamResp.status).toBe(206); // Partial content
+    expect(streamResp.headers.get('Content-Range')).toContain('bytes 0-');
+    expect(streamResp.headers.get('Accept-Ranges')).toBe('bytes');
+
+    const receivedBytes = new Uint8Array(await streamResp.arrayBuffer());
+    expect(receivedBytes.length).toBe(testVideoChunk.length);
+    expect(new TextDecoder().decode(receivedBytes)).toBe('PCOS_REAL_MEDIA_FRAME_BYTES_0123');
+  });
+
+  it('should support token query parameter for native HTML5 media and download streaming without Bearer header', async () => {
+    const worker = (await import('../src/index')).default;
+    const token = await generateJwt({ sub: testUserId, email: 'dp@pcos.dev' }, testSecret, 3600);
+
+    const mockDb = {
+      prepare: (query: string) => ({
+        bind: () => ({
+          first: async () => {
+            if (query.includes('SELECT id, device_id, name, storage_path')) {
+              return {
+                id: 'sn_test_laptop',
+                device_id: 'dev_laptop_1',
+                name: 'Laptop NVMe SSD',
+                storage_path: 'C:\\Users\\dayan\\PCOS',
+                is_online: 1,
+              };
+            }
+            return null;
+          },
+          all: async () => ({ results: [] }),
+          run: async () => ({ success: true }),
+        }),
+      }),
+    } as unknown as D1Database;
+
+    const testVideoChunk = new TextEncoder().encode('STREAMABLE_VIDEO_BYTES_NATIVE_HTML5');
+    let binaryStr = '';
+    for (let i = 0; i < testVideoChunk.length; i++) {
+      binaryStr += String.fromCharCode(testVideoChunk[i]);
+    }
+    const b64Data = btoa(binaryStr);
+
+    const mockPresenceHub = {
+      idFromName: () => 'presence_id',
+      get: () => ({
+        fetch: async () => {
+          return Response.json({
+            success: true,
+            type: 'fs_response',
+            result: {
+              relative_path: 'Music/track.mp3',
+              offset: 0,
+              length: testVideoChunk.length,
+              total_size: testVideoChunk.length,
+              data_base64: b64Data,
+            },
+          });
+        },
+      }),
+    } as unknown as DurableObjectNamespace;
+
+    const mockEnv = {
+      DB: mockDb,
+      PRESENCE_HUB: mockPresenceHub,
+      PCOS_ENV: 'test',
+      MAX_WORKERS_PER_DAY: '100000',
+      MAX_D1_WRITES_PER_DAY: '100000',
+      MAX_D1_READS_PER_MONTH: '5000000',
+      MAX_R2_STORAGE_GB: '10',
+      FREE_TIER_HARD_BUDGET: 'true',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    // No Authorization header; token passed in query parameter (like <video src="...&token=...">)
+    const streamReq = new Request(
+      `http://edge.pcos.dev/api/v1/storage/nodes/sn_test_laptop/fs/read?path=Music/track.mp3&token=${token}`
+    );
+
+    const streamResp = await worker.fetch(streamReq, mockEnv, ctx);
+    expect(streamResp.status).toBe(200);
+    expect(streamResp.headers.get('Content-Type')).toBe('audio/mpeg');
+    const receivedBytes = new Uint8Array(await streamResp.arrayBuffer());
+    expect(new TextDecoder().decode(receivedBytes)).toBe('STREAMABLE_VIDEO_BYTES_NATIVE_HTML5');
+  });
+
+  it('should proxy media_probe request to physical agent node', async () => {
+    const worker = (await import('../src/index')).default;
+    const token = await generateJwt({ sub: testUserId, email: 'dp@pcos.dev' }, testSecret, 3600);
+
+    const mockDb = {
+      prepare: (query: string) => ({
+        bind: () => ({
+          first: async () => {
+            if (query.includes('SELECT id, device_id, name, storage_path')) {
+              return {
+                id: 'sn_test_laptop',
+                device_id: 'dev_laptop_1',
+                name: 'Laptop NVMe SSD',
+                storage_path: 'C:\\Users\\dayan\\PCOS',
+                is_online: 1,
+              };
+            }
+            return null;
+          },
+          all: async () => ({ results: [] }),
+          run: async () => ({ success: true }),
+        }),
+      }),
+    } as unknown as D1Database;
+
+    const mockPresenceHub = {
+      idFromName: () => 'presence_id',
+      get: () => ({
+        fetch: async (_url: string, init?: RequestInit) => {
+          const body = JSON.parse(init?.body as string);
+          expect(body.op).toBe('media_probe');
+          expect(body.relative_path).toBe('Videos/movie.mkv');
+
+          return Response.json({
+            success: true,
+            type: 'fs_response',
+            result: {
+              duration_secs: 142.5,
+              width: 1920,
+              height: 1080,
+              video_codec: 'h264',
+              audio_codec: 'aac',
+              bitrate_kbps: 4500,
+              format_name: 'matroska,webm',
+            },
+          });
+        },
+      }),
+    } as unknown as DurableObjectNamespace;
+
+    const mockEnv = {
+      DB: mockDb,
+      PRESENCE_HUB: mockPresenceHub,
+      PCOS_ENV: 'test',
+      MAX_WORKERS_PER_DAY: '100000',
+      MAX_D1_WRITES_PER_DAY: '100000',
+      MAX_D1_READS_PER_MONTH: '5000000',
+      MAX_R2_STORAGE_GB: '10',
+      FREE_TIER_HARD_BUDGET: 'true',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    const probeReq = new Request(
+      'http://edge.pcos.dev/api/v1/storage/nodes/sn_test_laptop/fs/media_probe?path=Videos/movie.mkv',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const probeResp = await worker.fetch(probeReq, mockEnv, ctx);
+    expect(probeResp.status).toBe(200);
+    const probeBody = (await probeResp.json()) as any;
+    expect(probeBody.duration_secs).toBe(142.5);
+    expect(probeBody.video_codec).toBe('h264');
+    expect(probeBody.width).toBe(1920);
+    expect(probeBody.height).toBe(1080);
+  });
+
+  it('should return 503 when physical agent node is offline', async () => {
+    const worker = (await import('../src/index')).default;
+    const token = await generateJwt({ sub: testUserId, email: 'dp@pcos.dev' }, testSecret, 3600);
+
+    const mockDb = {
+      prepare: (query: string) => ({
+        bind: () => ({
+          first: async () => {
+            if (query.includes('SELECT id, device_id, name, storage_path')) {
+              return {
+                id: 'sn_offline_node',
+                device_id: 'dev_offline_1',
+                name: 'Home Server',
+                storage_path: '/mnt/storage',
+                is_online: 0,
+              };
+            }
+            return null;
+          },
+          all: async () => ({ results: [] }),
+          run: async () => ({ success: true }),
+        }),
+      }),
+    } as unknown as D1Database;
+
+    const mockPresenceHub = {
+      idFromName: () => 'presence_id',
+      get: () => ({
+        fetch: async () => {
+          return Response.json(
+            {
+              success: false,
+              error: 'STORAGE_NODE_OFFLINE',
+              message: 'Physical agent node is currently offline or disconnected.',
+            },
+            { status: 503 }
+          );
+        },
+      }),
+    } as unknown as DurableObjectNamespace;
+
+    const mockEnv = {
+      DB: mockDb,
+      PRESENCE_HUB: mockPresenceHub,
+      PCOS_ENV: 'test',
+      MAX_WORKERS_PER_DAY: '100000',
+      MAX_D1_WRITES_PER_DAY: '100000',
+      MAX_D1_READS_PER_MONTH: '5000000',
+      MAX_R2_STORAGE_GB: '10',
+      FREE_TIER_HARD_BUDGET: 'true',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    const listReq = new Request(
+      'http://edge.pcos.dev/api/v1/storage/nodes/sn_offline_node/fs/list?path=',
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const listResp = await worker.fetch(listReq, mockEnv, ctx);
+    expect(listResp.status).toBe(503);
+    const body = (await listResp.json()) as any;
+    expect(body.error).toBe('STORAGE_NODE_OFFLINE');
   });
 });
 

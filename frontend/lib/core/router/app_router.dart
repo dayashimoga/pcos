@@ -20,6 +20,7 @@ import '../../features/settings/pages/settings_page.dart';
 import '../../features/setup/pages/setup_wizard_page.dart';
 import '../../features/sharing/pages/shared_page.dart';
 import '../../features/storage/pages/storage_page.dart';
+import '../../features/storage/pages/physical_storage_browser_page.dart';
 import '../../features/trash/pages/trash_page.dart';
 
 /// Application router with authentication guard.
@@ -78,6 +79,22 @@ class AppRouter {
           GoRoute(path: '/media', builder: (_, __) => const MediaPage()),
           GoRoute(path: '/shared', builder: (_, __) => const SharedPage()),
           GoRoute(path: '/storage', builder: (_, __) => const StoragePage()),
+          GoRoute(
+            path: '/storage/browse',
+            builder: (context, state) {
+              final nodeId = state.uri.queryParameters['nodeId'] ?? '';
+              final nodeName =
+                  state.uri.queryParameters['name'] ?? 'Storage Node';
+              final storagePath = state.uri.queryParameters['path'] ?? '';
+              final isOnline = state.uri.queryParameters['online'] == 'true';
+              return PhysicalStorageBrowserPage(
+                nodeId: nodeId,
+                nodeName: nodeName,
+                storagePath: storagePath,
+                isOnline: isOnline,
+              );
+            },
+          ),
           GoRoute(path: '/search', builder: (_, __) => const SearchPage()),
           GoRoute(path: '/devices', builder: (_, __) => const DevicesPage()),
           GoRoute(

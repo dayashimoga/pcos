@@ -58,8 +58,8 @@ impl DoctorReport {
         let storage_writable =
             fs::write(&test_file, b"PCOS_OK").is_ok() && fs::remove_file(&test_file).is_ok();
 
-        // 3. Free disk space
-        let storage_free_gb = 50.0; // default estimated fallback
+        // 3. Real free disk space measurement
+        let storage_free_gb = crate::disks::get_disk_free_gb(storage_path);
 
         // 4. DNS test
         let dns_healthy = std::net::ToSocketAddrs::to_socket_addrs("cloudflare.com:443").is_ok();
@@ -121,6 +121,10 @@ impl DoctorReport {
             }
         );
         println!(
+            "  Free Storage    : {:.2} GB available",
+            self.storage_free_gb
+        );
+        println!(
             "  DNS Resolution  : {}",
             if self.dns_healthy {
                 "PASS (Healthy)"
@@ -152,7 +156,7 @@ impl DoctorReport {
     }
 }
 
-fn check_ffmpeg() -> (bool, Vec<String>) {
+pub fn check_ffmpeg() -> (bool, Vec<String>) {
     let output = match Command::new("ffmpeg").arg("-hwaccels").output() {
         Ok(out) if out.status.success() => out,
         _ => return (false, vec![]),
