@@ -238,12 +238,15 @@ class _SharedPageState extends State<SharedPage>
                 final password = passwordCtrl.text.trim();
                 final maxDl = int.tryParse(maxDownloadsCtrl.text.trim()) ?? 10;
                 DateTime? expiresAt;
-                if (expiryChoice == '1d')
+                if (expiryChoice == '1d') {
                   expiresAt = DateTime.now().add(const Duration(days: 1));
-                if (expiryChoice == '7d')
+                }
+                if (expiryChoice == '7d') {
                   expiresAt = DateTime.now().add(const Duration(days: 7));
-                if (expiryChoice == '30d')
+                }
+                if (expiryChoice == '30d') {
                   expiresAt = DateTime.now().add(const Duration(days: 30));
+                }
 
                 Navigator.pop(ctx);
                 try {

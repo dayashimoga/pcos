@@ -108,8 +108,8 @@ class _DevicesContent extends StatelessWidget {
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: AppTheme.surfaceColor(context),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           child: Container(
             width: 480,
             padding: const EdgeInsets.all(28),
@@ -134,7 +134,8 @@ class _DevicesContent extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Connect Physical Device',
-                              style: Theme.of(context).textTheme.headlineMedium),
+                              style:
+                                  Theme.of(context).textTheme.headlineMedium),
                           const SizedBox(height: 2),
                           Text('Zero-Assumption Cryptographic Onboarding',
                               style: TextStyle(
@@ -151,8 +152,8 @@ class _DevicesContent extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: AppTheme.primary.withOpacity(0.2)),
+                    border:
+                        Border.all(color: AppTheme.primary.withOpacity(0.2)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,13 +210,12 @@ class _DevicesContent extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: Row(
                     children: [
@@ -236,7 +236,8 @@ class _DevicesContent extends StatelessWidget {
                               const ClipboardData(text: 'pcos-agent enroll'));
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Copied enrollment command to clipboard'),
+                              content: Text(
+                                  'Copied enrollment command to clipboard'),
                               duration: Duration(seconds: 2),
                             ),
                           );

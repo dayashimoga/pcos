@@ -93,7 +93,8 @@ class FileRepository {
 
   // ─── Physical Storage Node Data Plane Operations ───
 
-  Future<Map<String, dynamic>> listStorageNodeFs(String nodeId, {String path = ''}) async {
+  Future<Map<String, dynamic>> listStorageNodeFs(String nodeId,
+      {String path = ''}) async {
     final r = await apiClient.dio.get(
       '/api/v1/storage/nodes/$nodeId/fs/list',
       queryParameters: {'path': path},
@@ -101,7 +102,8 @@ class FileRepository {
     return r.data is Map ? Map<String, dynamic>.from(r.data) : {};
   }
 
-  Future<Map<String, dynamic>> statStorageNodeFs(String nodeId, String path) async {
+  Future<Map<String, dynamic>> statStorageNodeFs(
+      String nodeId, String path) async {
     final r = await apiClient.dio.get(
       '/api/v1/storage/nodes/$nodeId/fs/stat',
       queryParameters: {'path': path},
@@ -158,7 +160,8 @@ class FileRepository {
     return r.data is Map ? Map<String, dynamic>.from(r.data) : {};
   }
 
-  Future<Map<String, dynamic>> mkdirStorageNodeFs(String nodeId, String path) async {
+  Future<Map<String, dynamic>> mkdirStorageNodeFs(
+      String nodeId, String path) async {
     final r = await apiClient.dio.post(
       '/api/v1/storage/nodes/$nodeId/fs/mkdir',
       data: {'path': path},
@@ -166,7 +169,8 @@ class FileRepository {
     return r.data is Map ? Map<String, dynamic>.from(r.data) : {};
   }
 
-  Future<Map<String, dynamic>> probeStorageNodeMedia(String nodeId, String path) async {
+  Future<Map<String, dynamic>> probeStorageNodeMedia(
+      String nodeId, String path) async {
     final r = await apiClient.dio.get(
       '/api/v1/storage/nodes/$nodeId/fs/media_probe',
       queryParameters: {'path': path},
@@ -185,4 +189,3 @@ class FileRepository {
     return '$prefix/api/v1/storage/nodes/$nodeId/fs/read?path=$encPath';
   }
 }
-

@@ -132,8 +132,8 @@ class _StoragePageState extends State<StoragePage> {
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: AppTheme.primary.withOpacity(0.2)),
+                    border:
+                        Border.all(color: AppTheme.primary.withOpacity(0.2)),
                   ),
                   child: Row(children: [
                     const Icon(Icons.verified_rounded,
@@ -173,13 +173,12 @@ class _StoragePageState extends State<StoragePage> {
                         color: AppTheme.textPrimaryColor(context))),
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: Row(
                     children: [
@@ -200,7 +199,8 @@ class _StoragePageState extends State<StoragePage> {
                               const ClipboardData(text: 'pcos-agent --daemon'));
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Copied daemon command to clipboard'),
+                              content:
+                                  Text('Copied daemon command to clipboard'),
                               duration: Duration(seconds: 2),
                             ),
                           );
@@ -216,8 +216,8 @@ class _StoragePageState extends State<StoragePage> {
                     decoration: BoxDecoration(
                       color: AppTheme.warning.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: AppTheme.warning.withOpacity(0.3)),
+                      border:
+                          Border.all(color: AppTheme.warning.withOpacity(0.3)),
                     ),
                     child: Row(children: [
                       const Icon(Icons.info_outline_rounded,
@@ -241,7 +241,8 @@ class _StoragePageState extends State<StoragePage> {
                           color: AppTheme.textPrimaryColor(context))),
                   const SizedBox(height: 8),
                   ..._devices.map((d) {
-                    final bool isOnline = d['is_online'] == 1 || d['is_online'] == true;
+                    final bool isOnline =
+                        d['is_online'] == 1 || d['is_online'] == true;
                     return Container(
                       margin: const EdgeInsets.only(bottom: 6),
                       padding: const EdgeInsets.symmetric(
@@ -253,9 +254,13 @@ class _StoragePageState extends State<StoragePage> {
                       child: Row(
                         children: [
                           Icon(
-                            isOnline ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+                            isOnline
+                                ? Icons.cloud_done_rounded
+                                : Icons.cloud_off_rounded,
                             size: 16,
-                            color: isOnline ? AppTheme.success : AppTheme.textMutedColor(context),
+                            color: isOnline
+                                ? AppTheme.success
+                                : AppTheme.textMutedColor(context),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -280,7 +285,9 @@ class _StoragePageState extends State<StoragePage> {
                               style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  color: isOnline ? AppTheme.success : Colors.grey),
+                                  color: isOnline
+                                      ? AppTheme.success
+                                      : Colors.grey),
                             ),
                           ),
                         ],
@@ -748,8 +755,7 @@ class _StoragePageState extends State<StoragePage> {
                                   MaterialPageRoute(
                                     builder: (_) => PhysicalStorageBrowserPage(
                                       nodeId: node['id'] ?? '',
-                                      nodeName:
-                                          node['name'] ?? 'Storage Node',
+                                      nodeName: node['name'] ?? 'Storage Node',
                                       storagePath: node['storage_path'] ?? '',
                                       isOnline: isOnline,
                                     ),
@@ -761,8 +767,7 @@ class _StoragePageState extends State<StoragePage> {
                               label: const Text(
                                 'Browse Physical Files',
                                 style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold),
+                                    fontSize: 12, fontWeight: FontWeight.bold),
                               ),
                             ),
                             const SizedBox(width: 8),

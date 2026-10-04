@@ -57,7 +57,8 @@ class _PhysicalStorageBrowserPageState
     if (path.isEmpty) {
       _breadcrumbs = [];
     } else {
-      final parts = path.split(RegExp(r'[\\/]')).where((p) => p.isNotEmpty).toList();
+      final parts =
+          path.split(RegExp(r'[\\/]')).where((p) => p.isNotEmpty).toList();
       _breadcrumbs = parts;
     }
   }
@@ -71,9 +72,8 @@ class _PhysicalStorageBrowserPageState
     try {
       final res = await _repo.listStorageNodeFs(widget.nodeId, path: path);
       final rawEntries = res['entries'] as List? ?? [];
-      final entries = rawEntries
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      final entries =
+          rawEntries.map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
       if (mounted) {
         setState(() {
@@ -94,9 +94,8 @@ class _PhysicalStorageBrowserPageState
   }
 
   void _navigateToFolder(String folderName) {
-    final newPath = _currentPath.isEmpty
-        ? folderName
-        : '$_currentPath/$folderName';
+    final newPath =
+        _currentPath.isEmpty ? folderName : '$_currentPath/$folderName';
     _loadDirectory(newPath);
   }
 
@@ -112,7 +111,8 @@ class _PhysicalStorageBrowserPageState
   List<Map<String, dynamic>> get _filteredAndSortedEntries {
     var list = _entries.where((e) {
       final name = (e['name'] ?? '').toString().toLowerCase();
-      if (_searchQuery.isNotEmpty && !name.contains(_searchQuery.toLowerCase())) {
+      if (_searchQuery.isNotEmpty &&
+          !name.contains(_searchQuery.toLowerCase())) {
         return false;
       }
       return true;
@@ -191,9 +191,8 @@ class _PhysicalStorageBrowserPageState
               if (name.isEmpty) return;
               Navigator.pop(ctx);
 
-              final targetPath = _currentPath.isEmpty
-                  ? name
-                  : '$_currentPath/$name';
+              final targetPath =
+                  _currentPath.isEmpty ? name : '$_currentPath/$name';
               try {
                 await _repo.mkdirStorageNodeFs(widget.nodeId, targetPath);
                 if (!mounted) return;
@@ -239,11 +238,13 @@ class _PhysicalStorageBrowserPageState
           ),
           const SizedBox(width: 12),
           Text(isDir ? 'Delete Folder?' : 'Delete File?',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ]),
         content: Text(
           'Are you sure you want to permanently delete "$name" from physical storage?\nThis action cannot be undone.',
-          style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context)),
+          style:
+              TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context)),
         ),
         actions: [
           TextButton(
@@ -290,10 +291,28 @@ class _PhysicalStorageBrowserPageState
     final streamUrl = _repo.nodeFsStreamUrl(widget.nodeId, itemPath);
 
     final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
-    final isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].contains(ext);
+    final isImage =
+        ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].contains(ext);
     final isVideo = ['mp4', 'mkv', 'webm', 'mov', 'avi'].contains(ext);
     final isAudio = ['mp3', 'flac', 'wav', 'aac', 'ogg', 'm4a'].contains(ext);
-    final isText = ['txt', 'md', 'json', 'yaml', 'yml', 'xml', 'csv', 'rs', 'dart', 'ts', 'js', 'py', 'sh', 'log', 'toml', 'env'].contains(ext);
+    final isText = [
+      'txt',
+      'md',
+      'json',
+      'yaml',
+      'yml',
+      'xml',
+      'csv',
+      'rs',
+      'dart',
+      'ts',
+      'js',
+      'py',
+      'sh',
+      'log',
+      'toml',
+      'env'
+    ].contains(ext);
 
     if (isImage) {
       showDialog(
@@ -307,14 +326,17 @@ class _PhysicalStorageBrowserPageState
               AppBar(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
-                title: Text(name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                title: Text(name,
+                    style: const TextStyle(color: Colors.white, fontSize: 14)),
                 actions: [
                   IconButton(
-                    icon: const Icon(Icons.download_rounded, color: Colors.white70),
+                    icon: const Icon(Icons.download_rounded,
+                        color: Colors.white70),
                     onPressed: () => platform.downloadFileUrl(streamUrl, name),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                    icon:
+                        const Icon(Icons.close_rounded, color: Colors.white70),
                     onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
@@ -326,7 +348,8 @@ class _PhysicalStorageBrowserPageState
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => const Padding(
                       padding: EdgeInsets.all(40),
-                      child: Text('Failed to load image', style: TextStyle(color: Colors.white60)),
+                      child: Text('Failed to load image',
+                          style: TextStyle(color: Colors.white60)),
                     ),
                   ),
                 ),
@@ -343,7 +366,8 @@ class _PhysicalStorageBrowserPageState
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: AppTheme.surfaceColor(context),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(children: [
             Icon(isVideo ? Icons.movie_rounded : Icons.audiotrack_rounded,
                 color: AppTheme.accent, size: 24),
@@ -352,7 +376,8 @@ class _PhysicalStorageBrowserPageState
               child: Text(name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ]),
           content: Column(
@@ -409,16 +434,15 @@ class _PhysicalStorageBrowserPageState
                         data['audio_codec']?.toString().toUpperCase() ?? 'N/A';
                     final w = data['width'];
                     final h = data['height'];
-                    final resStr =
-                        (w != null && h != null) ? '${w}x$h' : null;
+                    final resStr = (w != null && h != null) ? '${w}x$h' : null;
 
                     return Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: AppTheme.borderColor(context)),
+                        border:
+                            Border.all(color: AppTheme.borderColor(context)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,11 +530,13 @@ class _PhysicalStorageBrowserPageState
     ));
   }
 
-  void _showTextFilePreview(String name, String itemPath, String streamUrl) async {
+  void _showTextFilePreview(
+      String name, String itemPath, String streamUrl) async {
     showDialog(
       context: context,
       builder: (ctx) => FutureBuilder<Map<String, dynamic>>(
-        future: _repo.readStorageNodeFsChunk(widget.nodeId, itemPath, offset: 0, length: 65536),
+        future: _repo.readStorageNodeFsChunk(widget.nodeId, itemPath,
+            offset: 0, length: 65536),
         builder: (ctx, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -525,12 +551,14 @@ class _PhysicalStorageBrowserPageState
               textContent = 'Error decoding text file: $e';
             }
           } else {
-            textContent = 'Unable to read file content: ${snapshot.error ?? "Empty chunk"}';
+            textContent =
+                'Unable to read file content: ${snapshot.error ?? "Empty chunk"}';
           }
 
           return Dialog(
             backgroundColor: AppTheme.surfaceColor(context),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             insetPadding: const EdgeInsets.all(24),
             child: SizedBox(
               width: 800,
@@ -545,7 +573,8 @@ class _PhysicalStorageBrowserPageState
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(name,
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                            style: const TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.bold)),
                       ),
                     ]),
                     actions: [
@@ -554,7 +583,8 @@ class _PhysicalStorageBrowserPageState
                         tooltip: 'Copy Content',
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: textContent));
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
                             content: Text('Content copied to clipboard'),
                           ));
                         },
@@ -562,7 +592,8 @@ class _PhysicalStorageBrowserPageState
                       IconButton(
                         icon: const Icon(Icons.download_rounded, size: 18),
                         tooltip: 'Download',
-                        onPressed: () => platform.downloadFileUrl(streamUrl, name),
+                        onPressed: () =>
+                            platform.downloadFileUrl(streamUrl, name),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close_rounded),
@@ -702,13 +733,15 @@ class _PhysicalStorageBrowserPageState
           children: [
             Row(children: [
               Text(widget.nodeName,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: (widget.isOnline ? AppTheme.success : AppTheme.textMuted)
-                      .withOpacity(0.15),
+                  color:
+                      (widget.isOnline ? AppTheme.success : AppTheme.textMuted)
+                          .withOpacity(0.15),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -716,14 +749,16 @@ class _PhysicalStorageBrowserPageState
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: widget.isOnline ? AppTheme.success : AppTheme.textMuted,
+                    color:
+                        widget.isOnline ? AppTheme.success : AppTheme.textMuted,
                   ),
                 ),
               ),
             ]),
             Text(
               'Physical Mount: ${widget.storagePath}',
-              style: TextStyle(fontSize: 11, color: AppTheme.textMutedColor(context)),
+              style: TextStyle(
+                  fontSize: 11, color: AppTheme.textMutedColor(context)),
             ),
           ],
         ),
@@ -734,7 +769,9 @@ class _PhysicalStorageBrowserPageState
             onPressed: () => _loadDirectory(_currentPath),
           ),
           IconButton(
-            icon: Icon(_isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
+            icon: Icon(_isGridView
+                ? Icons.view_list_rounded
+                : Icons.grid_view_rounded),
             tooltip: _isGridView ? 'List View' : 'Grid View',
             onPressed: () => setState(() => _isGridView = !_isGridView),
           ),
@@ -759,12 +796,15 @@ class _PhysicalStorageBrowserPageState
                   onTap: () => _navigateToBreadcrumb(-1),
                   borderRadius: BorderRadius.circular(6),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     child: Row(children: [
-                      const Icon(Icons.storage_rounded, size: 16, color: AppTheme.primary),
+                      const Icon(Icons.storage_rounded,
+                          size: 16, color: AppTheme.primary),
                       const SizedBox(width: 6),
                       Text(widget.storagePath,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.bold)),
                     ]),
                   ),
                 ),
@@ -777,12 +817,14 @@ class _PhysicalStorageBrowserPageState
                         final seg = _breadcrumbs[idx];
                         return Row(
                           children: [
-                            const Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey),
+                            const Icon(Icons.chevron_right_rounded,
+                                size: 16, color: Colors.grey),
                             InkWell(
                               onTap: () => _navigateToBreadcrumb(idx),
                               borderRadius: BorderRadius.circular(6),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 4),
                                 child: Text(
                                   seg,
                                   style: TextStyle(
@@ -808,22 +850,26 @@ class _PhysicalStorageBrowserPageState
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   onPressed: _showCreateFolderDialog,
                   icon: const Icon(Icons.create_new_folder_rounded, size: 16),
-                  label: const Text('New Folder', style: TextStyle(fontSize: 12)),
+                  label:
+                      const Text('New Folder', style: TextStyle(fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.accent,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   onPressed: _triggerUpload,
                   icon: const Icon(Icons.upload_file_rounded, size: 16),
-                  label: const Text('Upload File', style: TextStyle(fontSize: 12)),
+                  label:
+                      const Text('Upload File', style: TextStyle(fontSize: 12)),
                 ),
               ],
             ),
@@ -846,7 +892,8 @@ class _PhysicalStorageBrowserPageState
                         contentPadding: const EdgeInsets.symmetric(vertical: 0),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppTheme.borderColor(context)),
+                          borderSide:
+                              BorderSide(color: AppTheme.borderColor(context)),
                         ),
                       ),
                     ),
@@ -857,16 +904,22 @@ class _PhysicalStorageBrowserPageState
                   value: _sortBy,
                   underline: const SizedBox(),
                   items: const [
-                    DropdownMenuItem(value: 'name', child: Text('Sort by Name')),
-                    DropdownMenuItem(value: 'size', child: Text('Sort by Size')),
-                    DropdownMenuItem(value: 'date', child: Text('Sort by Date')),
+                    DropdownMenuItem(
+                        value: 'name', child: Text('Sort by Name')),
+                    DropdownMenuItem(
+                        value: 'size', child: Text('Sort by Size')),
+                    DropdownMenuItem(
+                        value: 'date', child: Text('Sort by Date')),
                   ],
                   onChanged: (val) {
                     if (val != null) setState(() => _sortBy = val);
                   },
                 ),
                 IconButton(
-                  icon: Icon(_sortAsc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                  icon: Icon(
+                      _sortAsc
+                          ? Icons.arrow_upward_rounded
+                          : Icons.arrow_downward_rounded,
                       size: 18),
                   tooltip: _sortAsc ? 'Ascending' : 'Descending',
                   onPressed: () => setState(() => _sortAsc = !_sortAsc),
@@ -890,17 +943,20 @@ class _PhysicalStorageBrowserPageState
                                   size: 48, color: AppTheme.error),
                               const SizedBox(height: 16),
                               Text('Physical Storage Error',
-                                  style: Theme.of(context).textTheme.titleLarge),
+                                  style:
+                                      Theme.of(context).textTheme.titleLarge),
                               const SizedBox(height: 8),
                               Text(
                                 _error!,
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: AppTheme.textMutedColor(context)),
+                                style: TextStyle(
+                                    color: AppTheme.textMutedColor(context)),
                               ),
                               const SizedBox(height: 20),
                               ElevatedButton.icon(
                                 onPressed: () => _loadDirectory(_currentPath),
-                                icon: const Icon(Icons.refresh_rounded, size: 18),
+                                icon:
+                                    const Icon(Icons.refresh_rounded, size: 18),
                                 label: const Text('Retry Connection'),
                               ),
                             ],
@@ -913,11 +969,13 @@ class _PhysicalStorageBrowserPageState
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.folder_open_rounded,
-                                    size: 56, color: Colors.grey.withOpacity(0.5)),
+                                    size: 56,
+                                    color: Colors.grey.withOpacity(0.5)),
                                 const SizedBox(height: 16),
                                 const Text('This directory is empty',
                                     style: TextStyle(
-                                        fontSize: 16, fontWeight: FontWeight.bold)),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 8),
                                 Text(
                                   'Upload a file or create a folder on this physical drive.',
@@ -967,9 +1025,7 @@ class _PhysicalStorageBrowserPageState
                 fontSize: 14,
               )),
           subtitle: Text(
-            isDir
-                ? 'Directory'
-                : formatFileSize(sizeBytes),
+            isDir ? 'Directory' : formatFileSize(sizeBytes),
             style: TextStyle(
               fontSize: 12,
               color: AppTheme.textMutedColor(context),

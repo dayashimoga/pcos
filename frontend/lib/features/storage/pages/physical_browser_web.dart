@@ -41,9 +41,8 @@ void pickAndUploadToNode({
       try {
         final bytes = reader.result as List<int>;
         final base64Data = base64Encode(bytes);
-        final targetPath = currentPath.isEmpty
-            ? file.name
-            : '$currentPath/${file.name}';
+        final targetPath =
+            currentPath.isEmpty ? file.name : '$currentPath/${file.name}';
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Uploading "${file.name}" to physical disk...'),
