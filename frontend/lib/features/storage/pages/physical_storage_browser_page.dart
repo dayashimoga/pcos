@@ -158,7 +158,7 @@ class _PhysicalStorageBrowserPageState
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.12),
+              color: AppTheme.primary.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.create_new_folder_rounded,
@@ -231,7 +231,7 @@ class _PhysicalStorageBrowserPageState
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.error.withValues(alpha: 0.12),
+              color: AppTheme.error.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.delete_forever_rounded,
@@ -362,7 +362,7 @@ class _PhysicalStorageBrowserPageState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.accent.withValues(alpha: 0.1),
+                  color: AppTheme.accent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Row(children: [
@@ -415,7 +415,7 @@ class _PhysicalStorageBrowserPageState
                     return Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: Colors.black.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                             color: AppTheme.borderColor(context)),
@@ -575,7 +575,7 @@ class _PhysicalStorageBrowserPageState
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
-                      color: Colors.black.withValues(alpha: 0.1),
+                      color: Colors.black.withOpacity(0.1),
                       child: SingleChildScrollView(
                         child: SelectableText(
                           textContent,
@@ -708,7 +708,7 @@ class _PhysicalStorageBrowserPageState
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: (widget.isOnline ? AppTheme.success : AppTheme.textMuted)
-                      .withValues(alpha: 0.15),
+                      .withOpacity(0.15),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -913,7 +913,7 @@ class _PhysicalStorageBrowserPageState
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.folder_open_rounded,
-                                    size: 56, color: Colors.grey.withValues(alpha: 0.5)),
+                                    size: 56, color: Colors.grey.withOpacity(0.5)),
                                 const SizedBox(height: 16),
                                 const Text('This directory is empty',
                                     style: TextStyle(
@@ -942,7 +942,7 @@ class _PhysicalStorageBrowserPageState
       itemCount: items.length,
       separatorBuilder: (_, __) => Divider(
         height: 1,
-        color: AppTheme.borderColor(context).withValues(alpha: 0.5),
+        color: AppTheme.borderColor(context).withOpacity(0.5),
       ),
       itemBuilder: (context, idx) {
         final item = items[idx];
@@ -956,7 +956,7 @@ class _PhysicalStorageBrowserPageState
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 22),
@@ -1045,7 +1045,7 @@ class _PhysicalStorageBrowserPageState
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
+                    color: color.withOpacity(0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: color, size: 28),
@@ -1088,7 +1088,7 @@ class _MetadataTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.1),
+        color: AppTheme.primary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text('$label: $value',

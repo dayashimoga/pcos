@@ -122,7 +122,7 @@ class _DevicesContent extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.12),
+                        color: AppTheme.primary.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.devices_rounded,
@@ -149,10 +149,10 @@ class _DevicesContent extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.08),
+                    color: AppTheme.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: AppTheme.primary.withValues(alpha: 0.2)),
+                        color: AppTheme.primary.withOpacity(0.2)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,10 +212,10 @@ class _DevicesContent extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
+                    color: Colors.black.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1)),
+                        color: Colors.white.withOpacity(0.1)),
                   ),
                   child: Row(
                     children: [
