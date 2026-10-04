@@ -152,10 +152,10 @@ export default {
       }
 
       return new Response('PCOS Edge Control Plane Active', { status: 200 });
-    } catch (err) {
+    } catch (err: any) {
       console.error('PCOS Edge uncaught error:', err);
       return Response.json(
-        { error: 'Internal edge server error' },
+        { error: 'Internal edge server error', details: err?.message || String(err) },
         { status: 500, headers: corsHeaders }
       );
     }
@@ -1805,6 +1805,14 @@ async function handleApiRequest(
     const now = new Date().toISOString();
     const advertisedNodes: any[] = [];
 
+    // Ensure columns exist in live D1 if schema was migrated from earlier version
+    try {
+      await env.DB.prepare('ALTER TABLE storage_nodes ADD COLUMN volume_uuid TEXT').run();
+    } catch (_) {}
+    try {
+      await env.DB.prepare('ALTER TABLE storage_nodes ADD COLUMN fs_type TEXT').run();
+    } catch (_) {}
+
     for (const disk of body.disks) {
       if (!disk.mount_point || typeof disk.total_capacity_bytes !== 'number') {
         continue;
@@ -1840,45 +1848,87 @@ async function handleApiRequest(
       );
 
       if (existing) {
-        await env.DB.prepare(
-          `UPDATE storage_nodes
-           SET name = ?1, volume_uuid = ?2, fs_type = ?3, total_capacity_bytes = ?4,
-               available_capacity_bytes = ?5, is_online = 1, capabilities_json = ?6, updated_at = ?7
-           WHERE id = ?8`
-        )
-          .bind(
-            nodeName,
-            disk.volume_uuid || null,
-            disk.fs_type || 'unknown',
-            disk.total_capacity_bytes,
-            disk.available_capacity_bytes,
-            caps,
-            now,
-            nodeId
+        try {
+          await env.DB.prepare(
+            `UPDATE storage_nodes
+             SET name = ?1, volume_uuid = ?2, fs_type = ?3, total_capacity_bytes = ?4,
+                 available_capacity_bytes = ?5, is_online = 1, capabilities_json = ?6, updated_at = ?7
+             WHERE id = ?8`
           )
-          .run();
+            .bind(
+              nodeName,
+              disk.volume_uuid || null,
+              disk.fs_type || 'unknown',
+              disk.total_capacity_bytes,
+              disk.available_capacity_bytes,
+              caps,
+              now,
+              nodeId
+            )
+            .run();
+        } catch (_) {
+          // Fallback if table lacks volume_uuid / fs_type
+          await env.DB.prepare(
+            `UPDATE storage_nodes
+             SET name = ?1, total_capacity_bytes = ?2,
+                 available_capacity_bytes = ?3, is_online = 1, capabilities_json = ?4, updated_at = ?5
+             WHERE id = ?6`
+          )
+            .bind(
+              nodeName,
+              disk.total_capacity_bytes,
+              disk.available_capacity_bytes,
+              caps,
+              now,
+              nodeId
+            )
+            .run();
+        }
       } else {
-        await env.DB.prepare(
-          `INSERT INTO storage_nodes (
-             id, device_id, user_id, name, storage_path, volume_uuid, fs_type,
-             total_capacity_bytes, available_capacity_bytes, is_online, capabilities_json, created_at, updated_at
-           )
-           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 1, ?10, ?11, ?11)`
-        )
-          .bind(
-            nodeId,
-            body.device_id,
-            userPayload.sub,
-            nodeName,
-            disk.mount_point,
-            disk.volume_uuid || null,
-            disk.fs_type || 'unknown',
-            disk.total_capacity_bytes,
-            disk.available_capacity_bytes,
-            caps,
-            now
+        try {
+          await env.DB.prepare(
+            `INSERT INTO storage_nodes (
+               id, device_id, user_id, name, storage_path, volume_uuid, fs_type,
+               total_capacity_bytes, available_capacity_bytes, is_online, capabilities_json, created_at, updated_at
+             )
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 1, ?10, ?11, ?11)`
           )
-          .run();
+            .bind(
+              nodeId,
+              body.device_id,
+              userPayload.sub,
+              nodeName,
+              disk.mount_point,
+              disk.volume_uuid || null,
+              disk.fs_type || 'unknown',
+              disk.total_capacity_bytes,
+              disk.available_capacity_bytes,
+              caps,
+              now
+            )
+            .run();
+        } catch (_) {
+          // Fallback if table lacks volume_uuid / fs_type
+          await env.DB.prepare(
+            `INSERT INTO storage_nodes (
+               id, device_id, user_id, name, storage_path,
+               total_capacity_bytes, available_capacity_bytes, is_online, capabilities_json, created_at, updated_at
+             )
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?9, ?9)`
+          )
+            .bind(
+              nodeId,
+              body.device_id,
+              userPayload.sub,
+              nodeName,
+              disk.mount_point,
+              disk.total_capacity_bytes,
+              disk.available_capacity_bytes,
+              caps,
+              now
+            )
+            .run();
+        }
       }
 
       advertisedNodes.push({

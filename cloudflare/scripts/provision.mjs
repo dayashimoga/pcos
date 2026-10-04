@@ -86,6 +86,9 @@ async function provision() {
     console.log('\n📄 Executing schema.sql on D1 (pcos-control-db)...');
     try {
       run('npx wrangler d1 execute pcos-control-db --file=./schema.sql --remote --yes');
+      // Apply column migrations if table existed from earlier revision
+      run('npx wrangler d1 execute pcos-control-db --command="ALTER TABLE storage_nodes ADD COLUMN volume_uuid TEXT;" --remote --yes', true);
+      run('npx wrangler d1 execute pcos-control-db --command="ALTER TABLE storage_nodes ADD COLUMN fs_type TEXT;" --remote --yes', true);
       console.log('  ✓ Database schema applied successfully');
     } catch (e) {
       console.warn(`  ⚠️ Schema migration returned: ${e.message}`);
