@@ -91,13 +91,18 @@ impl FsHandler {
             .map_err(|_| FsError::InvalidRoot(root.display().to_string()))?;
 
         // Sanitize rel_path: normalize separators and strip leading slashes
-        let cleaned = rel_path
+        let normalized = rel_path.replace('\\', "/");
+        let cleaned = normalized
             .trim()
-            .trim_start_matches('/')
-            .trim_start_matches('\\');
+            .trim_start_matches('/');
+
+        // Reject drive prefixes on any OS (e.g. C:, D:)
+        if cleaned.len() >= 2 && cleaned.as_bytes()[1] == b':' && cleaned.as_bytes()[0].is_ascii_alphabetic() {
+            return Err(FsError::PathTraversal(rel_path.to_string()));
+        }
 
         // Check for suspicious components before path joining
-        let path = Path::new(cleaned);
+        let path = Path::new(&cleaned);
         for component in path.components() {
             match component {
                 Component::ParentDir => {
@@ -153,7 +158,7 @@ impl FsHandler {
         let read_dir = fs::read_dir(&full_path).map_err(FsError::Io)?;
         let mut entries = Vec::new();
 
-        let clean_rel = rel_path.trim().trim_start_matches('/').trim_start_matches('\\');
+        let clean_rel = rel_path.replace('\\', "/").trim().trim_start_matches('/').to_string();
 
         for entry_res in read_dir {
             let entry = match entry_res {
@@ -232,7 +237,7 @@ impl FsHandler {
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "root".into());
 
-        let clean_rel = rel_path.trim().trim_start_matches('/').trim_start_matches('\\');
+        let clean_rel = rel_path.replace('\\', "/").trim().trim_start_matches('/').to_string();
 
         let entry = FsEntry {
             name: name.clone(),
