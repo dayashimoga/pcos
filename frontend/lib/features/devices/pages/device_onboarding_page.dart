@@ -453,6 +453,74 @@ class _DeviceOnboardingPageState extends State<DeviceOnboardingPage>
                       icon: const Icon(Icons.link_rounded, size: 16),
                       label: const Text('Copy Direct Pairing Link'),
                     ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.backgroundColor(context),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppTheme.borderColor(context)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.terminal_rounded,
+                                size: 16, color: AppTheme.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              'PC / Laptop / Server Onboarding:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimaryColor(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: SelectableText(
+                                  'pcos-agent enroll ${_onboardingCode!} --start',
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 12,
+                                    color: Colors.greenAccent,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.copy_rounded, size: 16),
+                                tooltip: 'Copy 1-Command Onboarding',
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(
+                                      text:
+                                          'pcos-agent enroll ${_onboardingCode!} --start'));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Copied 1-command onboarding script!'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
 
                 if (_error != null) ...[

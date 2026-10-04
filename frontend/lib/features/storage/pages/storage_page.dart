@@ -166,7 +166,68 @@ class _StoragePageState extends State<StoragePage> {
                       color: AppTheme.textMutedColor(context)),
                 ),
                 const SizedBox(height: 16),
-                Text('Agent Command (Run on Node):',
+                Text('First Time Setup (Pairs & Starts in 1 Step):',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryColor(context))),
+                const SizedBox(height: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: SelectableText(
+                          'pcos-agent enroll --start',
+                          style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                              color: Colors.greenAccent),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Copy Command',
+                        icon: const Icon(Icons.copy_rounded, size: 16),
+                        onPressed: () {
+                          Clipboard.setData(const ClipboardData(
+                              text: 'pcos-agent enroll --start'));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Copied 1-step onboarding command'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                      ),
+                      icon: const Icon(Icons.qr_code_rounded, size: 16),
+                      label: const Text('Get 6-Digit Pairing Code',
+                          style: TextStyle(fontSize: 12)),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        context.go('/devices/pair');
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text('If Machine Already Enrolled:',
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -188,7 +249,7 @@ class _StoragePageState extends State<StoragePage> {
                           style: TextStyle(
                               fontFamily: 'monospace',
                               fontSize: 13,
-                              color: Colors.greenAccent),
+                              color: Colors.white70),
                         ),
                       ),
                       IconButton(

@@ -48,13 +48,25 @@ struct Cli {
 enum Commands {
     /// One-command device pairing and node enrollment
     Enroll {
-        /// 6-digit pairing code from your PCOS Web or Mobile app
-        #[arg(short, long)]
-        code: String,
+        /// 6-digit pairing code from your PCOS Web or Mobile app (positional or prompt)
+        #[arg(index = 1)]
+        code: Option<String>,
+
+        /// 6-digit pairing code flag (e.g. -c 123456)
+        #[arg(short = 'c', long = "code")]
+        code_flag: Option<String>,
 
         /// PCOS Control Plane server URL
-        #[arg(short, long, default_value = "http://localhost:8080")]
+        #[arg(
+            short,
+            long,
+            default_value = "https://pcos-control-plane.dayashimoga.workers.dev"
+        )]
         server: String,
+
+        /// Immediately start the agent daemon after successful enrollment
+        #[arg(long, alias = "daemon")]
+        start: bool,
     },
 
     /// Run node health diagnostics (storage, networking, CGNAT, control plane, FFmpeg)
@@ -64,7 +76,11 @@ enum Commands {
         storage: String,
 
         /// PCOS Control Plane server URL
-        #[arg(short, long, default_value = "http://localhost:8080")]
+        #[arg(
+            short,
+            long,
+            default_value = "https://pcos-control-plane.dayashimoga.workers.dev"
+        )]
         server: String,
     },
 
@@ -98,8 +114,47 @@ async fn main() -> anyhow::Result<()> {
     // Handle subcommands first
     if let Some(cmd) = cli.command {
         match cmd {
-            Commands::Enroll { code, server } => {
-                return enroll::enroll_node_with_code(&code, &server, &config_path).await;
+            Commands::Enroll {
+                code,
+                code_flag,
+                server,
+                start,
+            } => {
+                let code_str = match code.or(code_flag) {
+                    Some(c) if !c.trim().is_empty() => c.trim().to_string(),
+                    _ => {
+                        println!();
+                        println!("+------------------------------------------------------------+");
+                        println!("|          PCOS Physical Node Onboarding                     |");
+                        println!("+------------------------------------------------------------+");
+                        println!("Enter the 6-digit pairing code from your PCOS web or app screen:");
+                        print!("Pairing Code > ");
+                        use std::io::{self, Write};
+                        io::stdout().flush().ok();
+                        let mut input = String::new();
+                        io::stdin().read_line(&mut input)?;
+                        let trimmed = input.trim().to_string();
+                        if trimmed.is_empty() {
+                            anyhow::bail!("Pairing cancelled: no pairing code entered.");
+                        }
+                        trimmed
+                    }
+                };
+
+                enroll::enroll_node_with_code(&code_str, &server, &config_path).await?;
+
+                if !start {
+                    print!("Start PCOS agent daemon now? [Y/n] > ");
+                    use std::io::{self, Write};
+                    io::stdout().flush().ok();
+                    let mut input = String::new();
+                    io::stdin().read_line(&mut input)?;
+                    let ans = input.trim().to_lowercase();
+                    if !ans.is_empty() && ans != "y" && ans != "yes" {
+                        return Ok(());
+                    }
+                }
+                // Fall through to daemon startup below
             }
             Commands::Doctor { storage, server } => {
                 let report = doctor::DoctorReport::run_diagnostics(&storage, &server).await;
@@ -119,7 +174,30 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Load or create config
-    let agent_config = config::AgentConfig::load_or_create(&config_path)?;
+    let mut agent_config = config::AgentConfig::load_or_create(&config_path)?;
+
+    // If device is not enrolled yet, prompt interactively instead of failing connection
+    if agent_config.auth_token.is_empty() || agent_config.device_id.is_empty() {
+        println!();
+        println!("+------------------------------------------------------------+");
+        println!("|           PCOS Node Setup — First-Time Pairing             |");
+        println!("+------------------------------------------------------------+");
+        println!("This machine is not yet paired with your PCOS personal cloud.");
+        println!("1. Open: {}/#/devices", agent_config.server_url);
+        println!("2. Click [Connect Physical Device] to get your 6-digit code.");
+        println!();
+        print!("Enter 6-digit pairing code > ");
+        use std::io::{self, Write};
+        io::stdout().flush().ok();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let code = input.trim();
+        if code.is_empty() {
+            anyhow::bail!("Pairing cancelled: no pairing code entered.");
+        }
+        enroll::enroll_node_with_code(code, &agent_config.server_url, &config_path).await?;
+        agent_config = config::AgentConfig::load_or_create(&config_path)?;
+    }
 
     tracing::info!(server = %agent_config.server_url, "PCOS Agent starting");
 
