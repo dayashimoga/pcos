@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
@@ -43,7 +44,7 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _version = (versionData != null && versionData['version'] != null)
           ? versionData['version'].toString()
-          : '1.2.0';
+          : '1.8.0';
       _displayName = (userData != null && userData['display_name'] != null)
           ? userData['display_name'].toString()
           : '';
@@ -671,6 +672,27 @@ class _SettingsPageState extends State<SettingsPage> {
               onTap: () => _showDefaultViewDialog(context)),
         ]),
         const SizedBox(height: 24),
+        _SettingsSection(title: 'Advanced & Diagnostics', children: [
+          _SettingsTile(
+            icon: Icons.health_and_safety_rounded,
+            title: 'Doctor Diagnostics',
+            subtitle: 'Inspect node health, disk stats, CGNAT and control plane connectivity',
+            onTap: () => context.go('/doctor'),
+          ),
+          _SettingsTile(
+            icon: Icons.api_rounded,
+            title: 'API Explorer',
+            subtitle: 'Interactive live PCOS REST & WebSocket API testing workbench',
+            onTap: () => context.go('/admin/api'),
+          ),
+          _SettingsTile(
+            icon: Icons.admin_panel_settings_rounded,
+            title: 'Admin Console',
+            subtitle: 'Tenant management, audit logs, and edge policies',
+            onTap: () => context.go('/admin'),
+          ),
+        ]),
+        const SizedBox(height: 24),
         _SettingsSection(title: 'About', children: [
           _SettingsTile(
               icon: Icons.info_rounded,
@@ -678,7 +700,7 @@ class _SettingsPageState extends State<SettingsPage> {
               subtitle: 'PCOS v$_version',
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('PCOS v1.2.0 is up to date'),
+                    content: Text('PCOS v1.8.0 is up to date'),
                     backgroundColor: AppTheme.success));
               }),
           _SettingsTile(

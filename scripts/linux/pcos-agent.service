@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=%I
-ExecStart=/usr/local/bin/pcos-agent --config /etc/pcos/config.json
+ExecStart=/usr/local/bin/pcos-agent --config /etc/pcos/agent.toml
 Restart=always
 RestartSec=5s
 LimitNOFILE=65536

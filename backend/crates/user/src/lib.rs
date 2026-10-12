@@ -16,6 +16,10 @@ pub fn router() -> Router<AppState> {
             "/api/v1/users/me",
             get(handlers::get_profile).put(handlers::update_profile),
         )
+        .route(
+            "/api/v1/users/me/password",
+            put(handlers::change_password),
+        )
         // Admin routes (role-guarded inside handlers)
         .route("/api/v1/admin/users", get(admin::list_users))
         .route("/api/v1/admin/users/role", put(admin::update_role))

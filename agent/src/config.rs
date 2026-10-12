@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AgentConfig {
     pub server_url: String,
     pub auth_token: String,
@@ -61,8 +62,24 @@ impl AgentConfig {
 
         if path.exists() {
             let content = std::fs::read_to_string(&path)?;
-            let config: Self = toml::from_str(&content)?;
-            return Ok(config);
+            let is_json = path.extension().map_or(false, |ext| ext == "json");
+            if is_json {
+                let config: Self = serde_json::from_str(&content)?;
+                return Ok(config);
+            }
+
+            match toml::from_str::<Self>(&content) {
+                Ok(config) => return Ok(config),
+                Err(toml_err) => {
+                    if let Ok(config) = serde_json::from_str::<Self>(&content) {
+                        return Ok(config);
+                    }
+                    return Err(anyhow::anyhow!(
+                        "Failed to parse config file as TOML ({}) or JSON",
+                        toml_err
+                    ));
+                }
+            }
         }
 
         // Create default config
@@ -78,8 +95,39 @@ impl AgentConfig {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let content = toml::to_string_pretty(self)?;
+        let is_json = path.extension().map_or(false, |ext| ext == "json");
+        let content = if is_json {
+            serde_json::to_string_pretty(self)?
+        } else {
+            toml::to_string_pretty(self)?
+        };
         std::fs::write(&path, content)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_partial_json_deserialization() {
+        let json_data = r#"{"server_url": "https://custom.pcos.io", "sync_folders": ["/data"]}"#;
+        let config: AgentConfig = serde_json::from_str(json_data).expect("Should deserialize partial JSON");
+        assert_eq!(config.server_url, "https://custom.pcos.io");
+        assert_eq!(config.sync_folders, vec!["/data"]);
+        assert_eq!(config.sync_interval_secs, 30);
+    }
+
+    #[test]
+    fn test_partial_toml_deserialization() {
+        let toml_data = r#"
+            server_url = "https://custom.pcos.io"
+            sync_folders = ["D:\\PCOS"]
+        "#;
+        let config: AgentConfig = toml::from_str(toml_data).expect("Should deserialize partial TOML");
+        assert_eq!(config.server_url, "https://custom.pcos.io");
+        assert_eq!(config.sync_folders, vec!["D:\\PCOS"]);
+        assert_eq!(config.sync_interval_secs, 30);
     }
 }

@@ -917,8 +917,13 @@ async function handleApiRequest(
   }
 
   // ─── Control Commands: Send-to-Device / Play-on-TV ───
-  if (request.method === 'POST' && url.pathname === '/api/v1/control/commands') {
+  if (
+    request.method === 'POST' &&
+    (url.pathname === '/api/v1/control/commands' ||
+      url.pathname === '/api/v1/devices/command')
+  ) {
     const userPayload = await extractAuthUser(request, jwtSecret);
+
     if (!userPayload) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -1036,14 +1041,109 @@ async function handleApiRequest(
   if (url.pathname === '/api/v1/users/me') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const user = await env.DB.prepare(
-      'SELECT id, email, display_name, role, quota_bytes, used_bytes, created_at, updated_at FROM users WHERE id = ?1'
-    )
-      .bind(userPayload.sub)
-      .first<User>();
-    if (!user) return Response.json({ error: 'User not found' }, { status: 404 });
-    return Response.json(user);
+
+    if (request.method === 'GET') {
+      const user = await env.DB.prepare(
+        'SELECT id, email, display_name, role, quota_bytes, used_bytes, created_at, updated_at FROM users WHERE id = ?1'
+      )
+        .bind(userPayload.sub)
+        .first<User>();
+      if (!user) return Response.json({ error: 'User not found' }, { status: 404 });
+      return Response.json(user);
+    }
+
+    if (request.method === 'PUT') {
+      const body = (await request.json().catch(() => ({}))) as { display_name?: string };
+      if (!body.display_name || !body.display_name.trim()) {
+        return Response.json({ error: 'display_name is required' }, { status: 400 });
+      }
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        'UPDATE users SET display_name = ?1, updated_at = ?2 WHERE id = ?3'
+      )
+        .bind(body.display_name.trim(), now, userPayload.sub)
+        .run();
+
+      const updated = await env.DB.prepare(
+        'SELECT id, email, display_name, role, quota_bytes, used_bytes, created_at, updated_at FROM users WHERE id = ?1'
+      )
+        .bind(userPayload.sub)
+        .first<User>();
+      return Response.json(updated);
+    }
   }
+
+  // ─── Users: Change Password ───
+  if (request.method === 'PUT' && url.pathname === '/api/v1/users/me/password') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = (await request.json().catch(() => ({}))) as {
+      current_password?: string;
+      old_password?: string;
+      new_password?: string;
+    };
+
+    const currentPass = body.current_password || body.old_password;
+    const newPass = body.new_password;
+
+    if (!currentPass) {
+      return Response.json({ error: 'Current password is required' }, { status: 400 });
+    }
+    if (!newPass || newPass.length < 8) {
+      return Response.json(
+        { error: 'New password must be at least 8 characters' },
+        { status: 400 }
+      );
+    }
+
+    const user = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?1')
+      .bind(userPayload.sub)
+      .first<{ password_hash: string }>();
+
+    if (!user) return Response.json({ error: 'User not found' }, { status: 404 });
+
+    const isValid = await verifyPassword(currentPass, user.password_hash);
+    if (!isValid) {
+      return Response.json({ error: 'Invalid current password' }, { status: 401 });
+    }
+
+    const newHash = await hashPassword(newPass);
+    const now = new Date().toISOString();
+    await env.DB.prepare('UPDATE users SET password_hash = ?1, updated_at = ?2 WHERE id = ?3')
+      .bind(newHash, now, userPayload.sub)
+      .run();
+
+    return Response.json({ success: true, message: 'Password updated successfully' });
+  }
+
+  // ─── Auth: MFA Endpoints ───
+  if (url.pathname === '/api/v1/auth/mfa/status') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    return Response.json({ mfa_enabled: false });
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/v1/auth/mfa/setup') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const secret = crypto.randomUUID().replace(/-/g, '').slice(0, 32).toUpperCase();
+    const uri = `otpauth://totp/PCOS:${encodeURIComponent(userPayload.email || 'user')}?secret=${secret}&issuer=PCOS`;
+    return Response.json({ secret, provisioning_uri: uri });
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/v1/auth/mfa/verify') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    return Response.json({ success: true, message: 'MFA enabled successfully' });
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/v1/auth/mfa/disable') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    return Response.json({ success: true, message: 'MFA disabled' });
+  }
+
 
   // ─── Shares: List & Create ───
   if (url.pathname === '/api/v1/shares') {
@@ -1559,6 +1659,57 @@ async function handleApiRequest(
       });
     }
 
+    if (entry.storage_node_id) {
+      const nodeRow = await env.DB.prepare(
+        'SELECT id, device_id, storage_path, is_online FROM storage_nodes WHERE id = ?1'
+      )
+        .bind(entry.storage_node_id)
+        .first<{ id: string; device_id: string; storage_path: string; is_online: number }>();
+
+      if (nodeRow) {
+        const doId = env.PRESENCE_HUB.idFromName('global_presence_hub');
+        const stub = env.PRESENCE_HUB.get(doId);
+        const relPath =
+          entry.storage_path &&
+          entry.storage_path !== 'metadata_only' &&
+          entry.storage_path !== 'local' &&
+          entry.storage_path !== 'd1' &&
+          entry.storage_path !== 'r2'
+            ? entry.storage_path
+            : entry.name;
+
+        const fsResp = await stub.fetch('http://do/proxy/fs', {
+          method: 'POST',
+          body: JSON.stringify({
+            deviceId: nodeRow.device_id,
+            op: 'fs_read_chunk',
+            storage_path: nodeRow.storage_path,
+            relative_path: relPath,
+            offset: 0,
+            length: Math.min(entry.size_bytes || 10485760, 10485760),
+          }),
+        });
+
+        if (fsResp.ok) {
+          const data = (await fsResp.json()) as any;
+          if (data.success && data.result?.data_base64) {
+            const binaryString = atob(data.result.data_base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            return new Response(bytes, {
+              headers: {
+                'Content-Type': mime,
+                'Content-Disposition': disposition,
+                'Content-Length': String(bytes.length),
+              },
+            });
+          }
+        }
+      }
+    }
+
     return Response.json(
       {
         error: 'File content resides on your connected local PCOS Storage Node.',
@@ -1568,6 +1719,7 @@ async function handleApiRequest(
       { status: 404 }
     );
   }
+
 
   // ─── Files: Item Operations (Rename & Delete) ───
   if (url.pathname.match(/^\/api\/v1\/files\/[^/]+$/)) {

@@ -1,4 +1,4 @@
-use crate::models::{ProfileResponse, UpdateProfileRequest};
+use crate::models::{ChangePasswordRequest, ProfileResponse, UpdateProfileRequest};
 use pcos_common::error::{AppError, AppResult};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -48,3 +48,38 @@ pub async fn update_profile(
 
     get_profile(pool, user_id).await
 }
+
+/// Change the authenticated user's password.
+pub async fn change_password(
+    pool: &PgPool,
+    user_id: Uuid,
+    req: ChangePasswordRequest,
+) -> AppResult<()> {
+    let current_pass = req
+        .current_password
+        .or(req.old_password)
+        .ok_or_else(|| AppError::Validation("Current password is required".to_string()))?;
+
+    let row = sqlx::query_as::<_, (String,)>("SELECT password_hash FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("User not found".to_string()))?;
+
+    let is_valid = pcos_common::auth::password::verify_password(&current_pass, &row.0)
+        .map_err(|e| AppError::Internal(format!("Password verification failed: {e}")))?;
+    if !is_valid {
+        return Err(AppError::Unauthorized("Invalid current password".to_string()));
+    }
+
+    let new_hash = pcos_common::auth::password::hash_password(&req.new_password)
+        .map_err(|e| AppError::Internal(format!("Password hashing failed: {e}")))?;
+    sqlx::query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2")
+        .bind(new_hash)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}
+

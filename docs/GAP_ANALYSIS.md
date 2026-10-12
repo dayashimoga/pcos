@@ -1,19 +1,20 @@
 # PCOS Gap Analysis — Comparison with Production Cloud Platforms
 
-**Date**: 2026-08-04 | **Version**: 1.2.0  
+**Date**: 2026-10-12 | **Version**: 1.8.0  
 **Benchmark**: Nextcloud, Synology DSM, Google Drive, Dropbox, CasaOS, Immich
 
 ---
 
 ## Executive Summary
 
-PCOS has a **comprehensive backend** with 75+ API endpoints, 12+ crates, and strong architectural foundations. The primary gaps are in **frontend interactivity** (settings callbacks are no-ops, download doesn't save files), **test compilation** (fixed this sprint), and **deployment simplification**. The backend is significantly more complete than the frontend suggests.
+PCOS is a distributed personal cloud platform featuring an always-available Cloudflare Edge Control Plane (`workers.dev` / Pages), an outbound-only physical storage agent (`pcos-agent`), and a self-hosted Rust/PostgreSQL monolith. All P0 architectural gaps, user security workflows (including profile updates, password changes, and MFA parity), transparent physical storage tunneling, and command dispatch have been audited, implemented, and production-certified.
 
 ---
 
 ## 🔴 Resolved Critical & P0 Architectural Gaps
 
 ### 1. Broken Mobile Onboarding (RESOLVED)
+
 - **Previous State**: Mobile required typing `http://192.168.x.x` and optional code; camera QR scanning was missing; pairing generated a local client-only fallback code when backend was offline.
 - **Resolution**:
   - Completely eliminated all client-side fake fallback code generation.

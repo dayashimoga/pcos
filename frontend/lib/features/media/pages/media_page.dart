@@ -430,27 +430,31 @@ class _MediaPlayerDialog extends StatefulWidget {
 class _MediaPlayerDialogState extends State<_MediaPlayerDialog> {
   bool _isPlaying = true;
   double _positionSecs = 0.0;
-  final double _durationSecs =
-      1800.0; // Mock default duration or derived from metadata
+  late double _durationSecs;
 
   @override
   void initState() {
     super.initState();
     _positionSecs = widget.initialPos;
+    _durationSecs = (widget.file['duration_secs'] as num?)?.toDouble() ??
+        (widget.file['duration'] as num?)?.toDouble() ??
+        1800.0;
   }
 
   void _castToTv(Map<String, dynamic> tv) async {
     try {
       final api = getIt<ApiClient>();
-      await api.dio.post('/api/v1/devices/command', data: {
-        'targetDeviceId': tv['id'],
-        'command': 'play_on_tv',
-        'payload': {
+      await api.sendCommand(
+        targetDeviceId: tv['id'],
+        command: 'play_on_tv',
+        payload: {
           'file_id': widget.file['id'] ?? widget.file['file_id'],
           'file_name': widget.file['name'] ?? widget.file['file_name'],
           'position_secs': _positionSecs,
         },
-      });
+      );
+
+
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

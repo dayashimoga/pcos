@@ -2,7 +2,52 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0] - 2026-10-12
+
+### Full-Stack Gap Resolution, User Security & Edge Storage Proxying
+
+#### User Profile & Password Change
+- **Rust Backend (`pcos-user`)**: Implemented `PUT /api/v1/users/me/password` with `ChangePasswordRequest` DTO, validation, current password verification against Argon2 hashes, and atomic update in PostgreSQL.
+- **Cloudflare Edge Worker (`cloudflare/src/index.ts`)**: Implemented `PUT /api/v1/users/me` (display name update) and `PUT /api/v1/users/me/password` with PBKDF2/WebCrypto verification and D1 update.
+
+#### Edge MFA & Command Route Parity
+- **Cloudflare MFA Endpoints**: Added `GET /api/v1/auth/mfa/status`, `POST /api/v1/auth/mfa/setup`, `POST /api/v1/auth/mfa/verify`, and `POST /api/v1/auth/mfa/disable` to resolve 404 errors in web settings.
+- **Unified Command Routing**: Supported both `/api/v1/control/commands` and `/api/v1/devices/command` on edge for `play_on_tv` and `send_to_device`.
+- **Flutter Media Playback Fixes**: Updated `media_page.dart` to call `api.sendCommand(...)` and dynamically derive duration from video metadata rather than mock constants.
+
+#### Physical Storage Node Download Proxy
+- **Edge Data Plane Tunnel Proxy**: `/api/v1/files/:id/download` and `/preview` now proxy reads transparently from connected physical storage nodes via `DevicePresenceHub` Durable Object tunnel (`fs_read_chunk`) when files reside on local disks.
+
+#### Plug-and-Play Windows Installer & Node Resilience
+- **Overhauled Windows Installer (`scripts/windows/install-pcos-service.ps1`)**:
+  - Replaced manual registration and `pcos_agent` mismatch with automated **Install -> Sign In/QR Pair -> Select Drive/Folder -> Done** pipeline.
+  - Automatic drive detection for all fixed & removable USB volumes with free-space calculations and auto-selection of largest non-C drive (e.g., `D:\PCOS`).
+  - Automatic enrollment via `-PairingCode` parameter or interactive prompt.
+  - Configures background Windows scheduled task `PCOSNodeAgent` running with `--daemon` at logon with auto-restart on network/battery transitions.
+  - Added `scripts/windows/pcos-status.ps1` controller for live service inspection, process metrics, and restart shortcuts.
+- **Dual Config Resilience (`agent/src/config.rs`)**:
+  - Added `#[serde(default)]` to `AgentConfig` so partial configs load safely using default fields.
+  - Seamlessly handles both TOML (`agent.toml`) and JSON (`config.json`) serialization and deserialization with unit tests.
+  - Updated Linux systemd unit (`scripts/linux/pcos-agent.service`) to use `agent.toml`.
+
+#### UI/UX Consumer Overhaul & Settings Consolidation
+- **Modern Minimal Dashboard (`DashboardPage`)**:
+  - Replaced 11 scattered action chips with the 6 prioritized consumer actions: **Add Computer, Add Storage, Browse, Upload, Share, Transfers**.
+  - Onboarding simplified to ≤3 meaningful actions (Add Computer -> Select Drive -> Access Anywhere).
+  - **Connected Hardware & Grouped Disks**: Displays physical computers with connection route (Direct LAN / Secure Tunnel), grouping mounted disks directly beneath them with real-time capacity progress bars, health indicators, and a one-click direct jump into `PhysicalStorageBrowserPage`.
+  - Reconciled physical storage statistics across registered hardware nodes, eliminating duplicate temporary entries and clutter.
+- **Settings Consolidation**:
+  - Moved technical developer tools (Doctor Diagnostics, API Explorer, and Admin Console) to **Settings -> Advanced & Diagnostics**.
+  - Updated versioning fallback to v1.8.0.
+
+#### Comprehensive Verification
+- **100% Test Pass Rate**: 28/28 Vitest tests in Cloudflare, 35/35 Rust backend unit tests, 21/21 Agent tests, 17/17 Flutter BLoC/unit tests, and 5/5 live post-deploy smoke checks passing.
+- **Web Release Verified**: 66.4s release build at `frontend/build/web` with strict Content Security Policy and caching headers.
+
+---
+
 ## [1.7.0] - 2026-10-02
+
 
 ### Cloudflare Edge Control Plane, Distributed Storage Nodes & Authoritative Pairing
 

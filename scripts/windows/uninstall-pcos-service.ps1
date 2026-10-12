@@ -15,10 +15,13 @@ Stop-ScheduledTask -TaskName "PCOSNodeAgent"
 Unregister-ScheduledTask -TaskName "PCOSNodeAgent" -Confirm:$false
 
 # 2. Stop running processes
-Get-Process pcos_agent -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process pcos-agent, pcos_agent -ErrorAction SilentlyContinue | Stop-Process -Force
 
 # 3. Clean up binaries (preserve storage data!)
 $pcosAppData = "$env:LOCALAPPDATA\PCOS"
+if (Test-Path "$pcosAppData\pcos-agent.exe") {
+    Remove-Item "$pcosAppData\pcos-agent.exe" -Force
+}
 if (Test-Path "$pcosAppData\pcos_agent.exe") {
     Remove-Item "$pcosAppData\pcos_agent.exe" -Force
 }

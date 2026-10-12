@@ -1,6 +1,7 @@
-use crate::models::UpdateProfileRequest;
+use crate::models::{ChangePasswordRequest, UpdateProfileRequest};
 use crate::service;
 use axum::extract::State;
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 use pcos_common::auth::middleware::AuthUser;
@@ -31,3 +32,23 @@ pub async fn update_profile(
     let profile = service::update_profile(state.db.pool(), auth.claims.sub, req).await?;
     Ok(Json(profile))
 }
+
+/// PUT /api/v1/users/me/password
+/// Change the authenticated user's password.
+pub async fn change_password(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<ChangePasswordRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    req.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+
+    service::change_password(state.db.pool(), auth.claims.sub, req).await?;
+    Ok((
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "message": "Password changed successfully"
+        })),
+    ))
+}
+

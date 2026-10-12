@@ -1516,5 +1516,137 @@ describe('Media Streaming Progress & Continue Watching', () => {
   });
 });
 
+describe('User Profile & Password Management', () => {
+  it('should update display name and change password with verification', async () => {
+    const worker = (await import('../src/index')).default;
+    const { hashPassword } = await import('../src/services/auth');
+    const testSecret = 'test_secret_key_12345678901234567890';
+    const userId = 'usr_profile_update_123';
+    const token = await generateJwt({ sub: userId, email: 'update@pcos.dev', role: 'user' }, testSecret);
+
+    const initialHash = await hashPassword('CurrentPassword123');
+    let userRecord = {
+      id: userId,
+      email: 'update@pcos.dev',
+      display_name: 'Original Name',
+      role: 'user',
+      quota_bytes: 53687091200,
+      used_bytes: 0,
+      password_hash: initialHash,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const mockDb = {
+      prepare: (sql: string) => {
+        let boundParams: any[] = [];
+        return {
+          bind: (...args: any[]) => {
+            boundParams = args;
+            return {
+              first: async () => {
+                if (sql.includes('SELECT password_hash FROM users')) {
+                  return { password_hash: userRecord.password_hash };
+                }
+                if (sql.includes('SELECT') && sql.includes('FROM users')) {
+                  return userRecord;
+                }
+                return null;
+              },
+              run: async () => {
+                if (sql.includes('UPDATE users SET display_name')) {
+                  userRecord.display_name = boundParams[0];
+                  userRecord.updated_at = boundParams[1];
+                  return { success: true };
+                }
+                if (sql.includes('UPDATE users SET password_hash')) {
+                  userRecord.password_hash = boundParams[0];
+                  userRecord.updated_at = boundParams[1];
+                  return { success: true };
+                }
+                return { success: true };
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const mockEnv = {
+      DB: mockDb,
+      PCOS_ENV: 'test',
+      JWT_SECRET: testSecret,
+    } as unknown as Env;
+
+    const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+
+    // 1. Update display name
+    const updateReq = new Request('http://edge.pcos.dev/api/v1/users/me', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ display_name: 'New Display Name' }),
+    });
+    const updateResp = await worker.fetch(updateReq, mockEnv, ctx);
+    expect(updateResp.status).toBe(200);
+    const updateData = (await updateResp.json()) as any;
+    expect(updateData.display_name).toBe('New Display Name');
+
+    // 2. Reject password change with incorrect current password
+    const badPassReq = new Request('http://edge.pcos.dev/api/v1/users/me/password', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        current_password: 'WrongPassword!',
+        new_password: 'NewStrongPassword123!',
+      }),
+    });
+    const badPassResp = await worker.fetch(badPassReq, mockEnv, ctx);
+    expect(badPassResp.status).toBe(401);
+
+    // 3. Successfully change password with valid current password
+    const goodPassReq = new Request('http://edge.pcos.dev/api/v1/users/me/password', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        current_password: 'CurrentPassword123',
+        new_password: 'NewStrongPassword123!',
+      }),
+    });
+    const goodPassResp = await worker.fetch(goodPassReq, mockEnv, ctx);
+    expect(goodPassResp.status).toBe(200);
+    const goodData = (await goodPassResp.json()) as any;
+    expect(goodData.success).toBe(true);
+
+    // 4. MFA endpoints status and setup
+    const mfaStatusReq = new Request('http://edge.pcos.dev/api/v1/auth/mfa/status', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const mfaStatusResp = await worker.fetch(mfaStatusReq, mockEnv, ctx);
+    expect(mfaStatusResp.status).toBe(200);
+    const mfaStatusData = (await mfaStatusResp.json()) as any;
+    expect(mfaStatusData.mfa_enabled).toBe(false);
+
+    const mfaSetupReq = new Request('http://edge.pcos.dev/api/v1/auth/mfa/setup', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const mfaSetupResp = await worker.fetch(mfaSetupReq, mockEnv, ctx);
+    expect(mfaSetupResp.status).toBe(200);
+    const mfaSetupData = (await mfaSetupResp.json()) as any;
+    expect(mfaSetupData.secret).toBeDefined();
+    expect(mfaSetupData.provisioning_uri).toContain('otpauth://totp/PCOS:');
+  });
+});
+
+
 
 
