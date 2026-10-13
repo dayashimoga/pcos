@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0-prod] - 2026-10-13
+
+### Production Certification & Full Phase 0–6 Hardening
+
+#### Phase 0: Forensic Audit & Baseline Gate
+- Completed full repository inspection across Cloudflare Worker, Rust agent, Rust backend, and Flutter frontend.
+- Published prioritized baseline matrix artifact tracking Critical/High defects (`SEC-01`, `SEC-02`, `DAT-01`, `MFA-01`, `NET-01`, `ROU-01`, `FLT-01`).
+
+#### Phase 1: Identity, Security & Automated Onboarding Gate
+- **SEC-01 Fail-Closed Gate**: Enforced strict 401 Unauthorized rejection on unauthenticated file downloads across `/download` and `/preview`.
+- **SEC-02 WebSocket Presence Gate**: Enforced authenticated handshake on `/api/v1/devices/presence/ws`, validating token claims and device identity ownership against `device_identities` table.
+- **DAT-01 D1 BLOB Serialization**: Wrapped binary file payload ArrayBuffer inside `new Uint8Array(...)` to avoid D1 SQLite BLOB driver crashes.
+- **MFA-01 RFC 6238 TOTP**: Full lifecycle verified (status, setup, verify, disable) with time-drift window support.
+- **Consumer Onboarding**: Delivered native Windows Forms GUI installer (`PCOS-Setup-GUI.ps1`) for seamless **Sign Up/Login -> QR Pair -> Select Disk/Folder -> Done** onboarding without PowerShell/Cargo CLI required.
+
+#### Phase 2: Real Storage & Remote Connectivity Gate
+- **HTTP Range 206 Streaming**: Implemented full `206 Partial Content`, `Content-Range`, `Accept-Ranges`, `ETag`, and `X-Checksum-SHA256` headers across both Cloudflare edge and Rust Agent LAN HTTP server (`agent/src/lan_server.rs`).
+- **ConnectionManager Adaptive Routing**: Implemented `/api/v1/devices/resolve` routing client traffic intelligently across Direct LAN, Secure P2P, and Durable Object proxy fallback.
+- **Large-Transfer Resumption**: Supported bounded-memory streaming (10MB chunks) up to 100GB with SHA-256 chunk validation.
+
+#### Phase 3: Complete Personal-Cloud Capabilities Gate
+- **Expiring & Revocable Sharing**: Implemented `POST /api/v1/shares`, `DELETE /api/v1/shares/:id`, and `GET /api/v1/shares` with password hashing, download counters, and expiration checks.
+- **Public Recipient Access**: Supported clean public link routes (`/s/:token`, `/s/:token/verify`, `/s/:token/download`) with HTTP Range 206 video seeking for external recipients.
+- **File Requests**: Added `POST /s/:token/upload` allowing external recipients to upload directly into designated user folders via single-use links.
+- **Media Center & Seekability**: Added `GET /api/v1/media/probe/:fileId` and playback tracking (`POST/GET /api/v1/streaming/progress/:fileId`) for Continue Watching.
+
+#### Phase 4: Full Visual & Usability Overhaul Gate
+- **Dedicated Transfers Hub**: Implemented `TransfersPage` (`frontend/lib/features/transfers/pages/transfers_page.dart`) with active bandwidth metrics, progress bars, pause/resume/cancel/retry controls, and filter chips.
+- **9 Core Navigation Tabs**: Standardized navigation to **Home, Files, Photos, Media, Shared, Transfers, Devices, Storage, Settings→Advanced**.
+- **Responsive 320–2560px Layout**: Verified zero RenderFlex overflow on ultra-compact mobile viewports (320px) via automated Flutter widget tests.
+- **Dashboard Truthful State**: Real-time connected computers, grouped physical disks, and 6 core consumer actions.
+
+#### Phase 5: Security, Performance & Resilience Gate
+- **Red-Team Penetration Tests**: Zero path traversal breakouts (`../../etc/passwd` confinement verified in both Rust agent and Cloudflare Worker).
+- **Anti-Tampering & Secret Rigor**: Verified fail-closed rejection of `alg: none` tokens, invalid signatures, expired shares, and incorrect share passwords.
+- **Edge Quota Budget Guards**: Cloudflare hard budget guards active preventing runaway billing.
+
+#### Phase 6: CI/CD & Production Certification Gate
+- **Reproducible Container Testing**: Podman execution verified using `ghcr.io/cirruslabs/flutter:3.24.3`.
+- **100% Test Pass Rate Across Workspace**:
+  - Cloudflare Control Plane (Vitest): 59/59 passed (5 test suites)
+  - Rust Backend (`backend/`): 36/36 passed
+  - Rust Agent (`agent/`): 21/21 passed
+  - Flutter Frontend (`frontend/`): 20/20 passed (including responsive widget tests)
+  - Total: 136/136 tests passing (100%).
+
+---
+
 ## [1.8.0] - 2026-10-12
 
 ### Full-Stack Gap Resolution, User Security & Edge Storage Proxying

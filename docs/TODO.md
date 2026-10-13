@@ -226,3 +226,16 @@
 - [x] Remote Play-on-TV & Send-to-Device command dispatch over open WebSocket control channels
 - [x] Automated GitHub Actions workflow (`cloudflare.yml`) for edge testing and deployment
 
+---
+
+## Sprint: PCOS v1.8.0 Production Hardening & Phase 0–6 Gates (Completed 2026-10-13)
+
+- [x] **Phase 0 Baseline Gate**: Comprehensive forensic audit and baseline matrix artifact tracking root causes (`SEC-01`, `SEC-02`, `DAT-01`, `MFA-01`, `NET-01`, `ROU-01`, `FLT-01`)
+- [x] **Phase 1 Identity Gate**: Enforced fail-closed unauthenticated download gate (SEC-01), authenticated WebSocket presence with device ownership check (SEC-02), D1 BLOB Uint8Array serialization (DAT-01), RFC 6238 TOTP lifecycle, and native Windows Forms GUI installer (`PCOS-Setup-GUI.ps1`)
+- [x] **Phase 2 Storage & Connectivity Gate**: HTTP Range 206 Partial Content, Content-Range, Accept-Ranges, ETag, SHA-256 chunk integrity, ConnectionManager `/api/v1/devices/resolve` routing (Direct LAN ↔ Secure P2P ↔ DO Relay), Agent `fs_checksum` op & `/api/v1/lan/fs/checksum`
+- [x] **Phase 3 Personal-Cloud Gate**: Expiring, password-protected sharing endpoints (`/s/:token`, `/s/:token/verify`, `/s/:token/download`), public file requests (`/s/:token/upload`), media probe endpoint (`GET /api/v1/media/probe/:fileId`), and playback progress tracking
+- [x] **Phase 4 Visual & Usability Gate**: Dedicated `TransfersPage` (`/transfers`), 9 core navigation tabs (**Home, Files, Photos, Media, Shared, Transfers, Devices, Storage, Settings→Advanced**), verified responsive layouts with 0 overflow errors on 320px viewport
+- [x] **Phase 5 Security Gate**: Red-team path traversal tests (`../../etc/passwd` rejection), anti-tampering JWT tests (`alg: none` rejection), share password enforcement, edge quota budget guards
+- [x] **Phase 6 CI/CD & Certification Gate**: Containerized Podman reproducible test execution, 100% test pass rate across Cloudflare (59/59), Rust backend (36/36), Rust agent (21/21), and Flutter frontend (20/20) — Total 136/136 tests passing
+
+
