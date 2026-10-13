@@ -454,6 +454,40 @@ async fn handle_fs_command(
                 }),
             }
         }
+        "fs_checksum" => {
+            let canonical_root = match root.canonicalize() {
+                Ok(p) => p,
+                Err(e) => return serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": format!("Invalid root: {}", e)
+                }),
+            };
+            let target_path = match crate::fs_handler::FsHandler::safe_resolve(&canonical_root, rel_path) {
+                Ok(p) => p,
+                Err(e) => return serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": e.to_string()
+                }),
+            };
+            match crate::delta::file_hash(&target_path).await {
+                Ok(hash) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": true,
+                    "result": { "sha256": hash }
+                }),
+                Err(e) => serde_json::json!({
+                    "type": "fs_response",
+                    "request_id": request_id,
+                    "success": false,
+                    "error": e.to_string()
+                }),
+            }
+        }
         _ => serde_json::json!({
             "type": "fs_response",
             "request_id": request_id,

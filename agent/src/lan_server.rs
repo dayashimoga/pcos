@@ -289,6 +289,37 @@ async fn handle_connection(
         return Ok(());
     }
 
+    if path_only == "/api/v1/lan/fs/checksum" && method == "GET" {
+        let storage_path = query_params.get("storage_path").map(|s| s.as_str()).unwrap_or(".");
+        let rel_path = query_params.get("path").map(|s| s.as_str()).unwrap_or("");
+        let canonical_root = match Path::new(storage_path).canonicalize() {
+            Ok(p) => p,
+            Err(_) => {
+                send_json_response(&mut stream, 404, r#"{"error":"Storage root not found"}"#).await?;
+                return Ok(());
+            }
+        };
+        let target_path = match FsHandler::safe_resolve(&canonical_root, rel_path) {
+            Ok(p) => p,
+            Err(e) => {
+                let body = serde_json::json!({ "error": e.to_string() }).to_string();
+                send_json_response(&mut stream, 403, &body).await?;
+                return Ok(());
+            }
+        };
+        match crate::delta::file_hash(&target_path).await {
+            Ok(hash) => {
+                let body = serde_json::json!({ "sha256": hash }).to_string();
+                send_json_response(&mut stream, 200, &body).await?;
+            }
+            Err(e) => {
+                let body = serde_json::json!({ "error": e.to_string() }).to_string();
+                send_json_response(&mut stream, 500, &body).await?;
+            }
+        }
+        return Ok(());
+    }
+
     send_json_response(&mut stream, 404, r#"{"error":"Endpoint not found"}"#).await?;
     Ok(())
 }

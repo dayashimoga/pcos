@@ -1030,8 +1030,27 @@ async function handleApiRequest(
 
   // ─── Devices: Resolve Route (Connection Manager) ───
   if (request.method === 'GET' && url.pathname.startsWith('/api/v1/devices/resolve/')) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const targetDeviceId = url.pathname.replace('/api/v1/devices/resolve/', '');
     const callerLanIp = url.searchParams.get('callerLanIp') || '';
+
+    // Verify target device exists and belongs to authenticated user
+    const dev = await env.DB.prepare(
+      'SELECT id FROM device_identities WHERE id = ?1 AND user_id = ?2'
+    )
+      .bind(targetDeviceId, userPayload.sub)
+      .first();
+
+    if (!dev) {
+      return Response.json(
+        { is_online: false, recommended_route: 'Offline', message: 'Target device not found or unauthorized' },
+        { status: 404 }
+      );
+    }
 
     const doId = env.PRESENCE_HUB.idFromName('global_presence_hub');
     const stub = env.PRESENCE_HUB.get(doId);
@@ -1762,11 +1781,19 @@ async function handleApiRequest(
         }
       }
 
+      let sha256Hash = (formData.get('sha256_hash') as string) || '';
+      if (!sha256Hash && dataBlob) {
+        const digest = await crypto.subtle.digest('SHA-256', dataBlob);
+        sha256Hash = Array.from(new Uint8Array(digest))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+      }
+
       await env.DB.prepare(
         `INSERT INTO file_entries (id, user_id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, storage_path, is_trashed, is_favorite, data_blob, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, 'file', ?5, ?6, '', ?7, 0, 0, ?8, ?9, ?9)`
+         VALUES (?1, ?2, ?3, ?4, 'file', ?5, ?6, ?7, ?8, 0, 0, ?9, ?10, ?10)`
       )
-        .bind(fileId, userPayload.sub, parentId, filename, mimeType, sizeBytes, storagePath, dataBlob, now)
+        .bind(fileId, userPayload.sub, parentId, filename, mimeType, sizeBytes, sha256Hash, storagePath, dataBlob, now)
         .run();
 
       return Response.json(
@@ -1777,6 +1804,7 @@ async function handleApiRequest(
           entry_type: 'file',
           mime_type: mimeType,
           size_bytes: sizeBytes,
+          sha256_hash: sha256Hash,
           storage_path: storagePath,
           is_trashed: false,
           is_favorite: false,
@@ -1817,39 +1845,100 @@ async function handleApiRequest(
       ? 'inline'
       : `attachment; filename="${encodeURIComponent(entry.name)}"`;
 
+    const rangeHeader = request.headers.get('Range');
+    const totalSize = entry.size_bytes || 0;
+    const range = totalSize > 0 ? parseHttpRange(rangeHeader, totalSize) : null;
+    const isRange = range !== null;
+
+    if (rangeHeader && !isRange && totalSize > 0) {
+      return new Response(null, {
+        status: 416,
+        headers: {
+          'Content-Range': `bytes */${totalSize}`,
+          'Accept-Ranges': 'bytes',
+        },
+      });
+    }
+
     if (entry.storage_path === 'r2' && env.CACHE_R2) {
-      const obj = await env.CACHE_R2.get(`cache/${entry.user_id}/${entry.id}`);
-      if (obj) {
-        return new Response(obj.body, {
-          headers: {
-            'Content-Type': mime,
-            'Content-Disposition': disposition,
-            'Content-Length': String(entry.size_bytes),
-          },
+      if (isRange) {
+        const obj = await env.CACHE_R2.get(`cache/${entry.user_id}/${entry.id}`, {
+          range: { offset: range.start, length: range.end - range.start + 1 },
         });
+        if (obj) {
+          return new Response(obj.body, {
+            status: 206,
+            headers: {
+              'Content-Type': mime,
+              'Content-Disposition': disposition,
+              'Content-Range': `bytes ${range.start}-${range.end}/${totalSize}`,
+              'Content-Length': String(range.end - range.start + 1),
+              'Accept-Ranges': 'bytes',
+              'ETag': entry.sha256_hash ? `"${entry.sha256_hash}"` : `"${entry.id}"`,
+              'X-Checksum-SHA256': entry.sha256_hash || '',
+            },
+          });
+        }
+      } else {
+        const obj = await env.CACHE_R2.get(`cache/${entry.user_id}/${entry.id}`);
+        if (obj) {
+          return new Response(obj.body, {
+            status: 200,
+            headers: {
+              'Content-Type': mime,
+              'Content-Disposition': disposition,
+              'Content-Length': String(entry.size_bytes),
+              'Accept-Ranges': 'bytes',
+              'ETag': entry.sha256_hash ? `"${entry.sha256_hash}"` : `"${entry.id}"`,
+              'X-Checksum-SHA256': entry.sha256_hash || '',
+            },
+          });
+        }
       }
     }
 
     if (entry.data_blob) {
-      const bytes = Array.isArray(entry.data_blob)
+      const fullBytes = Array.isArray(entry.data_blob)
         ? new Uint8Array(entry.data_blob)
         : (entry.data_blob instanceof ArrayBuffer
             ? new Uint8Array(entry.data_blob)
             : new Uint8Array(entry.data_blob as any));
-      return new Response(bytes, {
+      const blobSize = fullBytes.length;
+
+      if (isRange) {
+        const slice = fullBytes.subarray(range.start, range.end + 1);
+        return new Response(slice, {
+          status: 206,
+          headers: {
+            'Content-Type': mime,
+            'Content-Disposition': disposition,
+            'Content-Range': `bytes ${range.start}-${range.end}/${blobSize}`,
+            'Content-Length': String(slice.length),
+            'Accept-Ranges': 'bytes',
+            'ETag': entry.sha256_hash ? `"${entry.sha256_hash}"` : `"${entry.id}"`,
+            'X-Checksum-SHA256': entry.sha256_hash || '',
+          },
+        });
+      }
+
+      return new Response(fullBytes, {
+        status: 200,
         headers: {
           'Content-Type': mime,
           'Content-Disposition': disposition,
-          'Content-Length': String(bytes.length),
+          'Content-Length': String(blobSize),
+          'Accept-Ranges': 'bytes',
+          'ETag': entry.sha256_hash ? `"${entry.sha256_hash}"` : `"${entry.id}"`,
+          'X-Checksum-SHA256': entry.sha256_hash || '',
         },
       });
     }
 
     if (entry.storage_node_id) {
       const nodeRow = await env.DB.prepare(
-        'SELECT id, device_id, storage_path, is_online FROM storage_nodes WHERE id = ?1'
+        'SELECT id, device_id, storage_path, is_online FROM storage_nodes WHERE id = ?1 AND user_id = ?2'
       )
-        .bind(entry.storage_node_id)
+        .bind(entry.storage_node_id, userPayload.sub)
         .first<{ id: string; device_id: string; storage_path: string; is_online: number }>();
 
       if (nodeRow) {
@@ -1864,6 +1953,13 @@ async function handleApiRequest(
             ? entry.storage_path
             : entry.name;
 
+        let offset = 0;
+        let length = Math.min(entry.size_bytes || 10485760, 10485760);
+        if (isRange) {
+          offset = range.start;
+          length = Math.min(range.end - range.start + 1, 10485760);
+        }
+
         const fsResp = await stub.fetch('http://do/proxy/fs', {
           method: 'POST',
           body: JSON.stringify({
@@ -1871,8 +1967,8 @@ async function handleApiRequest(
             op: 'fs_read_chunk',
             storage_path: nodeRow.storage_path,
             relative_path: relPath,
-            offset: 0,
-            length: Math.min(entry.size_bytes || 10485760, 10485760),
+            offset,
+            length,
           }),
         });
 
@@ -1884,11 +1980,33 @@ async function handleApiRequest(
             for (let i = 0; i < binaryString.length; i++) {
               bytes[i] = binaryString.charCodeAt(i);
             }
+            const fileTotal = data.result.total_size || entry.size_bytes || bytes.length;
+            const endOffset = offset + bytes.length - 1;
+
+            if (isRange) {
+              return new Response(bytes, {
+                status: 206,
+                headers: {
+                  'Content-Type': mime,
+                  'Content-Disposition': disposition,
+                  'Content-Range': `bytes ${offset}-${endOffset}/${fileTotal}`,
+                  'Content-Length': String(bytes.length),
+                  'Accept-Ranges': 'bytes',
+                  'ETag': entry.sha256_hash ? `"${entry.sha256_hash}"` : `"${entry.id}"`,
+                  'X-Checksum-SHA256': entry.sha256_hash || '',
+                },
+              });
+            }
+
             return new Response(bytes, {
+              status: 200,
               headers: {
                 'Content-Type': mime,
                 'Content-Disposition': disposition,
                 'Content-Length': String(bytes.length),
+                'Accept-Ranges': 'bytes',
+                'ETag': entry.sha256_hash ? `"${entry.sha256_hash}"` : `"${entry.id}"`,
+                'X-Checksum-SHA256': entry.sha256_hash || '',
               },
             });
           }
@@ -2297,7 +2415,7 @@ async function handleApiRequest(
   }
 
   // ─── Storage: Physical Data Plane Proxy Routes (Client -> Cloud -> Agent) ───
-  const fsMatch = url.pathname.match(/^\/api\/v1\/storage\/nodes\/([^/]+)\/fs\/(list|stat|read|write|delete|mkdir|media_probe)$/);
+  const fsMatch = url.pathname.match(/^\/api\/v1\/storage\/nodes\/([^/]+)\/fs\/(list|stat|read|write|delete|mkdir|media_probe|checksum)$/);
   if (fsMatch) {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) {
@@ -2607,6 +2725,191 @@ async function handleApiRequest(
         ...data.result,
       });
     }
+
+    // 8. Checksum file on physical disk
+    if (action === 'checksum' && request.method === 'GET') {
+      const relPath = url.searchParams.get('path') || '';
+      if (!relPath) {
+        return Response.json({ error: 'path parameter is required' }, { status: 400 });
+      }
+
+      const fsResp = await stub.fetch('http://do/proxy/fs', {
+        method: 'POST',
+        body: JSON.stringify({
+          deviceId: nodeRow.device_id,
+          op: 'fs_checksum',
+          storage_path: nodeRow.storage_path,
+          relative_path: relPath,
+        }),
+      });
+
+      const data = (await fsResp.json()) as any;
+      if (!fsResp.ok || !data.success) {
+        return Response.json(
+          { error: data.error || 'Failed to compute checksum on agent', code: data.code || 'FS_ERROR' },
+          { status: fsResp.status }
+        );
+      }
+
+      return Response.json({
+        storage_node_id: nodeId,
+        storage_path: nodeRow.storage_path,
+        relative_path: relPath,
+        sha256: data.result?.sha256 || '',
+      });
+    }
+  }
+
+  // ─── Resumable Transfers Protocol (up to 100GB, Range-based & Chunk-based) ───
+  if (request.method === 'POST' && url.pathname === '/api/v1/transfers/resumable/init') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = (await request.json().catch(() => ({}))) as {
+      name?: string;
+      size_bytes?: number;
+      sha256_hash?: string;
+      storage_node_id?: string;
+      parent_id?: string;
+      mime_type?: string;
+    };
+
+    if (!body.name || typeof body.size_bytes !== 'number') {
+      return Response.json({ error: 'name and size_bytes are required' }, { status: 400 });
+    }
+
+    const transferId = `xfer_${crypto.randomUUID()}`;
+    const now = new Date().toISOString();
+    const filename = body.name;
+    const mimeType = body.mime_type || 'application/octet-stream';
+    const sizeBytes = body.size_bytes;
+    const parentId = body.parent_id || null;
+    const sha256 = body.sha256_hash || '';
+
+    await env.DB.prepare(
+      `INSERT INTO file_entries (id, user_id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, storage_path, storage_node_id, is_trashed, is_favorite, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, 'file', ?5, ?6, ?7, 'resumable_transfer', ?8, 0, 0, ?9, ?9)`
+    )
+      .bind(transferId, userPayload.sub, parentId, filename, mimeType, sizeBytes, sha256, body.storage_node_id || null, now)
+      .run();
+
+    return Response.json({
+      transfer_id: transferId,
+      name: filename,
+      total_bytes: sizeBytes,
+      chunk_size: 2 * 1024 * 1024,
+      uploaded_bytes: 0,
+      sha256_hash: sha256,
+      created_at: now,
+    }, { status: 201 });
+  }
+
+  if (request.method === 'POST' && url.pathname.match(/^\/api\/v1\/transfers\/resumable\/[^/]+\/chunk$/)) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const transferId = url.pathname.split('/')[5];
+    const entry = await env.DB.prepare('SELECT * FROM file_entries WHERE id = ?1 AND user_id = ?2')
+      .bind(transferId, userPayload.sub)
+      .first<FileEntry>();
+
+    if (!entry) return Response.json({ error: 'Transfer session not found' }, { status: 404 });
+
+    const body = (await request.json().catch(() => ({}))) as {
+      offset?: number;
+      data_base64?: string;
+    };
+
+    if (typeof body.offset !== 'number' || !body.data_base64) {
+      return Response.json({ error: 'offset and data_base64 required' }, { status: 400 });
+    }
+
+    if (entry.storage_node_id) {
+      const nodeRow = await env.DB.prepare(
+        'SELECT id, device_id, storage_path FROM storage_nodes WHERE id = ?1 AND user_id = ?2'
+      )
+        .bind(entry.storage_node_id, userPayload.sub)
+        .first<{ id: string; device_id: string; storage_path: string }>();
+
+      if (nodeRow) {
+        const doId = env.PRESENCE_HUB.idFromName('global_presence_hub');
+        const stub = env.PRESENCE_HUB.get(doId);
+        await stub.fetch('http://do/proxy/fs', {
+          method: 'POST',
+          body: JSON.stringify({
+            deviceId: nodeRow.device_id,
+            op: 'fs_write_chunk',
+            storage_path: nodeRow.storage_path,
+            relative_path: entry.name,
+            offset: body.offset,
+            data_base64: body.data_base64,
+          }),
+        });
+      }
+    }
+
+    const chunkBytes = Math.floor(body.data_base64.length * 0.75);
+    const now = new Date().toISOString();
+    await env.DB.prepare('UPDATE file_entries SET updated_at = ?1 WHERE id = ?2')
+      .bind(now, transferId)
+      .run();
+
+    return Response.json({
+      transfer_id: transferId,
+      offset: body.offset,
+      bytes_written: chunkBytes,
+      success: true,
+    });
+  }
+
+  if (request.method === 'GET' && url.pathname.match(/^\/api\/v1\/transfers\/resumable\/[^/]+\/status$/)) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const transferId = url.pathname.split('/')[5];
+    const entry = await env.DB.prepare('SELECT * FROM file_entries WHERE id = ?1 AND user_id = ?2')
+      .bind(transferId, userPayload.sub)
+      .first<FileEntry>();
+
+    if (!entry) return Response.json({ error: 'Transfer session not found' }, { status: 404 });
+
+    return Response.json({
+      transfer_id: transferId,
+      name: entry.name,
+      total_bytes: entry.size_bytes,
+      sha256_hash: entry.sha256_hash,
+      status: entry.storage_path === 'resumable_transfer' ? 'in_progress' : 'completed',
+    });
+  }
+
+  if (request.method === 'POST' && url.pathname.match(/^\/api\/v1\/transfers\/resumable\/[^/]+\/finalize$/)) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const transferId = url.pathname.split('/')[5];
+    const body = (await request.json().catch(() => ({}))) as { sha256_hash?: string };
+
+    const entry = await env.DB.prepare('SELECT * FROM file_entries WHERE id = ?1 AND user_id = ?2')
+      .bind(transferId, userPayload.sub)
+      .first<FileEntry>();
+
+    if (!entry) return Response.json({ error: 'Transfer session not found' }, { status: 404 });
+
+    const finalSha256 = body.sha256_hash || entry.sha256_hash || '';
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      'UPDATE file_entries SET storage_path = ?1, sha256_hash = ?2, updated_at = ?3 WHERE id = ?4'
+    )
+      .bind(entry.storage_node_id ? 'local' : 'd1', finalSha256, now, transferId)
+      .run();
+
+    return Response.json({
+      success: true,
+      file_id: transferId,
+      name: entry.name,
+      size_bytes: entry.size_bytes,
+      sha256_hash: finalSha256,
+    });
   }
 
   // ─── Storage: Node Single Operations (DELETE) ───
@@ -2773,4 +3076,28 @@ async function hashToken(token: string): Promise<string> {
   return Array.from(new Uint8Array(hash))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
+}
+
+export function parseHttpRange(
+  rangeHeader: string | null,
+  totalSize: number
+): { start: number; end: number } | null {
+  if (!rangeHeader || !rangeHeader.startsWith('bytes=')) return null;
+  const parts = rangeHeader.replace('bytes=', '').trim().split('-');
+  if (parts.length !== 2) return null;
+
+  let start = parts[0] ? parseInt(parts[0], 10) : NaN;
+  let end = parts[1] ? parseInt(parts[1], 10) : NaN;
+
+  if (isNaN(start)) {
+    if (isNaN(end) || end <= 0) return null;
+    start = Math.max(0, totalSize - end);
+    end = totalSize - 1;
+  } else if (isNaN(end)) {
+    end = totalSize - 1;
+  }
+
+  if (start < 0 || start >= totalSize || end < start) return null;
+  end = Math.min(end, totalSize - 1);
+  return { start, end };
 }
