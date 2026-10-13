@@ -149,9 +149,10 @@ export default {
         return stub.fetch(request);
       }
 
-      // 3. API Routes
+      // 3. API Routes & Public Share Links
       if (
         url.pathname.startsWith('/api/') ||
+        url.pathname.startsWith('/s/') ||
         url.pathname === '/health' ||
         url.pathname === '/livez' ||
         url.pathname === '/readyz'
@@ -1341,182 +1342,6 @@ async function handleApiRequest(
   }
 
 
-  // ─── Shares: List & Create ───
-  if (url.pathname === '/api/v1/shares') {
-    const userPayload = await extractAuthUser(request, jwtSecret);
-    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
-    if (request.method === 'GET') {
-      const rows = await env.DB.prepare(
-        `SELECT s.*, f.name as file_name, f.size_bytes, f.mime_type
-         FROM shares s
-         LEFT JOIN file_entries f ON s.file_id = f.id
-         WHERE s.user_id = ?1
-         ORDER BY s.created_at DESC`
-      )
-        .bind(userPayload.sub)
-        .all();
-
-      return Response.json({
-        shares: rows.results || [],
-        total: (rows.results || []).length,
-      });
-    }
-
-    if (request.method === 'POST') {
-      const body = (await request.json().catch(() => ({}))) as {
-        file_id?: string;
-        is_public?: boolean;
-        is_upload_request?: boolean;
-        password?: string;
-        expires_at?: string;
-        max_downloads?: number;
-      };
-
-      if (!body.file_id) {
-        return Response.json({ error: 'file_id is required' }, { status: 400 });
-      }
-
-      // Verify file belongs to user
-      const file = await env.DB.prepare(
-        'SELECT id, name, size_bytes, mime_type FROM file_entries WHERE id = ?1 AND user_id = ?2'
-      )
-        .bind(body.file_id, userPayload.sub)
-        .first();
-
-      if (!file) {
-        return Response.json({ error: 'Referenced file not found' }, { status: 404 });
-      }
-
-      const shareId = crypto.randomUUID();
-      const shareToken = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
-      const now = new Date().toISOString();
-      let passwordHash: string | null = null;
-      if (body.password) {
-        passwordHash = await hashPassword(body.password);
-      }
-
-      await env.DB.prepare(
-        `INSERT INTO shares (id, user_id, file_id, share_token, is_public, is_upload_request, password_hash, expires_at, max_downloads, download_count, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10)`
-      )
-        .bind(
-          shareId,
-          userPayload.sub,
-          body.file_id,
-          shareToken,
-          body.is_public !== false ? 1 : 0,
-          body.is_upload_request ? 1 : 0,
-          passwordHash,
-          body.expires_at || null,
-          body.max_downloads || null,
-          now
-        )
-        .run();
-
-      const host = request.headers.get('host') || 'pcos-control-plane.dayashimoga.workers.dev';
-      const proto = url.protocol;
-      const shareUrl = `${proto}//${host}/#/shared/${shareToken}`;
-
-      return Response.json(
-        {
-          id: shareId,
-          file_id: body.file_id,
-          share_token: shareToken,
-          share_url: shareUrl,
-          is_public: body.is_public !== false,
-          is_upload_request: !!body.is_upload_request,
-          is_password_protected: !!body.password,
-          expires_at: body.expires_at || null,
-          max_downloads: body.max_downloads || null,
-          created_at: now,
-        },
-        { status: 201 }
-      );
-    }
-  }
-
-  // ─── Shares: Revoke by ID ───
-  if (request.method === 'DELETE' && url.pathname.startsWith('/api/v1/shares/')) {
-    const userPayload = await extractAuthUser(request, jwtSecret);
-    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const shareId = url.pathname.replace('/api/v1/shares/', '');
-    await env.DB.prepare('DELETE FROM shares WHERE id = ?1 AND user_id = ?2')
-      .bind(shareId, userPayload.sub)
-      .run();
-
-    return Response.json({ success: true, message: 'Share revoked' });
-  }
-
-  // ─── Public Share Access (Unauthenticated) ───
-  if (request.method === 'GET' && url.pathname.startsWith('/api/v1/shared/')) {
-    const subpath = url.pathname.replace('/api/v1/shared/', '');
-    const [token, action] = subpath.split('/');
-
-    const share = await env.DB.prepare(
-      `SELECT s.*, f.name as file_name, f.size_bytes, f.mime_type, f.sha256_hash, f.storage_path
-       FROM shares s
-       LEFT JOIN file_entries f ON s.file_id = f.id
-       WHERE s.share_token = ?1`
-    )
-      .bind(token)
-      .first<{
-        id: string;
-        user_id: string;
-        file_id: string;
-        share_token: string;
-        is_public: number;
-        is_upload_request: number;
-        password_hash: string | null;
-        expires_at: string | null;
-        max_downloads: number | null;
-        download_count: number;
-        created_at: string;
-        file_name: string | null;
-        size_bytes: number | null;
-        mime_type: string | null;
-        sha256_hash: string | null;
-        storage_path: string | null;
-      }>();
-
-    if (!share) {
-      return Response.json({ error: 'Share link not found or expired' }, { status: 404 });
-    }
-
-    if (share.expires_at && new Date(share.expires_at).getTime() < Date.now()) {
-      return Response.json({ error: 'Share link has expired' }, { status: 410 });
-    }
-
-    if (share.max_downloads && share.download_count >= share.max_downloads) {
-      return Response.json({ error: 'Share download limit reached' }, { status: 410 });
-    }
-
-    if (action === 'download') {
-      await env.DB.prepare('UPDATE shares SET download_count = download_count + 1 WHERE id = ?1')
-        .bind(share.id)
-        .run();
-
-      return Response.json({
-        file_id: share.file_id,
-        file_name: share.file_name,
-        size_bytes: share.size_bytes,
-        download_url: `/api/v1/files/${share.file_id}/download`,
-      });
-    }
-
-    return Response.json({
-      file_id: share.file_id,
-      file_name: share.file_name,
-      size_bytes: share.size_bytes,
-      mime_type: share.mime_type,
-      is_password_protected: !!share.password_hash,
-      is_upload_request: share.is_upload_request === 1,
-      expires_at: share.expires_at,
-      max_downloads: share.max_downloads,
-      download_count: share.download_count,
-    });
-  }
 
   // ─── Notifications (Recent User Activity from Audit Log) ───
   if (url.pathname === '/api/v1/notifications') {
@@ -2022,6 +1847,513 @@ async function handleApiRequest(
       },
       { status: 404 }
     );
+  }
+
+  // ─── Sharing: List User Shares ───
+  if (request.method === 'GET' && url.pathname === '/api/v1/shares') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const rows = await env.DB.prepare(
+      `SELECT s.id, s.file_id, s.share_token, s.is_public, s.is_upload_request,
+              s.password_hash, s.expires_at, s.max_downloads, s.download_count, s.created_at,
+              f.name as file_name, f.size_bytes, f.mime_type
+       FROM shares s
+       LEFT JOIN file_entries f ON s.file_id = f.id
+       WHERE s.user_id = ?1
+       ORDER BY s.created_at DESC`
+    )
+      .bind(userPayload.sub)
+      .all();
+
+    const origin = url.origin;
+    const shares = (rows.results || []).map((s: any) => ({
+      id: s.id,
+      file_id: s.file_id,
+      file_name: s.file_name || 'Unnamed',
+      size_bytes: s.size_bytes || 0,
+      mime_type: s.mime_type || 'application/octet-stream',
+      share_token: s.share_token,
+      share_url: `${origin}/s/${s.share_token}`,
+      is_public: s.is_public === 1,
+      is_upload_request: s.is_upload_request === 1,
+      has_password: !!s.password_hash,
+      expires_at: s.expires_at,
+      max_downloads: s.max_downloads,
+      download_count: s.download_count || 0,
+      created_at: s.created_at,
+    }));
+
+    return Response.json({ shares, total: shares.length });
+  }
+
+  // ─── Sharing: Create Share Link or File Request ───
+  if (request.method === 'POST' && url.pathname === '/api/v1/shares') {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = (await request.json().catch(() => ({}))) as {
+      file_id?: string;
+      is_public?: boolean;
+      is_upload_request?: boolean;
+      password?: string;
+      expires_at?: string;
+      max_downloads?: number;
+    };
+
+    if (!body.file_id) {
+      return Response.json({ error: 'file_id is required' }, { status: 400 });
+    }
+
+    const file = await env.DB.prepare(
+      'SELECT id, name, size_bytes, mime_type FROM file_entries WHERE id = ?1 AND user_id = ?2'
+    )
+      .bind(body.file_id, userPayload.sub)
+      .first<{ id: string; name: string; size_bytes: number; mime_type: string }>();
+
+    if (!file) {
+      return Response.json({ error: 'File not found or unauthorized' }, { status: 404 });
+    }
+
+    const shareId = `shr_${crypto.randomUUID()}`;
+    const shareToken = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+    const now = new Date().toISOString();
+    const isPublic = body.is_public !== false ? 1 : 0;
+    const isUploadReq = body.is_upload_request ? 1 : 0;
+    const maxDl = typeof body.max_downloads === 'number' ? body.max_downloads : null;
+    const expiresAt = body.expires_at || null;
+
+    let passwordHash: string | null = null;
+    if (body.password && body.password.trim().length > 0) {
+      passwordHash = await hashPassword(body.password.trim());
+    }
+
+    await env.DB.prepare(
+      `INSERT INTO shares (id, user_id, file_id, share_token, is_public, is_upload_request, password_hash, expires_at, max_downloads, download_count, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10)`
+    )
+      .bind(shareId, userPayload.sub, body.file_id, shareToken, isPublic, isUploadReq, passwordHash, expiresAt, maxDl, now)
+      .run();
+
+    const origin = url.origin;
+    return Response.json(
+      {
+        id: shareId,
+        file_id: body.file_id,
+        file_name: file.name,
+        share_token: shareToken,
+        share_url: `${origin}/s/${shareToken}`,
+        is_public: isPublic === 1,
+        is_upload_request: isUploadReq === 1,
+        has_password: !!passwordHash,
+        expires_at: expiresAt,
+        max_downloads: maxDl,
+        download_count: 0,
+        created_at: now,
+      },
+      { status: 201 }
+    );
+  }
+
+  // ─── Sharing: Revoke Share ───
+  if (request.method === 'DELETE' && url.pathname.startsWith('/api/v1/shares/')) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const shareId = url.pathname.replace('/api/v1/shares/', '');
+    await env.DB.prepare('DELETE FROM shares WHERE id = ?1 AND user_id = ?2')
+      .bind(shareId, userPayload.sub)
+      .run();
+
+    return Response.json({ success: true, message: 'Share link revoked successfully' });
+  }
+
+  // ─── Public Share Access: Metadata (No Auth Required) ───
+  const publicShareMatch = url.pathname.match(/^(?:\/s\/|\/api\/v1\/shares\/public\/|\/api\/v1\/shared\/)([^/]+)$/);
+  if (publicShareMatch && request.method === 'GET') {
+    const token = publicShareMatch[1];
+    let share = await env.DB.prepare('SELECT * FROM shares WHERE share_token = ?1')
+      .bind(token)
+      .first<any>();
+
+    if (!share) {
+      share = await env.DB.prepare(
+        `SELECT s.*, f.name as file_name, f.size_bytes, f.mime_type
+         FROM shares s
+         LEFT JOIN file_entries f ON s.file_id = f.id
+         WHERE s.share_token = ?1`
+      )
+        .bind(token)
+        .first<any>();
+    }
+
+    if (!share) {
+      return Response.json({ error: 'Share link not found or revoked' }, { status: 404 });
+    }
+
+    if (share.expires_at && new Date(share.expires_at).getTime() < Date.now()) {
+      return Response.json({ error: 'Share link has expired', code: 'SHARE_EXPIRED' }, { status: 410 });
+    }
+
+    if (share.max_downloads && share.download_count >= share.max_downloads) {
+      return Response.json({ error: 'Download limit exceeded for this share link', code: 'LIMIT_EXCEEDED' }, { status: 403 });
+    }
+
+    let file = await env.DB.prepare(
+      'SELECT id, name, size_bytes, mime_type, sha256_hash FROM file_entries WHERE id = ?1'
+    )
+      .bind(share.file_id)
+      .first<any>();
+
+    const fileName = file?.name || share.file_name || 'shared_file';
+    const fileSize = file?.size_bytes ?? share.size_bytes ?? 0;
+    const fileMime = file?.mime_type || share.mime_type || 'application/octet-stream';
+    const fileHash = file?.sha256_hash || '';
+
+    return Response.json({
+      share_token: share.share_token,
+      name: fileName,
+      file_name: fileName,
+      size_bytes: fileSize,
+      mime_type: fileMime,
+      sha256_hash: fileHash,
+      is_password_protected: !!share.password_hash,
+      requires_password: !!share.password_hash,
+      is_upload_request: share.is_upload_request === 1,
+      expires_at: share.expires_at,
+      max_downloads: share.max_downloads,
+      download_count: share.download_count,
+    });
+  }
+
+  // ─── Public Share Access: Verify Password ───
+  const publicVerifyMatch = url.pathname.match(/^(?:\/s\/|\/api\/v1\/shares\/public\/|\/api\/v1\/shared\/)([^/]+)\/verify$/);
+  if (publicVerifyMatch && request.method === 'POST') {
+    const token = publicVerifyMatch[1];
+    let share = await env.DB.prepare('SELECT * FROM shares WHERE share_token = ?1')
+      .bind(token)
+      .first<any>();
+
+    if (!share) {
+      share = await env.DB.prepare(
+        `SELECT s.*, f.name as file_name, f.size_bytes, f.mime_type
+         FROM shares s
+         LEFT JOIN file_entries f ON s.file_id = f.id
+         WHERE s.share_token = ?1`
+      )
+        .bind(token)
+        .first<any>();
+    }
+
+    if (!share) return Response.json({ error: 'Share not found' }, { status: 404 });
+    if (!share.password_hash) return Response.json({ valid: true });
+
+    const body = (await request.json().catch(() => ({}))) as { password?: string };
+    const pass = body.password || '';
+    const isValid = await verifyPassword(pass, share.password_hash);
+    if (!isValid) {
+      return Response.json({ error: 'Incorrect share password', valid: false }, { status: 401 });
+    }
+
+    return Response.json({ valid: true, success: true });
+  }
+
+  // ─── Public Share Access: Download Shared File (Supports HTTP Range 206) ───
+  const publicDlMatch = url.pathname.match(/^(?:\/s\/|\/api\/v1\/shares\/public\/|\/api\/v1\/shared\/)([^/]+)\/download$/);
+  if (publicDlMatch && request.method === 'GET') {
+    const token = publicDlMatch[1];
+    let share = await env.DB.prepare('SELECT * FROM shares WHERE share_token = ?1')
+      .bind(token)
+      .first<any>();
+
+    if (!share) {
+      share = await env.DB.prepare(
+        `SELECT s.*, f.name as file_name, f.size_bytes, f.mime_type
+         FROM shares s
+         LEFT JOIN file_entries f ON s.file_id = f.id
+         WHERE s.share_token = ?1`
+      )
+        .bind(token)
+        .first<any>();
+    }
+
+    if (!share) {
+      return Response.json({ error: 'Share link not found or revoked' }, { status: 404 });
+    }
+
+    if (share.expires_at && new Date(share.expires_at).getTime() < Date.now()) {
+      return Response.json({ error: 'Share link has expired', code: 'SHARE_EXPIRED' }, { status: 410 });
+    }
+
+    if (share.max_downloads && share.download_count >= share.max_downloads) {
+      return Response.json({ error: 'Download limit exceeded for this share link', code: 'LIMIT_EXCEEDED' }, { status: 403 });
+    }
+
+    if (url.pathname.startsWith('/api/v1/shared/')) {
+      await env.DB.prepare('UPDATE shares SET download_count = download_count + 1 WHERE id = ?1')
+        .bind(share.id)
+        .run();
+
+      return Response.json({
+        file_id: share.file_id,
+        file_name: share.file_name || 'shared_file',
+        size_bytes: share.size_bytes || 0,
+        download_url: `/api/v1/files/${share.file_id}/download`,
+      });
+    }
+
+    if (share.max_downloads && share.download_count >= share.max_downloads) {
+      return Response.json({ error: 'Download limit exceeded for this share link', code: 'LIMIT_EXCEEDED' }, { status: 403 });
+    }
+
+    if (share.password_hash) {
+      const authPass = request.headers.get('X-Share-Password') || url.searchParams.get('password') || '';
+      const isValid = await verifyPassword(authPass, share.password_hash);
+      if (!isValid) {
+        return Response.json({ error: 'Password required to download this shared file', code: 'PASSWORD_REQUIRED' }, { status: 401 });
+      }
+    }
+
+    const file = await env.DB.prepare('SELECT * FROM file_entries WHERE id = ?1')
+      .bind(share.file_id)
+      .first<FileEntry>();
+
+    if (!file) {
+      return Response.json({ error: 'Shared file not found' }, { status: 404 });
+    }
+
+    await env.DB.prepare('UPDATE shares SET download_count = download_count + 1 WHERE id = ?1')
+      .bind(share.id)
+      .run();
+
+    const mime = file.mime_type || 'application/octet-stream';
+    const disposition = `attachment; filename="${encodeURIComponent(file.name)}"`;
+    const rangeHeader = request.headers.get('Range');
+    const totalSize = file.size_bytes || 0;
+    const range = totalSize > 0 ? parseHttpRange(rangeHeader, totalSize) : null;
+    const isRange = range !== null;
+
+    if (file.data_blob) {
+      const fullBytes = Array.isArray(file.data_blob)
+        ? new Uint8Array(file.data_blob)
+        : (file.data_blob instanceof ArrayBuffer
+            ? new Uint8Array(file.data_blob)
+            : new Uint8Array(file.data_blob as any));
+      const blobSize = fullBytes.length;
+
+      if (isRange) {
+        const slice = fullBytes.subarray(range.start, range.end + 1);
+        return new Response(slice, {
+          status: 206,
+          headers: {
+            'Content-Type': mime,
+            'Content-Disposition': disposition,
+            'Content-Range': `bytes ${range.start}-${range.end}/${blobSize}`,
+            'Content-Length': String(slice.length),
+            'Accept-Ranges': 'bytes',
+            'ETag': file.sha256_hash ? `"${file.sha256_hash}"` : `"${file.id}"`,
+            'X-Checksum-SHA256': file.sha256_hash || '',
+          },
+        });
+      }
+
+      return new Response(fullBytes, {
+        status: 200,
+        headers: {
+          'Content-Type': mime,
+          'Content-Disposition': disposition,
+          'Content-Length': String(blobSize),
+          'Accept-Ranges': 'bytes',
+          'ETag': file.sha256_hash ? `"${file.sha256_hash}"` : `"${file.id}"`,
+          'X-Checksum-SHA256': file.sha256_hash || '',
+        },
+      });
+    }
+
+    if (file.storage_node_id) {
+      const nodeRow = await env.DB.prepare(
+        'SELECT id, device_id, storage_path, is_online FROM storage_nodes WHERE id = ?1'
+      )
+        .bind(file.storage_node_id)
+        .first<{ id: string; device_id: string; storage_path: string; is_online: number }>();
+
+      if (nodeRow) {
+        const doId = env.PRESENCE_HUB.idFromName('global_presence_hub');
+        const stub = env.PRESENCE_HUB.get(doId);
+        const relPath =
+          file.storage_path &&
+          file.storage_path !== 'metadata_only' &&
+          file.storage_path !== 'local' &&
+          file.storage_path !== 'd1' &&
+          file.storage_path !== 'r2'
+            ? file.storage_path
+            : file.name;
+
+        let offset = 0;
+        let length = Math.min(file.size_bytes || 10485760, 10485760);
+        if (isRange) {
+          offset = range.start;
+          length = Math.min(range.end - range.start + 1, 10485760);
+        }
+
+        const fsResp = await stub.fetch('http://do/proxy/fs', {
+          method: 'POST',
+          body: JSON.stringify({
+            deviceId: nodeRow.device_id,
+            op: 'fs_read_chunk',
+            storage_path: nodeRow.storage_path,
+            relative_path: relPath,
+            offset,
+            length,
+          }),
+        });
+
+        if (fsResp.ok) {
+          const data = (await fsResp.json()) as any;
+          if (data.success && data.result?.data_base64) {
+            const binaryString = atob(data.result.data_base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            const fileTotal = data.result.total_size || file.size_bytes || bytes.length;
+            const endOffset = offset + bytes.length - 1;
+
+            if (isRange) {
+              return new Response(bytes, {
+                status: 206,
+                headers: {
+                  'Content-Type': mime,
+                  'Content-Disposition': disposition,
+                  'Content-Range': `bytes ${offset}-${endOffset}/${fileTotal}`,
+                  'Content-Length': String(bytes.length),
+                  'Accept-Ranges': 'bytes',
+                  'ETag': file.sha256_hash ? `"${file.sha256_hash}"` : `"${file.id}"`,
+                  'X-Checksum-SHA256': file.sha256_hash || '',
+                },
+              });
+            }
+
+            return new Response(bytes, {
+              status: 200,
+              headers: {
+                'Content-Type': mime,
+                'Content-Disposition': disposition,
+                'Content-Length': String(bytes.length),
+                'Accept-Ranges': 'bytes',
+                'ETag': file.sha256_hash ? `"${file.sha256_hash}"` : `"${file.id}"`,
+                'X-Checksum-SHA256': file.sha256_hash || '',
+              },
+            });
+          }
+        }
+      }
+    }
+
+    return Response.json({ error: 'File content currently unavailable' }, { status: 404 });
+  }
+
+  // ─── Public Share Access: Upload for File Requests ───
+  const publicUpMatch = url.pathname.match(/^(?:\/s\/|\/api\/v1\/shares\/public\/)([^/]+)\/upload$/);
+  if (publicUpMatch && request.method === 'POST') {
+    const token = publicUpMatch[1];
+    const share = await env.DB.prepare('SELECT * FROM shares WHERE share_token = ?1')
+      .bind(token)
+      .first<any>();
+
+    if (!share) return Response.json({ error: 'Share not found' }, { status: 404 });
+    if (share.is_upload_request !== 1) {
+      return Response.json({ error: 'This share link does not accept file uploads' }, { status: 400 });
+    }
+    if (share.expires_at && new Date(share.expires_at).getTime() < Date.now()) {
+      return Response.json({ error: 'Upload request link has expired' }, { status: 410 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    if (!file) return Response.json({ error: 'No file provided' }, { status: 400 });
+
+    const fileId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const filename = file.name || 'uploaded_file';
+    const mimeType = file.type || 'application/octet-stream';
+    const sizeBytes = file.size;
+
+    let dataBlob: ArrayBuffer | null = null;
+    let sha256Hash = '';
+    if (sizeBytes <= 2 * 1024 * 1024) {
+      dataBlob = await file.arrayBuffer();
+      const digest = await crypto.subtle.digest('SHA-256', dataBlob);
+      sha256Hash = Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    await env.DB.prepare(
+      `INSERT INTO file_entries (id, user_id, parent_id, name, entry_type, mime_type, size_bytes, sha256_hash, storage_path, is_trashed, is_favorite, data_blob, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, 'file', ?5, ?6, ?7, 'd1', 0, 0, ?8, ?9, ?9)`
+    )
+      .bind(fileId, share.user_id, share.file_id, filename, mimeType, sizeBytes, sha256Hash, dataBlob, now)
+      .run();
+
+    return Response.json({ success: true, file_id: fileId, name: filename, size_bytes: sizeBytes }, { status: 201 });
+  }
+
+  // ─── Media Probe & Direct Play Metadata ───
+  if (request.method === 'GET' && url.pathname.startsWith('/api/v1/media/probe/')) {
+    const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const fileId = url.pathname.replace('/api/v1/media/probe/', '');
+    const entry = await env.DB.prepare('SELECT * FROM file_entries WHERE id = ?1 AND user_id = ?2')
+      .bind(fileId, userPayload.sub)
+      .first<FileEntry>();
+
+    if (!entry) return Response.json({ error: 'File not found' }, { status: 404 });
+
+    const ext = entry.name.includes('.') ? entry.name.split('.').pop()?.toLowerCase() : '';
+    const isDirectPlay = ['mp4', 'webm', 'mov', 'mp3', 'wav', 'ogg', 'flac', 'mkv'].includes(ext || '');
+
+    let agentProbeResult: any = null;
+    if (entry.storage_node_id) {
+      const nodeRow = await env.DB.prepare(
+        'SELECT device_id, storage_path FROM storage_nodes WHERE id = ?1 AND user_id = ?2'
+      )
+        .bind(entry.storage_node_id, userPayload.sub)
+        .first<{ device_id: string; storage_path: string }>();
+
+      if (nodeRow) {
+        const doId = env.PRESENCE_HUB.idFromName('global_presence_hub');
+        const stub = env.PRESENCE_HUB.get(doId);
+        const pResp = await stub.fetch('http://do/proxy/fs', {
+          method: 'POST',
+          body: JSON.stringify({
+            deviceId: nodeRow.device_id,
+            op: 'media_probe',
+            storage_path: nodeRow.storage_path,
+            relative_path: entry.name,
+          }),
+        });
+        if (pResp.ok) {
+          const pData = (await pResp.json()) as any;
+          if (pData.success) agentProbeResult = pData.result;
+        }
+      }
+    }
+
+    return Response.json({
+      file_id: entry.id,
+      name: entry.name,
+      mime_type: entry.mime_type,
+      size_bytes: entry.size_bytes,
+      direct_play_supported: isDirectPlay,
+      http_range_seekable: true,
+      probe: agentProbeResult || {
+        format: ext,
+        duration_secs: 0,
+        streams: [{ codec_type: isDirectPlay ? 'video' : 'unknown' }],
+      },
+    });
   }
 
 
