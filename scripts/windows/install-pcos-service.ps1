@@ -24,7 +24,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "   ☁ PCOS - Personal Cloud Operating System (v1.8.0)" -ForegroundColor Cyan
+Write-Host "   [PCOS] Personal Cloud Operating System (v1.8.0)" -ForegroundColor Cyan
 Write-Host "       Windows Plug-and-Play Storage Node Installer" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host ""
@@ -206,7 +206,7 @@ Write-Host "Launched PCOS Node Agent in background." -ForegroundColor Green
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
-Write-Host "🎉 PCOS Windows Storage Node is INSTALLED and ACTIVE!" -ForegroundColor Green
+Write-Host "PCOS Windows Storage Node is INSTALLED and ACTIVE!" -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host "Storage Pool:       $StoragePath" -ForegroundColor White
 Write-Host "Control Plane:      $ServerUrl" -ForegroundColor White

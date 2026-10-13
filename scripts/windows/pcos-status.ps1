@@ -7,7 +7,7 @@ $installedExe = "$env:LOCALAPPDATA\PCOS\pcos-agent.exe"
 $configPath = "$env:LOCALAPPDATA\PCOS\agent.toml"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "   ☁ PCOS Storage Node Controller & Status" -ForegroundColor Cyan
+Write-Host "   [PCOS] Storage Node Controller & Status" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 # 1. Check Background Task

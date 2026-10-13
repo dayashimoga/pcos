@@ -12,7 +12,7 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "PCOS Storage Node — Windows Setup Wizard"
+$form.Text = "PCOS Storage Node - Windows Setup Wizard"
 $form.Size = New-Object System.Drawing.Size(640, 620)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
@@ -28,7 +28,7 @@ $headerPanel.BackColor = [System.Drawing.Color]::FromArgb(30, 41, 59) # Slate 80
 $form.Controls.Add($headerPanel)
 
 $lblTitle = New-Object System.Windows.Forms.Label
-$lblTitle.Text = "☁ PCOS Personal Cloud Storage Node"
+$lblTitle.Text = "[PCOS] Personal Cloud Storage Node"
 $lblTitle.Font = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
 $lblTitle.ForeColor = [System.Drawing.Color]::FromArgb(129, 140, 248) # Indigo 400
 $lblTitle.Location = New-Object System.Drawing.Point(24, 18)
@@ -107,7 +107,7 @@ foreach ($vol in $volumes) {
     $isNonC = ($vol.DriveLetter -ne "C")
     $itemText = "Drive $($vol.DriveLetter): [$label] - $freeGb GB free of $sizeGb GB ($($vol.DriveType))"
     if ($isNonC -and $recommendedIdx -eq -1) {
-        $itemText += " ★ Recommended Storage"
+        $itemText += " * Recommended Storage"
         $recommendedIdx = $idx
         $defaultStoragePath = "$($vol.DriveLetter):\PCOS"
     }
@@ -174,7 +174,7 @@ $form.Controls.Add($lblStatus)
 
 # Action Buttons
 $btnInstall = New-Object System.Windows.Forms.Button
-$btnInstall.Text = "🚀 Install & Pair PCOS Node"
+$btnInstall.Text = "Install & Pair PCOS Node"
 $btnInstall.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 $btnInstall.Location = New-Object System.Drawing.Point(24, 480)
 $btnInstall.Size = New-Object System.Drawing.Size(360, 48)
@@ -233,14 +233,14 @@ $btnInstall.Add_Click({
         $progressBar.Value = 100
         if ($p.ExitCode -eq 0) {
             $lblStatus.ForeColor = [System.Drawing.Color]::FromArgb(52, 211, 153) # Emerald 400
-            $lblStatus.Text = "🎉 Node installed & paired successfully! Auto-starts with Windows."
+            $lblStatus.Text = "Node installed & paired successfully! Auto-starts with Windows."
             [System.Windows.Forms.MessageBox]::Show(
                 "PCOS Storage Node is now active in the background and connected to your cloud.`n`nStorage Pool: $targetStorage",
                 "Installation Successful",
                 [System.Windows.Forms.MessageBoxButtons]::OK,
                 [System.Windows.Forms.MessageBoxIcon]::Information
             )
-            $btnInstall.Text = "✔ Installed & Active"
+            $btnInstall.Text = "[OK] Installed & Active"
         } else {
             $lblStatus.ForeColor = [System.Drawing.Color]::FromArgb(248, 113, 113) # Red 400
             $lblStatus.Text = "Installation failed with exit code $($p.ExitCode). Check pairing code."
