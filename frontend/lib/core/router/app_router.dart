@@ -21,6 +21,7 @@ import '../../features/setup/pages/setup_wizard_page.dart';
 import '../../features/sharing/pages/shared_page.dart';
 import '../../features/storage/pages/storage_page.dart';
 import '../../features/storage/pages/physical_storage_browser_page.dart';
+import '../../features/transfers/pages/transfers_page.dart';
 import '../../features/trash/pages/trash_page.dart';
 
 /// Application router with authentication guard.
@@ -78,6 +79,7 @@ class AppRouter {
           GoRoute(path: '/gallery', builder: (_, __) => const GalleryPage()),
           GoRoute(path: '/media', builder: (_, __) => const MediaPage()),
           GoRoute(path: '/shared', builder: (_, __) => const SharedPage()),
+          GoRoute(path: '/transfers', builder: (_, __) => const TransfersPage()),
           GoRoute(path: '/storage', builder: (_, __) => const StoragePage()),
           GoRoute(
             path: '/storage/browse',

@@ -457,7 +457,7 @@ class _DashboardPageState extends State<DashboardPage> {
           icon: Icons.swap_vert_rounded,
           label: 'Transfers',
           color: const Color(0xFFA855F7),
-          onTap: () => TransferCenterDialog.show(context),
+          onTap: () => context.go('/transfers'),
         ),
       ];
 

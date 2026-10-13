@@ -51,7 +51,7 @@ class _QuickSearchOverlayState extends State<_QuickSearchOverlay> {
     ('Search', Icons.search_rounded, '/search'),
     ('Trash', Icons.delete_rounded, '/trash'),
     ('Duplicates', Icons.find_replace_rounded, '/duplicates'),
-    ('Transfer Center', Icons.swap_vert_rounded, '__transfers__'),
+    ('Transfer Center & Active Queue', Icons.swap_vert_rounded, '/transfers'),
     ('Settings', Icons.settings_rounded, '/settings'),
     ('Doctor Diagnostics', Icons.health_and_safety_rounded, '/doctor'),
     ('Admin', Icons.admin_panel_settings_rounded, '/admin'),
@@ -210,6 +210,8 @@ const _navItems = [
   _NavItem('Media', Icons.play_circle_outline_rounded,
       Icons.play_circle_fill_rounded, '/media'),
   _NavItem('Shared', Icons.share_outlined, Icons.share_rounded, '/shared'),
+  _NavItem('Transfers', Icons.swap_vert_outlined, Icons.swap_vert_rounded,
+      '/transfers'),
   _NavItem(
       'Devices', Icons.devices_outlined, Icons.devices_rounded, '/devices'),
   _NavItem(
