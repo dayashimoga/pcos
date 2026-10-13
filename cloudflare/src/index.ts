@@ -10,6 +10,8 @@ import {
   verifyJwt,
   generatePairingCode,
   generateEnrollmentToken,
+  generateTotpSecret,
+  verifyTotpCode,
 } from './services/auth';
 import { BudgetGuard } from './services/budget';
 import { CloudCacheService } from './services/r2_cache';
@@ -116,6 +118,32 @@ export default {
       }
 
       if (url.pathname === '/ws/presence') {
+        const jwtSecret = env.JWT_SECRET?.trim() || '';
+        if (jwtSecret) {
+          const userPayload = await extractAuthUser(request, jwtSecret);
+          if (!userPayload) {
+            return new Response('Unauthorized: valid Bearer token required for presence tunnel', {
+              status: 401,
+              headers: corsHeaders,
+            });
+          }
+          const deviceId = url.searchParams.get('deviceId');
+          if (!deviceId) {
+            return new Response('Missing deviceId', { status: 400, headers: corsHeaders });
+          }
+          const dev = await env.DB.prepare(
+            'SELECT id FROM device_identities WHERE id = ?1 AND user_id = ?2'
+          )
+            .bind(deviceId, userPayload.sub)
+            .first();
+          if (!dev) {
+            return new Response('Forbidden: device not registered to authenticated user', {
+              status: 403,
+              headers: corsHeaders,
+            });
+          }
+        }
+
         const id = env.PRESENCE_HUB.idFromName('global_presence_hub');
         const stub = env.PRESENCE_HUB.get(id);
         return stub.fetch(request);
@@ -356,7 +384,11 @@ async function handleApiRequest(
     const rateLimitResp = checkRateLimit(`login_${clientIp}`);
     if (rateLimitResp) return rateLimitResp;
 
-    const body = (await request.json().catch(() => ({}))) as { email?: string; password?: string };
+    const body = (await request.json().catch(() => ({}))) as {
+      email?: string;
+      password?: string;
+      mfa_code?: string;
+    };
     if (!body.email || !body.password) {
       return Response.json({ error: 'Email and password required' }, { status: 400 });
     }
@@ -368,6 +400,25 @@ async function handleApiRequest(
     if (!user || !(await verifyPassword(body.password, user.password_hash))) {
       recordFailedAttempt(`login_${clientIp}`, 5, 300000);
       return Response.json({ error: 'Invalid email or password' }, { status: 401 });
+    }
+
+    // Enforce Two-Factor Authentication if enabled
+    if (user.mfa_enabled === 1 && user.mfa_secret) {
+      if (!body.mfa_code) {
+        // Issue an ephemeral MFA challenge token valid for 5 minutes
+        const mfa_token = await generateJwt({ sub: user.id, mfa_pending: true }, jwtSecret, 300);
+        return Response.json({
+          mfa_required: true,
+          mfa_token,
+          message: 'Two-Factor Authentication code required',
+        });
+      }
+
+      const isMfaValid = await verifyTotpCode(user.mfa_secret, body.mfa_code);
+      if (!isMfaValid) {
+        recordFailedAttempt(`login_${clientIp}`, 5, 300000);
+        return Response.json({ error: 'Invalid 6-digit MFA verification code' }, { status: 401 });
+      }
     }
 
     recordSuccess(`login_${clientIp}`);
@@ -385,6 +436,61 @@ async function handleApiRequest(
         display_name: user.display_name,
         role: user.role,
         cloud_id: cloudRow?.cloud_id,
+        mfa_enabled: user.mfa_enabled === 1,
+      },
+      tokens,
+    });
+  }
+
+  // ─── Auth: MFA Challenge Completion ───
+  if (request.method === 'POST' && url.pathname === '/api/v1/auth/mfa/challenge') {
+    const clientIp = request.headers.get('cf-connecting-ip') || '127.0.0.1';
+    const rateLimitResp = checkRateLimit(`login_${clientIp}`);
+    if (rateLimitResp) return rateLimitResp;
+
+    const body = (await request.json().catch(() => ({}))) as {
+      mfa_token?: string;
+      mfa_code?: string;
+    };
+    if (!body.mfa_token || !body.mfa_code) {
+      return Response.json({ error: 'mfa_token and mfa_code required' }, { status: 400 });
+    }
+
+    const claims = await verifyJwt(body.mfa_token, jwtSecret);
+    if (!claims || !claims.sub || claims.mfa_pending !== true) {
+      return Response.json({ error: 'Invalid or expired MFA challenge session' }, { status: 401 });
+    }
+
+    const user = await env.DB.prepare('SELECT * FROM users WHERE id = ?1')
+      .bind(claims.sub)
+      .first<User>();
+
+    if (!user || user.mfa_enabled !== 1 || !user.mfa_secret) {
+      return Response.json({ error: 'MFA not configured for user' }, { status: 400 });
+    }
+
+    const isMfaValid = await verifyTotpCode(user.mfa_secret, body.mfa_code);
+    if (!isMfaValid) {
+      recordFailedAttempt(`login_${clientIp}`, 5, 300000);
+      return Response.json({ error: 'Invalid 6-digit MFA verification code' }, { status: 401 });
+    }
+
+    recordSuccess(`login_${clientIp}`);
+
+    const cloudRow = await env.DB.prepare('SELECT cloud_id FROM cloud_identities WHERE user_id = ?1')
+      .bind(user.id)
+      .first<{ cloud_id: string }>();
+
+    const tokens = await issueTokenPair(user.id, user.email, jwtSecret, env.DB);
+
+    return Response.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        display_name: user.display_name,
+        role: user.role,
+        cloud_id: cloudRow?.cloud_id,
+        mfa_enabled: true,
       },
       tokens,
     });
@@ -900,7 +1006,25 @@ async function handleApiRequest(
         .bind(deviceId, userPayload.sub)
         .run();
 
-      return Response.json({ success: true, message: 'Device removed successfully' });
+      await env.DB.prepare(
+        'DELETE FROM storage_nodes WHERE device_id = ?1 AND user_id = ?2'
+      )
+        .bind(deviceId, userPayload.sub)
+        .run();
+
+      // Terminate active presence and WebSocket tunnel in DevicePresenceHub
+      try {
+        const doId = env.PRESENCE_HUB.idFromName('global_presence_hub');
+        const stub = env.PRESENCE_HUB.get(doId);
+        await stub.fetch(`http://do/disconnect?deviceId=${encodeURIComponent(deviceId)}`, {
+          method: 'POST',
+        });
+      } catch (_) {}
+
+      return Response.json({
+        success: true,
+        message: 'Device removed and presence revoked successfully',
+      });
     }
   }
 
@@ -1117,17 +1241,23 @@ async function handleApiRequest(
     return Response.json({ success: true, message: 'Password updated successfully' });
   }
 
-  // ─── Auth: MFA Endpoints ───
+  // ─── Auth: Real RFC 6238 MFA Endpoints ───
   if (url.pathname === '/api/v1/auth/mfa/status') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    return Response.json({ mfa_enabled: false });
+
+    const user = await env.DB.prepare('SELECT mfa_enabled FROM users WHERE id = ?1')
+      .bind(userPayload.sub)
+      .first<{ mfa_enabled: number }>();
+
+    return Response.json({ mfa_enabled: user?.mfa_enabled === 1 });
   }
 
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/mfa/setup') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const secret = crypto.randomUUID().replace(/-/g, '').slice(0, 32).toUpperCase();
+
+    const secret = generateTotpSecret();
     const uri = `otpauth://totp/PCOS:${encodeURIComponent(userPayload.email || 'user')}?secret=${secret}&issuer=PCOS`;
     return Response.json({ secret, provisioning_uri: uri });
   }
@@ -1135,12 +1265,59 @@ async function handleApiRequest(
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/mfa/verify') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = (await request.json().catch(() => ({}))) as { secret?: string; code?: string };
+    if (!body.secret || !body.code) {
+      return Response.json({ error: 'secret and code are required' }, { status: 400 });
+    }
+
+    const isValid = await verifyTotpCode(body.secret, body.code);
+    if (!isValid) {
+      return Response.json({ error: 'Invalid 6-digit MFA verification code' }, { status: 400 });
+    }
+
+    const now = new Date().toISOString();
+    try {
+      await env.DB.prepare('ALTER TABLE users ADD COLUMN mfa_enabled INTEGER NOT NULL DEFAULT 0').run();
+    } catch (_) {}
+    try {
+      await env.DB.prepare('ALTER TABLE users ADD COLUMN mfa_secret TEXT').run();
+    } catch (_) {}
+
+    await env.DB.prepare('UPDATE users SET mfa_enabled = 1, mfa_secret = ?1, updated_at = ?2 WHERE id = ?3')
+      .bind(body.secret, now, userPayload.sub)
+      .run();
+
     return Response.json({ success: true, message: 'MFA enabled successfully' });
   }
 
   if (request.method === 'POST' && url.pathname === '/api/v1/auth/mfa/disable') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = (await request.json().catch(() => ({}))) as { password?: string; code?: string };
+    const user = await env.DB.prepare('SELECT password_hash, mfa_secret FROM users WHERE id = ?1')
+      .bind(userPayload.sub)
+      .first<{ password_hash: string; mfa_secret: string | null }>();
+
+    if (!user) return Response.json({ error: 'User not found' }, { status: 404 });
+
+    let verified = false;
+    if (body.password) {
+      verified = await verifyPassword(body.password, user.password_hash);
+    } else if (body.code && user.mfa_secret) {
+      verified = await verifyTotpCode(user.mfa_secret, body.code);
+    }
+
+    if (!verified) {
+      return Response.json({ error: 'Invalid password or MFA code' }, { status: 401 });
+    }
+
+    const now = new Date().toISOString();
+    await env.DB.prepare('UPDATE users SET mfa_enabled = 0, mfa_secret = NULL, updated_at = ?1 WHERE id = ?2')
+      .bind(now, userPayload.sub)
+      .run();
+
     return Response.json({ success: true, message: 'MFA disabled' });
   }
 
@@ -1621,13 +1798,17 @@ async function handleApiRequest(
       url.pathname.match(/^\/api\/v1\/files\/[^/]+\/preview$/))
   ) {
     const userPayload = await extractAuthUser(request, jwtSecret);
+    if (!userPayload) {
+      return Response.json({ error: 'Unauthorized: authentication required to access file' }, { status: 401 });
+    }
+
     const fileId = url.pathname.split('/')[4];
     const isPreview = url.pathname.endsWith('/preview');
     const entry = await env.DB.prepare('SELECT * FROM file_entries WHERE id = ?1')
       .bind(fileId)
       .first<FileEntry>();
 
-    if (!entry || (userPayload && entry.user_id !== userPayload.sub)) {
+    if (!entry || entry.user_id !== userPayload.sub) {
       return Response.json({ error: 'File not found or unauthorized' }, { status: 404 });
     }
 
@@ -1650,11 +1831,16 @@ async function handleApiRequest(
     }
 
     if (entry.data_blob) {
-      return new Response(entry.data_blob, {
+      const bytes = Array.isArray(entry.data_blob)
+        ? new Uint8Array(entry.data_blob)
+        : (entry.data_blob instanceof ArrayBuffer
+            ? new Uint8Array(entry.data_blob)
+            : new Uint8Array(entry.data_blob as any));
+      return new Response(bytes, {
         headers: {
           'Content-Type': mime,
           'Content-Disposition': disposition,
-          'Content-Length': String(entry.size_bytes),
+          'Content-Length': String(bytes.length),
         },
       });
     }

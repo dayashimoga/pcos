@@ -242,6 +242,23 @@ export class DevicePresenceHub implements DurableObject {
       return Response.json(agentResult, { status });
     }
 
+    if (request.method === 'POST' && url.pathname === '/disconnect') {
+      const targetDeviceId = url.searchParams.get('deviceId') || '';
+      if (targetDeviceId) {
+        this.activeDevices.delete(targetDeviceId);
+        const sockets = this.deviceSockets.get(targetDeviceId);
+        if (sockets) {
+          for (const ws of sockets) {
+            try {
+              ws.close(1008, 'Device revoked by owner');
+            } catch (_) {}
+          }
+          this.deviceSockets.delete(targetDeviceId);
+        }
+      }
+      return Response.json({ success: true, message: 'Device disconnected and revoked' });
+    }
+
     return new Response('Not Found', { status: 404 });
   }
 }

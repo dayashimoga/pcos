@@ -144,17 +144,9 @@ async fn main() -> anyhow::Result<()> {
                 enroll::enroll_node_with_code(&code_str, &server, &config_path).await?;
 
                 if !start {
-                    print!("Start PCOS agent daemon now? [Y/n] > ");
-                    use std::io::{self, Write};
-                    io::stdout().flush().ok();
-                    let mut input = String::new();
-                    io::stdin().read_line(&mut input)?;
-                    let ans = input.trim().to_lowercase();
-                    if !ans.is_empty() && ans != "y" && ans != "yes" {
-                        return Ok(());
-                    }
+                    return Ok(());
                 }
-                // Fall through to daemon startup below
+                // If --start was specified, fall through to daemon startup below
             }
             Commands::Doctor { storage, server } => {
                 let report = doctor::DoctorReport::run_diagnostics(&storage, &server).await;

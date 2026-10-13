@@ -8,6 +8,9 @@ import {
   verifyJwt,
   generatePairingCode,
   generateEnrollmentToken,
+  generateTotpSecret,
+  computeTotp,
+  verifyTotpCode,
 } from '../src/services/auth';
 import { BudgetGuard } from '../src/services/budget';
 import { Env, BudgetStatus } from '../src/types';
@@ -1644,6 +1647,41 @@ describe('User Profile & Password Management', () => {
     const mfaSetupData = (await mfaSetupResp.json()) as any;
     expect(mfaSetupData.secret).toBeDefined();
     expect(mfaSetupData.provisioning_uri).toContain('otpauth://totp/PCOS:');
+  });
+
+  describe('Phase 1 Identity, Security & MFA Verification Suite', () => {
+    it('should generate RFC 6238 TOTP secrets and verify valid 6-digit codes', async () => {
+      const secret = generateTotpSecret();
+      expect(secret).toHaveLength(32);
+
+      const timeStep = Math.floor(Date.now() / 1000 / 30);
+      const code = await computeTotp(secret, timeStep);
+      expect(code).toHaveLength(6);
+
+      const isValid = await verifyTotpCode(secret, code, 1);
+      expect(isValid).toBe(true);
+
+      const isInvalid = await verifyTotpCode(secret, '000000', 1);
+      expect(isInvalid).toBe(false);
+    });
+
+    it('should reject unauthenticated file download attempts (SEC-01 fail-closed gate)', async () => {
+      const worker = (await import('../src/index')).default;
+      const mockEnv: any = {
+        PCOS_ENV: 'test',
+        PCOS_CONTROL_VERSION: '1.0.0',
+        JWT_SECRET: 'test_jwt_secret_key_12345678901234567890',
+        DB: { prepare: () => ({ bind: () => ({ first: async () => null }) }) },
+      };
+      const ctx: any = { waitUntil: () => {} };
+      const unauthReq = new Request('http://edge.pcos.dev/api/v1/files/some-file-id/download', {
+        method: 'GET',
+      });
+      const unauthResp = await worker.fetch(unauthReq, mockEnv, ctx);
+      expect(unauthResp.status).toBe(401);
+      const err = (await unauthResp.json()) as any;
+      expect(err.error).toContain('Unauthorized');
+    });
   });
 });
 

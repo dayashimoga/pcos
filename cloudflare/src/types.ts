@@ -28,6 +28,8 @@ export interface User {
   role: string;
   quota_bytes: number;
   used_bytes: number;
+  mfa_enabled?: number;
+  mfa_secret?: string | null;
   created_at: string;
   updated_at: string;
 }

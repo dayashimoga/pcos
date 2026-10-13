@@ -125,9 +125,8 @@ if (-not $PairingCode -and -not $NonInteractive -and -not $SkipEnrollment) {
 }
 
 if ($PairingCode) {
-    Write-Host "Enrolling node with pairing code: $PairingCode ..." -ForegroundColor Cyan
     try {
-        & "$installedExe" --config "$configPath" enroll "$PairingCode" --server "$ServerUrl" --start
+        & "$installedExe" --config "$configPath" enroll "$PairingCode" --server "$ServerUrl"
         Write-Host "Device successfully enrolled and authenticated!" -ForegroundColor Green
     } catch {
         Write-Warning "Enrollment encountered an issue: $_. Proceeding with configuration..."

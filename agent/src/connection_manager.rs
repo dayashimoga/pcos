@@ -126,7 +126,11 @@ impl ConnectionManager {
                 self.server_url.replace("http://", "ws://")
             };
 
-            let connect_endpoint = format!("{}/ws/presence?deviceId={}", ws_url, self.device_id);
+            let connect_endpoint = if !self.auth_token.is_empty() {
+                format!("{}/ws/presence?deviceId={}&token={}", ws_url, self.device_id, self.auth_token)
+            } else {
+                format!("{}/ws/presence?deviceId={}", ws_url, self.device_id)
+            };
             info!(endpoint = %connect_endpoint, "Establishing outbound TLS/WSS tunnel to Control Plane...");
 
             match connect_async(&connect_endpoint).await {

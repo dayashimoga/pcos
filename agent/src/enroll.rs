@@ -105,11 +105,17 @@ pub async fn enroll_node_with_code(
 
     let dev_id = device_id.unwrap_or_else(|| Uuid::new_v4().to_string());
 
+    // Extract user_id from JWT payload claims
+    let user_id = extract_user_id_from_jwt(&token).unwrap_or_default();
+
     // 3. Save configuration
     let mut config = AgentConfig::load_or_create(config_path)?;
     config.server_url = base_url.to_string();
     config.auth_token = token;
     config.device_id = dev_id.clone();
+    if !user_id.is_empty() {
+        config.user_id = user_id;
+    }
 
     // Default sync folder in user home
     let default_sync = dirs::home_dir()
@@ -136,4 +142,18 @@ pub async fn enroll_node_with_code(
     println!();
 
     Ok(())
+}
+
+fn extract_user_id_from_jwt(token: &str) -> Option<String> {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let mut payload = parts[1].replace('-', "+").replace('_', "/");
+    while payload.len() % 4 != 0 {
+        payload.push('=');
+    }
+    let decoded = crate::fs_handler::base64_decode(&payload).ok()?;
+    let json: serde_json::Value = serde_json::from_slice(&decoded).ok()?;
+    json["sub"].as_str().map(|s| s.to_string())
 }
