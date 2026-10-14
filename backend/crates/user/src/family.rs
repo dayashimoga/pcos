@@ -132,6 +132,21 @@ pub async fn list_members(
     Query(query): Query<ListMembersQuery>,
 ) -> AppResult<impl IntoResponse> {
     let members = if let Some(cloud_id) = query.cloud_id {
+        // Enforce tenant isolation: caller must be an active member of this cloud
+        let is_member: Option<(String,)> = sqlx::query_as(
+            "SELECT id FROM family_members WHERE cloud_id = $1 AND user_id = $2",
+        )
+        .bind(&cloud_id)
+        .bind(auth.claims.sub)
+        .fetch_optional(state.db.pool())
+        .await?;
+
+        if is_member.is_none() {
+            return Err(AppError::Forbidden(
+                "Access denied: You are not a member of this family cloud".into(),
+            ));
+        }
+
         sqlx::query_as::<_, FamilyMember>(
             "SELECT * FROM family_members WHERE cloud_id = $1 ORDER BY joined_at ASC",
         )
@@ -153,9 +168,27 @@ pub async fn list_members(
 /// POST /api/v1/family/members/invite — Invite a new member.
 pub async fn invite_member(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Json(req): Json<InviteMemberRequest>,
 ) -> AppResult<impl IntoResponse> {
+    // RBAC: Verify caller is owner or admin of the targeted family cloud
+    let caller_member: Option<(String,)> = sqlx::query_as(
+        "SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2",
+    )
+    .bind(&req.cloud_id)
+    .bind(auth.claims.sub)
+    .fetch_optional(state.db.pool())
+    .await?;
+
+    match caller_member {
+        Some((ref role,)) if role == "owner" || role == "admin" => {}
+        _ => {
+            return Err(AppError::Forbidden(
+                "Only family cloud owners or administrators can invite members".into(),
+            ));
+        }
+    }
+
     let member_id = format!("fmem_{}", Uuid::new_v4());
     let invite_code = format!("fam_inv_{}", Uuid::new_v4().simple().to_string()[..12].to_string());
     let target_user_id = req.user_id.unwrap_or_else(Uuid::new_v4);
@@ -185,10 +218,33 @@ pub async fn invite_member(
 /// PUT /api/v1/family/members/:id/role — Update member role.
 pub async fn update_member_role(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(member_id): Path<String>,
     Json(req): Json<UpdateRoleRequest>,
 ) -> AppResult<impl IntoResponse> {
+    let target = sqlx::query_as::<_, (String, Uuid, String)>(
+        "SELECT cloud_id, user_id, role FROM family_members WHERE id = $1",
+    )
+    .bind(&member_id)
+    .fetch_optional(state.db.pool())
+    .await?
+    .ok_or_else(|| AppError::NotFound("Family member not found".into()))?;
+
+    // RBAC: Caller must be owner of the cloud
+    let caller_role: Option<(String,)> = sqlx::query_as(
+        "SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2",
+    )
+    .bind(&target.0)
+    .bind(auth.claims.sub)
+    .fetch_optional(state.db.pool())
+    .await?;
+
+    if !matches!(caller_role, Some((ref r,)) if r == "owner") {
+        return Err(AppError::Forbidden(
+            "Only the family cloud owner can modify member roles".into(),
+        ));
+    }
+
     sqlx::query("UPDATE family_members SET role = $1 WHERE id = $2")
         .bind(&req.role)
         .bind(&member_id)
@@ -201,10 +257,36 @@ pub async fn update_member_role(
 /// PUT /api/v1/family/members/:id/quota — Update member quota.
 pub async fn update_member_quota(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(member_id): Path<String>,
     Json(req): Json<UpdateQuotaRequest>,
 ) -> AppResult<impl IntoResponse> {
+    let target = sqlx::query_as::<_, (String, Uuid)>(
+        "SELECT cloud_id, user_id FROM family_members WHERE id = $1",
+    )
+    .bind(&member_id)
+    .fetch_optional(state.db.pool())
+    .await?
+    .ok_or_else(|| AppError::NotFound("Family member not found".into()))?;
+
+    // RBAC: Caller must be owner or admin
+    let caller_role: Option<(String,)> = sqlx::query_as(
+        "SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2",
+    )
+    .bind(&target.0)
+    .bind(auth.claims.sub)
+    .fetch_optional(state.db.pool())
+    .await?;
+
+    match caller_role {
+        Some((ref r,)) if r == "owner" || r == "admin" => {}
+        _ => {
+            return Err(AppError::Forbidden(
+                "Only family cloud owners or administrators can modify storage quotas".into(),
+            ));
+        }
+    }
+
     sqlx::query("UPDATE family_members SET storage_quota_bytes = $1 WHERE id = $2")
         .bind(req.storage_quota_bytes)
         .bind(&member_id)
@@ -220,9 +302,39 @@ pub async fn update_member_quota(
 /// DELETE /api/v1/family/members/:id — Remove a member from the cloud.
 pub async fn delete_member(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(member_id): Path<String>,
 ) -> AppResult<impl IntoResponse> {
+    let target = sqlx::query_as::<_, (String, Uuid, String)>(
+        "SELECT cloud_id, user_id, role FROM family_members WHERE id = $1",
+    )
+    .bind(&member_id)
+    .fetch_optional(state.db.pool())
+    .await?
+    .ok_or_else(|| AppError::NotFound("Family member not found".into()))?;
+
+    let is_self = target.1 == auth.claims.sub;
+
+    if !is_self {
+        // RBAC: Caller must be owner or admin
+        let caller_role: Option<(String,)> = sqlx::query_as(
+            "SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2",
+        )
+        .bind(&target.0)
+        .bind(auth.claims.sub)
+        .fetch_optional(state.db.pool())
+        .await?;
+
+        match caller_role {
+            Some((ref r,)) if r == "owner" || (r == "admin" && target.2 != "owner") => {}
+            _ => {
+                return Err(AppError::Forbidden(
+                    "Insufficient permissions to remove this family member".into(),
+                ));
+            }
+        }
+    }
+
     sqlx::query("DELETE FROM family_members WHERE id = $1")
         .bind(&member_id)
         .execute(state.db.pool())

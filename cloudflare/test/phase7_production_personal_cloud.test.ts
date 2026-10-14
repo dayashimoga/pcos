@@ -126,6 +126,18 @@ describe('PHASE 7: Production Personal Cloud, Family, Policies & HA', () => {
                 }
                 return null;
               }
+              if (sql.includes('FROM family_members WHERE id = ?1')) {
+                for (const m of mockFamilyMembers.values()) {
+                  if (m.id === bound[0]) return m;
+                }
+                return null;
+              }
+              if (sql.includes('FROM family_members WHERE cloud_id = ?1 AND user_id = ?2')) {
+                for (const m of mockFamilyMembers.values()) {
+                  if (m.cloud_id === bound[0] && m.user_id === bound[1]) return m;
+                }
+                return null;
+              }
               if (sql.includes('FROM recovery_keys WHERE user_id = ?1 AND is_used = 0')) {
                 for (const k of mockRecoveryKeys.values()) {
                   if (k.user_id === bound[0] && !k.is_used) return k;

@@ -30,14 +30,14 @@ impl StorageEngine {
     }
 
     /// Path for chunked upload temp directory.
-    fn chunk_dir(&self, user_id: Uuid, upload_id: Uuid) -> PathBuf {
+    pub fn chunk_dir(&self, user_id: Uuid, upload_id: Uuid) -> PathBuf {
         self.base_path
             .join(user_id.to_string())
             .join("_chunks")
             .join(upload_id.to_string())
     }
 
-    /// Store file data and return the storage path and SHA-256 hash.
+    /// Store file data atomically and return the storage path and SHA-256 hash.
     pub async fn store_file(
         &self,
         user_id: Uuid,
@@ -54,7 +54,13 @@ impl StorageEngine {
         hasher.update(data);
         let hash = hex::encode(hasher.finalize());
 
-        fs::write(&path, data).await?;
+        // Atomic write: write to temp file, sync to physical disk, then atomically rename
+        let tmp_path = path.with_extension(format!("tmp_{}", Uuid::new_v4()));
+        let mut file = fs::File::create(&tmp_path).await?;
+        file.write_all(data).await?;
+        file.sync_all().await?;
+        drop(file);
+        fs::rename(&tmp_path, &path).await?;
 
         let relative_path = path
             .strip_prefix(&self.base_path)
@@ -62,7 +68,7 @@ impl StorageEngine {
             .to_string_lossy()
             .to_string();
 
-        tracing::info!(file_id = %file_id, size = data.len(), hash = %hash, "File stored");
+        tracing::info!(file_id = %file_id, size = data.len(), hash = %hash, "File stored atomically");
 
         Ok((relative_path, hash))
     }
@@ -79,14 +85,19 @@ impl StorageEngine {
         fs::create_dir_all(&dir).await?;
 
         let chunk_path = dir.join(format!("chunk_{:06}", chunk_index));
-        fs::write(&chunk_path, data).await?;
+        let tmp_chunk = dir.join(format!("tmp_chunk_{:06}_{}", chunk_index, Uuid::new_v4()));
+        let mut file = fs::File::create(&tmp_chunk).await?;
+        file.write_all(data).await?;
+        file.sync_all().await?;
+        drop(file);
+        fs::rename(&tmp_chunk, &chunk_path).await?;
 
-        tracing::debug!(upload_id = %upload_id, chunk = chunk_index, size = data.len(), "Chunk stored");
+        tracing::debug!(upload_id = %upload_id, chunk = chunk_index, size = data.len(), "Chunk stored atomically");
 
         Ok(())
     }
 
-    /// Assemble all chunks into a final file, returning storage path and hash.
+    /// Assemble all chunks into a final file atomically, returning storage path and hash.
     pub async fn assemble_chunks(
         &self,
         user_id: Uuid,
@@ -101,7 +112,8 @@ impl StorageEngine {
             fs::create_dir_all(parent).await?;
         }
 
-        let mut file = fs::File::create(&file_path).await?;
+        let tmp_file = file_path.with_extension(format!("tmp_asm_{}", Uuid::new_v4()));
+        let mut file = fs::File::create(&tmp_file).await?;
         let mut hasher = Sha256::new();
         let mut total_size: i64 = 0;
 
@@ -113,8 +125,10 @@ impl StorageEngine {
             file.write_all(&data).await?;
         }
 
-        file.flush().await?;
+        file.sync_all().await?;
         drop(file);
+
+        fs::rename(&tmp_file, &file_path).await?;
 
         // Clean up chunks
         fs::remove_dir_all(&chunk_dir).await.ok();
@@ -126,7 +140,7 @@ impl StorageEngine {
             .to_string_lossy()
             .to_string();
 
-        tracing::info!(file_id = %file_id, size = total_size, hash = %hash, "Chunked upload assembled");
+        tracing::info!(file_id = %file_id, size = total_size, hash = %hash, "Chunked upload assembled atomically");
 
         Ok((relative_path, hash, total_size))
     }

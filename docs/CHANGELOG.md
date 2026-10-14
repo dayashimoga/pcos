@@ -6,15 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Final Gap Remediation & Production Certification
 
-#### P0 Security & Root Cause Fixes
+#### P0 Security & Root Cause Remediations
 - **SEC-01 (Anonymous Download Password Bypass)**: Enforced password verification across `/api/v1/shared/:token/download` and `/s/:token/download` in both Rust backend and Cloudflare Worker.
 - **SEC-02 (WebSocket Presence Impersonation)**: Hardened `/ws/presence` to fail-closed with 503 if secret missing, strictly verifying JWT token signatures and device ownership prior to socket upgrade.
 - **SEC-03 (MFA Challenge Token Bypass)**: Updated `extractAuthUser` to explicitly reject tokens with `mfa_pending: true`; enforced TOTP verification in backend `auth::login`.
 - **SEC-04 (StorageEngine Path & Symlink Traversal)**: Implemented `safe_resolve` in `pcos_file_metadata::storage::StorageEngine` with canonicalization and boundary confinement checks.
 - **SEC-05 (Stale Token Invalidation)**: Enforced automatic revocation of all active refresh tokens on password change and emergency recovery reset.
-- **SEC-06 (Emergency Recovery Key Hardening)**: Upgraded recovery phrases to standard BIP-39 256-word dictionary (8-bit entropy/word), PBKDF2 salting, and progressive rate-limiting lockout on verification attempts.
+- **SEC-06 (BIP-39 Standard Emergency Recovery)**: Upgraded recovery phrases to official BIP-39 2048-word dictionary with 128-bit CSPRNG entropy and 4-bit SHA-256 checksum verification, PBKDF2 salting, and progressive rate-limiting lockout on verification attempts in both Rust backend (`recovery.rs`) and Cloudflare edge (`bip39.ts`).
 - **SEC-07 (Agent LAN Server Fail-Closed)**: Replaced fail-open logic with strict token validation returning 503 if unconfigured and 401 if invalid.
+- **SEC-08 (LAN Token Timing Attack Resistance)**: Implemented constant-time XOR byte comparison (`constant_time_eq`) in `agent/src/lan_server.rs`, eliminating LAN timing side-channel attacks.
+- **SEC-09 (URL Query Parameter Token Leakage Elimination)**: Restricted `?token=` query parameter fallback strictly to streaming, file download, and WebSocket endpoints; all control and administrative APIs strictly require `Authorization: Bearer` headers.
+- **SEC-10 (Public Upload Request Password Protection)**: Enforced password authentication on file request drop folder uploads (`/api/v1/shares/public/:token/upload`).
+- **IDN-01 (Family Cloud Multi-Tenant Isolation & RBAC)**: Enforced strict tenant isolation on member listing, owner/admin authorization on member invites, and owner-only permission on role modification across backend and edge.
 - **SYS-01 (Windows Installer Concurrency & Hash Validation)**: Reordered installer steps to terminate existing scheduled tasks and agent processes prior to file copy; added SHA-256 pre/post-copy hash verification; converted GUI setup to non-freezing message-pumped execution loop with clean `-Uninstall` and `-Repair` switches.
+
+#### P1 Data Integrity & Storage Engine Hardening
+- **DAT-01 (Atomic Storage Engine Writes)**: Upgraded `store_file` and `assemble_chunks` in `pcos_file_metadata::storage::StorageEngine` to write to `.tmp_*` files, invoke `file.sync_all()` (fsync) to flush NAND hardware buffers, and atomically rename to destination path.
+- **DAT-02 (Physical Chunk Assembly & SHA-256 Integrity Verification)**: Upgraded `finalize_transfer` in `resumable.rs` to physically stitch uploaded chunks via `StorageEngine::assemble_chunks` and enforce client-provided SHA-256 cryptographic verification.
 
 #### Backend API Parity Wiring & Storage Engine
 - **IDN-01**: Implemented Multi-User Family Clouds and Member Management in `backend/crates/user/src/family.rs`.
@@ -27,13 +35,13 @@ All notable changes to this project will be documented in this file.
 - **ADM-01**: Implemented Zero-Cost License Audit and Cloud Data Export in `backend/crates/gateway/src/cluster.rs`.
 
 #### Quality & Test Certification
-- **165 / 165 Automated Tests Passing (100%)**:
-  - Rust Backend: **42 / 42 passed**
-  - Rust Agent: **25 / 25 passed**
-  - Cloudflare Worker: **64 / 64 passed**
-  - Flutter Frontend: **20 / 20 passed**
-  - Live Edge Control Plane Probes: **14 / 14 passed**
-- Zero Critical or High unresolved defects; fail-closed security certified.
+- **182 / 182 Automated Tests Passing (100%)**:
+  - Rust Backend: **46 / 46 passed** (including BIP-39 bounds, tamper detection, and checksum verification)
+  - Rust Agent: **26 / 26 passed** (including constant-time equality and fail-closed auth)
+  - Cloudflare Worker: **74 / 74 passed** (including Phase P0 security audit suite)
+  - Flutter Frontend: **20 / 20 passed** (BLoCs and responsive widgets)
+  - Live Edge Control Plane Probes: **16 / 16 passed** (including URL query token leakage and BIP-39 rejection)
+- Zero Critical or High unresolved defects; fail-closed security and physical data integrity certified.
 
 ## [1.8.0-prod] - 2026-10-13
 

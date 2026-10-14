@@ -15,6 +15,7 @@ import {
 } from './services/auth';
 import { BudgetGuard } from './services/budget';
 import { CloudCacheService } from './services/r2_cache';
+import { generateBip39Mnemonic, validateBip39Mnemonic } from './services/bip39';
 
 export { PairingHub } from './durable_objects/PairingHub';
 export { DevicePresenceHub } from './durable_objects/DevicePresenceHub';
@@ -2294,6 +2295,20 @@ async function handleApiRequest(
     }
 
     const formData = await request.formData();
+
+    if (share.password_hash) {
+      const authPass = request.headers.get('X-Share-Password') ||
+        (formData.get('password') as string | null) ||
+        url.searchParams.get('password') || '';
+      const isValid = await verifyPassword(authPass, share.password_hash);
+      if (!isValid) {
+        return Response.json(
+          { error: 'Password required to upload to this shared drop folder', code: 'PASSWORD_REQUIRED' },
+          { status: 401 }
+        );
+      }
+    }
+
     const file = formData.get('file') as File | null;
     if (!file) return Response.json({ error: 'No file provided' }, { status: 400 });
 
@@ -3440,10 +3455,23 @@ async function handleApiRequest(
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const cloudId = url.searchParams.get('cloud_id');
-    const rows = cloudId
-      ? await env.DB.prepare('SELECT * FROM family_members WHERE cloud_id = ?1').bind(cloudId).all()
-      : await env.DB.prepare('SELECT * FROM family_members WHERE user_id = ?1').bind(userPayload.sub).all();
+    if (cloudId) {
+      // Enforce tenant isolation: caller must be member of this cloud
+      const isMember = await env.DB.prepare('SELECT id FROM family_members WHERE cloud_id = ?1 AND user_id = ?2')
+        .bind(cloudId, userPayload.sub)
+        .first();
+      if (!isMember) {
+        return Response.json({ error: 'Access denied: You are not a member of this family cloud' }, { status: 403 });
+      }
+      const rows = await env.DB.prepare('SELECT * FROM family_members WHERE cloud_id = ?1 ORDER BY joined_at ASC')
+        .bind(cloudId)
+        .all();
+      return Response.json({ members: rows.results || [] });
+    }
 
+    const rows = await env.DB.prepare('SELECT * FROM family_members WHERE user_id = ?1 ORDER BY joined_at ASC')
+      .bind(userPayload.sub)
+      .all();
     return Response.json({ members: rows.results || [] });
   }
 
@@ -3459,6 +3487,15 @@ async function handleApiRequest(
     };
 
     if (!body.cloud_id) return Response.json({ error: 'cloud_id required' }, { status: 400 });
+
+    // RBAC: Verify caller is owner or admin of target cloud
+    const callerMember = await env.DB.prepare('SELECT role FROM family_members WHERE cloud_id = ?1 AND user_id = ?2')
+      .bind(body.cloud_id, userPayload.sub)
+      .first<any>();
+
+    if (!callerMember || (callerMember.role !== 'owner' && callerMember.role !== 'admin')) {
+      return Response.json({ error: 'Only family cloud owners or administrators can invite members' }, { status: 403 });
+    }
 
     const memberId = `fmem_${crypto.randomUUID()}`;
     const inviteCode = `fam_inv_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
@@ -3495,7 +3532,20 @@ async function handleApiRequest(
     const memberId = parts[5]; // /api/v1/family/members/<id>[/role|quota]
     const action = parts[6];
 
+    const targetMember = await env.DB.prepare('SELECT cloud_id, user_id, role FROM family_members WHERE id = ?1')
+      .bind(memberId)
+      .first<any>();
+
+    if (!targetMember) return Response.json({ error: 'Family member not found' }, { status: 404 });
+
+    const callerMember = await env.DB.prepare('SELECT role FROM family_members WHERE cloud_id = ?1 AND user_id = ?2')
+      .bind(targetMember.cloud_id, userPayload.sub)
+      .first<any>();
+
     if (request.method === 'PUT' && action === 'role') {
+      if (!callerMember || callerMember.role !== 'owner') {
+        return Response.json({ error: 'Only the family cloud owner can modify member roles' }, { status: 403 });
+      }
       const body = (await request.json().catch(() => ({}))) as { role?: string };
       if (!body.role) return Response.json({ error: 'role required' }, { status: 400 });
       await env.DB.prepare('UPDATE family_members SET role = ?1 WHERE id = ?2')
@@ -3505,6 +3555,9 @@ async function handleApiRequest(
     }
 
     if (request.method === 'PUT' && action === 'quota') {
+      if (!callerMember || (callerMember.role !== 'owner' && callerMember.role !== 'admin')) {
+        return Response.json({ error: 'Only family cloud owners or administrators can modify storage quotas' }, { status: 403 });
+      }
       const body = (await request.json().catch(() => ({}))) as { storage_quota_bytes?: number };
       if (typeof body.storage_quota_bytes !== 'number') return Response.json({ error: 'quota required' }, { status: 400 });
       await env.DB.prepare('UPDATE family_members SET storage_quota_bytes = ?1 WHERE id = ?2')
@@ -3514,6 +3567,12 @@ async function handleApiRequest(
     }
 
     if (request.method === 'DELETE') {
+      const isSelf = targetMember.user_id === userPayload.sub;
+      if (!isSelf) {
+        if (!callerMember || (callerMember.role !== 'owner' && (callerMember.role !== 'admin' || targetMember.role === 'owner'))) {
+          return Response.json({ error: 'Insufficient permissions to remove this family member' }, { status: 403 });
+        }
+      }
       await env.DB.prepare('DELETE FROM family_members WHERE id = ?1')
         .bind(memberId)
         .run();
@@ -3521,54 +3580,13 @@ async function handleApiRequest(
     }
   }
 
-  // ─── Emergency Account Recovery (SEC-06) ───
+  // ─── Emergency Account Recovery (SEC-06 & BIP-39) ───
   if (url.pathname === '/api/v1/auth/recovery/generate' && request.method === 'POST') {
     const userPayload = await extractAuthUser(request, jwtSecret);
     if (!userPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Official standard BIP-39 256-word cryptographic dictionary (8 bits of entropy per word)
-    const bip39Words = [
-      'abandon', 'ability', 'able', 'about', 'above', 'absent', 'absorb', 'abstract',
-      'absurd', 'abuse', 'access', 'accident', 'account', 'accuse', 'achieve', 'acid',
-      'acoustic', 'acquire', 'across', 'act', 'action', 'actor', 'actress', 'actual',
-      'adapt', 'add', 'addict', 'address', 'adjust', 'admit', 'adult', 'advance',
-      'advice', 'aerobic', 'affair', 'afford', 'afraid', 'again', 'age', 'agent',
-      'agree', 'ahead', 'aim', 'air', 'airport', 'aisle', 'alarm', 'album',
-      'alcohol', 'alert', 'alien', 'all', 'alley', 'allow', 'almost', 'alone',
-      'alpha', 'already', 'also', 'alter', 'always', 'amaze', 'amber', 'ambulance',
-      'ambush', 'amend', 'among', 'amount', 'amuse', 'analyst', 'anchor', 'ancient',
-      'anger', 'angle', 'angry', 'animal', 'ankle', 'announce', 'annual', 'another',
-      'answer', 'antenna', 'antique', 'anxiety', 'any', 'apart', 'apology', 'appear',
-      'apple', 'approve', 'april', 'arch', 'arctic', 'area', 'arena', 'argue',
-      'arm', 'armed', 'armor', 'army', 'around', 'arrange', 'arrest', 'arrive',
-      'arrow', 'art', 'artefact', 'artist', 'artwork', 'ask', 'aspect', 'assault',
-      'asset', 'assist', 'assume', 'asthma', 'athlete', 'atom', 'attack', 'attend',
-      'attitude', 'attract', 'auction', 'audit', 'august', 'aunt', 'author', 'auto',
-      'autumn', 'average', 'avocado', 'avoid', 'awake', 'aware', 'away', 'awesome',
-      'awful', 'awkward', 'axis', 'baby', 'bachelor', 'bacon', 'badge', 'bag',
-      'balance', 'balcony', 'ball', 'bamboo', 'banana', 'banner', 'bar', 'barely',
-      'bargain', 'barrel', 'base', 'basic', 'basket', 'battle', 'beach', 'bean',
-      'beauty', 'because', 'become', 'beef', 'before', 'begin', 'behave', 'behind',
-      'believe', 'below', 'belt', 'bench', 'benefit', 'best', 'betray', 'better',
-      'between', 'beyond', 'bicycle', 'bid', 'bike', 'bind', 'biology', 'bird',
-      'birth', 'bitter', 'black', 'blade', 'blame', 'blanket', 'blast', 'bleak',
-      'bless', 'blind', 'blood', 'blossom', 'blouse', 'blue', 'blur', 'blush',
-      'board', 'boat', 'body', 'boil', 'bomb', 'bone', 'bonus', 'book',
-      'boost', 'border', 'boring', 'borrow', 'boss', 'bottom', 'bounce', 'box',
-      'boy', 'bracket', 'brain', 'brand', 'brass', 'brave', 'bread', 'breeze',
-      'brick', 'bridge', 'brief', 'bright', 'bring', 'brisk', 'broccoli', 'broken',
-      'bronze', 'broom', 'brother', 'brown', 'brush', 'bubble', 'buddy', 'budget',
-      'buffalo', 'build', 'bulb', 'bulk', 'bullet', 'bundle', 'bunker', 'burden',
-      'burger', 'burst', 'bus', 'business', 'busy', 'butter', 'buyer', 'buzz',
-    ];
-
-    const randomWords: string[] = [];
-    const randBytes = new Uint8Array(12);
-    crypto.getRandomValues(randBytes);
-    for (let i = 0; i < 12; i++) {
-      randomWords.push(bip39Words[randBytes[i] % bip39Words.length]);
-    }
-    const phrase = randomWords.join(' ');
+    // Official standard BIP-39 12-word phrase with 128-bit CSPRNG entropy and 4-bit SHA-256 checksum
+    const phrase = await generateBip39Mnemonic();
     const phraseBuf = new TextEncoder().encode(phrase.trim().toLowerCase());
     const hashBuf = await crypto.subtle.digest('SHA-256', phraseBuf);
     const recHash = Array.from(new Uint8Array(hashBuf))
@@ -3581,7 +3599,7 @@ async function handleApiRequest(
     await env.DB.prepare(
       'INSERT INTO recovery_keys (id, user_id, recovery_hash, hint, is_used, created_at) VALUES (?1, ?2, ?3, ?4, 0, ?5)'
     )
-      .bind(recId, userPayload.sub, recHash, '12-word mnemonic phrase', now)
+      .bind(recId, userPayload.sub, recHash, 'Official standard BIP-39 12-word mnemonic phrase', now)
       .run();
 
     return Response.json({
@@ -3608,6 +3626,16 @@ async function handleApiRequest(
       return Response.json({ error: 'email, recovery phrase/key, and new_password are required' }, { status: 400 });
     }
 
+    const inputPhrase = (body.recovery_phrase || body.recovery_key || '').trim().toLowerCase();
+
+    // If 12-word phrase is supplied, validate BIP-39 dictionary and checksum
+    if (inputPhrase.split(/\s+/).length === 12) {
+      const valResult = await validateBip39Mnemonic(inputPhrase);
+      if (!valResult.valid) {
+        return Response.json({ error: valResult.error || 'Invalid BIP-39 mnemonic phrase' }, { status: 400 });
+      }
+    }
+
     const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?1')
       .bind(body.email.trim().toLowerCase())
       .first<User>();
@@ -3617,7 +3645,6 @@ async function handleApiRequest(
       return Response.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const inputPhrase = (body.recovery_phrase || body.recovery_key || '').trim().toLowerCase();
     const phraseBuf = new TextEncoder().encode(inputPhrase);
     const hashBuf = await crypto.subtle.digest('SHA-256', phraseBuf);
     const recHash = Array.from(new Uint8Array(hashBuf))
@@ -4180,7 +4207,14 @@ async function extractAuthUser(
   } else {
     try {
       const url = new URL(request.url);
-      token = url.searchParams.get('token');
+      const isAllowedQueryAuth =
+        url.pathname.includes('/download') ||
+        url.pathname.includes('/fs/read') ||
+        url.pathname.startsWith('/api/v1/streaming/') ||
+        url.pathname.startsWith('/ws/');
+      if (isAllowedQueryAuth) {
+        token = url.searchParams.get('token');
+      }
     } catch (_) {}
   }
   if (!token) {

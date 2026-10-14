@@ -177,7 +177,7 @@ async fn handle_connection(
         return Ok(());
     }
 
-    if token.is_empty() || token != config.auth_token {
+    if token.is_empty() || !constant_time_eq(token, &config.auth_token) {
         let body = serde_json::json!({
             "error": "Unauthorized direct LAN access",
             "code": "UNAUTHORIZED"
@@ -458,9 +458,32 @@ async fn send_json_response(
     Ok(())
 }
 
+/// Constant-time string comparison to prevent LAN side-channel timing attacks
+pub fn constant_time_eq(a: &str, b: &str) -> bool {
+    let a_bytes = a.as_bytes();
+    let b_bytes = b.as_bytes();
+    if a_bytes.len() != b_bytes.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (&x, &y) in a_bytes.iter().zip(b_bytes.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_constant_time_eq() {
+        assert!(constant_time_eq("secret_token_123", "secret_token_123"));
+        assert!(!constant_time_eq("secret_token_123", "secret_token_124"));
+        assert!(!constant_time_eq("short", "longer_token"));
+        assert!(!constant_time_eq("", "non_empty"));
+        assert!(constant_time_eq("", ""));
+    }
 
     #[test]
     fn test_parse_range_valid() {

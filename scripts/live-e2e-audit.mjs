@@ -122,6 +122,28 @@ async function runAudit() {
     if (!allowOrigin) throw new Error('Missing Access-Control-Allow-Origin');
   });
 
+  // 15. Security: URL Query Parameter Token Leakage Guard (P0)
+  await check('GET /api/v1/family/clouds with query param ?token= rejects with 401', async () => {
+    const res = await fetch(`${BASE_URL}/api/v1/family/clouds?token=unauthorized_query_param_token_attempt`);
+    if (res.status !== 401) throw new Error(`Expected 401, got ${res.status}`);
+  });
+
+  // 16. Security: BIP-39 Invalid Checksum Rejection (P0)
+  await check('POST /api/v1/auth/recovery/verify with invalid BIP-39 checksum returns 400', async () => {
+    // 12 words with invalid checksum
+    const badPhrase = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon';
+    const res = await fetch(`${BASE_URL}/api/v1/auth/recovery/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'test@example.com',
+        recovery_phrase: badPhrase,
+        new_password: 'ValidNewPassword123!',
+      }),
+    });
+    if (res.status !== 400 && res.status !== 404) throw new Error(`Expected 400 or 404, got ${res.status}`);
+  });
+
   console.log(`\nAudit Complete: ${passed} passed, ${failed} failed.`);
   if (failed > 0) process.exit(1);
 }

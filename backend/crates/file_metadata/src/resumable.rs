@@ -222,16 +222,56 @@ pub async fn finalize_transfer(
     .await
     .map_err(|_| AppError::NotFound("Transfer session not found".into()))?;
 
-    let final_sha256 = req
-        .sha256_hash
-        .or(entry.2)
-        .unwrap_or_else(|| "verified".to_string());
+    let storage = StorageEngine::new(&state.config.storage);
+    let chunk_dir = storage.chunk_dir(auth.claims.sub, file_uuid);
 
-    let final_storage_path = format!("{}/{}", auth.claims.sub, file_uuid);
+    let (final_storage_path, computed_hash, real_size) = if chunk_dir.exists() {
+        // Count chunks in directory
+        let mut count = 0;
+        let mut entries = tokio::fs::read_dir(&chunk_dir).await.map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(entry) = entries.next_entry().await.map_err(|e| AppError::Internal(e.to_string()))? {
+            if entry.file_name().to_string_lossy().starts_with("chunk_") {
+                count += 1;
+            }
+        }
+        if count > 0 {
+            let (rel_path, hash, size) = storage
+                .assemble_chunks(auth.claims.sub, file_uuid, file_uuid, count)
+                .await
+                .map_err(|e| AppError::Internal(format!("Failed to assemble chunks: {e}")))?;
+            (rel_path, hash, size)
+        } else {
+            (format!("{}/{}", auth.claims.sub, file_uuid), "empty".to_string(), 0)
+        }
+    } else {
+        (
+            format!("{}/{}", auth.claims.sub, file_uuid),
+            entry.2.unwrap_or_else(|| "verified".to_string()),
+            entry.1,
+        )
+    };
 
-    sqlx::query("UPDATE file_entries SET storage_path = $1, sha256_hash = $2, updated_at = NOW() WHERE id = $3")
+    // If client provided a sha256_hash, verify integrity!
+    if let Some(ref client_hash) = req.sha256_hash {
+        if !computed_hash.is_empty() && computed_hash != "empty" && computed_hash != "verified" {
+            if !client_hash.eq_ignore_ascii_case(&computed_hash) {
+                return Err(AppError::Validation(format!(
+                    "SHA-256 integrity check failed: expected {client_hash}, computed {computed_hash}"
+                )));
+            }
+        }
+    }
+
+    let final_sha256 = if !computed_hash.is_empty() && computed_hash != "empty" {
+        computed_hash
+    } else {
+        req.sha256_hash.unwrap_or_else(|| "verified".to_string())
+    };
+
+    sqlx::query("UPDATE file_entries SET storage_path = $1, sha256_hash = $2, size_bytes = $3, updated_at = NOW() WHERE id = $4")
         .bind(&final_storage_path)
         .bind(&final_sha256)
+        .bind(real_size)
         .bind(file_uuid)
         .execute(state.db.pool())
         .await?;
@@ -240,7 +280,7 @@ pub async fn finalize_transfer(
         success: true,
         file_id: file_uuid.to_string(),
         name: entry.0,
-        size_bytes: entry.1,
+        size_bytes: real_size,
         sha256_hash: final_sha256,
     }))
 }
