@@ -454,8 +454,6 @@ class _MediaPlayerDialogState extends State<_MediaPlayerDialog> {
         },
       );
 
-
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

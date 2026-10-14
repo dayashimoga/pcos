@@ -79,7 +79,8 @@ class AppRouter {
           GoRoute(path: '/gallery', builder: (_, __) => const GalleryPage()),
           GoRoute(path: '/media', builder: (_, __) => const MediaPage()),
           GoRoute(path: '/shared', builder: (_, __) => const SharedPage()),
-          GoRoute(path: '/transfers', builder: (_, __) => const TransfersPage()),
+          GoRoute(
+              path: '/transfers', builder: (_, __) => const TransfersPage()),
           GoRoute(path: '/storage', builder: (_, __) => const StoragePage()),
           GoRoute(
             path: '/storage/browse',

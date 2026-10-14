@@ -34,7 +34,11 @@ class _TransfersPageState extends State<TransfersPage> {
   List<TransferItem> _filterItems(List<TransferItem> all) {
     switch (_selectedFilter) {
       case 'Active':
-        return all.where((i) => i.status == TransferStatus.inProgress || i.status == TransferStatus.queued).toList();
+        return all
+            .where((i) =>
+                i.status == TransferStatus.inProgress ||
+                i.status == TransferStatus.queued)
+            .toList();
       case 'Uploads':
         return all.where((i) => i.type == TransferType.upload).toList();
       case 'Downloads':
@@ -87,7 +91,8 @@ class _TransfersPageState extends State<TransfersPage> {
   String _formatSpeed(double bytesPerSec) {
     if (bytesPerSec <= 0) return '0 B/s';
     if (bytesPerSec < 1024) return '${bytesPerSec.toStringAsFixed(0)} B/s';
-    if (bytesPerSec < 1024 * 1024) return '${(bytesPerSec / 1024).toStringAsFixed(1)} KB/s';
+    if (bytesPerSec < 1024 * 1024)
+      return '${(bytesPerSec / 1024).toStringAsFixed(1)} KB/s';
     return '${(bytesPerSec / (1024 * 1024)).toStringAsFixed(1)} MB/s';
   }
 
@@ -108,8 +113,10 @@ class _TransfersPageState extends State<TransfersPage> {
     final allItems = _transferManager.items;
     final items = _filterItems(allItems);
     final activeCount = _transferManager.activeCount;
-    final completedCount = allItems.where((i) => i.status == TransferStatus.completed).length;
-    final failedCount = allItems.where((i) => i.status == TransferStatus.failed).length;
+    final completedCount =
+        allItems.where((i) => i.status == TransferStatus.completed).length;
+    final failedCount =
+        allItems.where((i) => i.status == TransferStatus.failed).length;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = AppTheme.surfaceColor(context);
     final borderColor = AppTheme.borderColor(context);
@@ -124,7 +131,8 @@ class _TransfersPageState extends State<TransfersPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Transfers', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text('Transfers',
+            style: TextStyle(fontWeight: FontWeight.w700)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -157,11 +165,47 @@ class _TransfersPageState extends State<TransfersPage> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _buildStatCard('Active', activeCount.toString(), Icons.swap_vert_rounded, AppTheme.primary, cardWidth, surfaceColor, borderColor, textPrimary, textMuted),
-                    _buildStatCard('Speed', _formatSpeed(totalSpeed), Icons.speed_rounded, Colors.purpleAccent, cardWidth, surfaceColor, borderColor, textPrimary, textMuted),
-                    _buildStatCard('Completed', completedCount.toString(), Icons.check_circle_rounded, AppTheme.success, cardWidth, surfaceColor, borderColor, textPrimary, textMuted),
+                    _buildStatCard(
+                        'Active',
+                        activeCount.toString(),
+                        Icons.swap_vert_rounded,
+                        AppTheme.primary,
+                        cardWidth,
+                        surfaceColor,
+                        borderColor,
+                        textPrimary,
+                        textMuted),
+                    _buildStatCard(
+                        'Speed',
+                        _formatSpeed(totalSpeed),
+                        Icons.speed_rounded,
+                        Colors.purpleAccent,
+                        cardWidth,
+                        surfaceColor,
+                        borderColor,
+                        textPrimary,
+                        textMuted),
+                    _buildStatCard(
+                        'Completed',
+                        completedCount.toString(),
+                        Icons.check_circle_rounded,
+                        AppTheme.success,
+                        cardWidth,
+                        surfaceColor,
+                        borderColor,
+                        textPrimary,
+                        textMuted),
                     if (failedCount > 0)
-                      _buildStatCard('Failed', failedCount.toString(), Icons.error_outline_rounded, AppTheme.error, cardWidth, surfaceColor, borderColor, textPrimary, textMuted),
+                      _buildStatCard(
+                          'Failed',
+                          failedCount.toString(),
+                          Icons.error_outline_rounded,
+                          AppTheme.error,
+                          cardWidth,
+                          surfaceColor,
+                          borderColor,
+                          textPrimary,
+                          textMuted),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -186,19 +230,23 @@ class _TransfersPageState extends State<TransfersPage> {
                         child: FilterChip(
                           selected: isSelected,
                           label: Text(filter),
-                          onSelected: (_) => setState(() => _selectedFilter = filter),
+                          onSelected: (_) =>
+                              setState(() => _selectedFilter = filter),
                           backgroundColor: surfaceColor,
                           selectedColor: AppTheme.primary.withOpacity(0.2),
                           checkmarkColor: AppTheme.primary,
                           labelStyle: TextStyle(
                             color: isSelected ? AppTheme.primary : textMuted,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                             fontSize: 13,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: BorderSide(
-                              color: isSelected ? AppTheme.primary : borderColor,
+                              color:
+                                  isSelected ? AppTheme.primary : borderColor,
                             ),
                           ),
                         ),
@@ -215,26 +263,32 @@ class _TransfersPageState extends State<TransfersPage> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.cloud_done_rounded, size: 64, color: textMuted.withOpacity(0.4)),
+                              Icon(Icons.cloud_done_rounded,
+                                  size: 64, color: textMuted.withOpacity(0.4)),
                               const SizedBox(height: 16),
                               Text(
                                 _selectedFilter == 'All'
                                     ? 'No active transfers'
                                     : 'No ${_selectedFilter.toLowerCase()} transfers',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textPrimary),
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: textPrimary),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Uploads, downloads, and sync operations will appear here in real-time.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 13, color: textMuted),
+                                style:
+                                    TextStyle(fontSize: 13, color: textMuted),
                               ),
                             ],
                           ),
                         )
                       : ListView.separated(
                           itemCount: items.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final item = items[index];
                             final progress = item.progress;
@@ -251,20 +305,24 @@ class _TransfersPageState extends State<TransfersPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.all(6),
                                         decoration: BoxDecoration(
                                           color: color.withOpacity(0.12),
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
-                                        child: Icon(_iconForType(item.type), color: color, size: 18),
+                                        child: Icon(_iconForType(item.type),
+                                            color: color, size: 18),
                                       ),
                                       const SizedBox(width: 10),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               item.name,
@@ -280,28 +338,51 @@ class _TransfersPageState extends State<TransfersPage> {
                                             Wrap(
                                               spacing: 6,
                                               runSpacing: 2,
-                                              crossAxisAlignment: WrapCrossAlignment.center,
+                                              crossAxisAlignment:
+                                                  WrapCrossAlignment.center,
                                               children: [
                                                 Text(
                                                   '${_formatBytes(item.transferredBytes)} / ${_formatBytes(item.sizeBytes)}',
-                                                  style: TextStyle(fontSize: 11, color: textMuted),
+                                                  style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: textMuted),
                                                 ),
-                                                if (item.status == TransferStatus.inProgress && item.speedBps > 0) ...[
-                                                  Text('•', style: TextStyle(color: textMuted)),
+                                                if (item.status ==
+                                                        TransferStatus
+                                                            .inProgress &&
+                                                    item.speedBps > 0) ...[
+                                                  Text('•',
+                                                      style: TextStyle(
+                                                          color: textMuted)),
                                                   Text(
                                                     _formatSpeed(item.speedBps),
-                                                    style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w500),
+                                                    style: const TextStyle(
+                                                        fontSize: 11,
+                                                        color: AppTheme.primary,
+                                                        fontWeight:
+                                                            FontWeight.w500),
                                                   ),
                                                 ],
                                                 Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 5,
+                                                      vertical: 1),
                                                   decoration: BoxDecoration(
-                                                    color: color.withOpacity(0.12),
-                                                    borderRadius: BorderRadius.circular(4),
+                                                    color:
+                                                        color.withOpacity(0.12),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            4),
                                                   ),
                                                   child: Text(
-                                                    item.status.name.toUpperCase(),
-                                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
+                                                    item.status.name
+                                                        .toUpperCase(),
+                                                    style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: color),
                                                   ),
                                                 ),
                                               ],
@@ -311,41 +392,62 @@ class _TransfersPageState extends State<TransfersPage> {
                                       ),
                                       const SizedBox(width: 6),
                                       // Action buttons with compact constraints
-                                      if (item.status == TransferStatus.inProgress)
+                                      if (item.status ==
+                                          TransferStatus.inProgress)
                                         IconButton(
-                                          icon: const Icon(Icons.pause_rounded, size: 18),
+                                          icon: const Icon(Icons.pause_rounded,
+                                              size: 18),
                                           tooltip: 'Pause',
                                           visualDensity: VisualDensity.compact,
-                                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                          constraints: const BoxConstraints(
+                                              minWidth: 28, minHeight: 28),
                                           padding: EdgeInsets.zero,
-                                          onPressed: () => _transferManager.pauseTransfer(item.id),
+                                          onPressed: () => _transferManager
+                                              .pauseTransfer(item.id),
                                         )
-                                      else if (item.status == TransferStatus.paused)
+                                      else if (item.status ==
+                                          TransferStatus.paused)
                                         IconButton(
-                                          icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                                          icon: const Icon(
+                                              Icons.play_arrow_rounded,
+                                              size: 18),
                                           tooltip: 'Resume',
                                           visualDensity: VisualDensity.compact,
-                                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                          constraints: const BoxConstraints(
+                                              minWidth: 28, minHeight: 28),
                                           padding: EdgeInsets.zero,
-                                          onPressed: () => _transferManager.resumeTransfer(item.id),
+                                          onPressed: () => _transferManager
+                                              .resumeTransfer(item.id),
                                         )
-                                      else if (item.status == TransferStatus.failed)
+                                      else if (item.status ==
+                                          TransferStatus.failed)
                                         IconButton(
-                                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                                          icon: const Icon(
+                                              Icons.refresh_rounded,
+                                              size: 18),
                                           tooltip: 'Retry',
                                           visualDensity: VisualDensity.compact,
-                                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                          constraints: const BoxConstraints(
+                                              minWidth: 28, minHeight: 28),
                                           padding: EdgeInsets.zero,
-                                          onPressed: () => _transferManager.retryTransfer(item.id),
+                                          onPressed: () => _transferManager
+                                              .retryTransfer(item.id),
                                         ),
-                                      if (item.status == TransferStatus.inProgress || item.status == TransferStatus.queued || item.status == TransferStatus.paused)
+                                      if (item.status ==
+                                              TransferStatus.inProgress ||
+                                          item.status ==
+                                              TransferStatus.queued ||
+                                          item.status == TransferStatus.paused)
                                         IconButton(
-                                          icon: const Icon(Icons.close_rounded, size: 18),
+                                          icon: const Icon(Icons.close_rounded,
+                                              size: 18),
                                           tooltip: 'Cancel',
                                           visualDensity: VisualDensity.compact,
-                                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                          constraints: const BoxConstraints(
+                                              minWidth: 28, minHeight: 28),
                                           padding: EdgeInsets.zero,
-                                          onPressed: () => _transferManager.cancelTransfer(item.id),
+                                          onPressed: () => _transferManager
+                                              .cancelTransfer(item.id),
                                         ),
                                     ],
                                   ),
@@ -354,8 +456,11 @@ class _TransfersPageState extends State<TransfersPage> {
                                     borderRadius: BorderRadius.circular(4),
                                     child: LinearProgressIndicator(
                                       value: progress,
-                                      backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-                                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                                      backgroundColor: isDark
+                                          ? const Color(0xFF1E293B)
+                                          : const Color(0xFFE2E8F0),
+                                      valueColor:
+                                          AlwaysStoppedAnimation<Color>(color),
                                       minHeight: 4,
                                     ),
                                   ),
@@ -363,7 +468,8 @@ class _TransfersPageState extends State<TransfersPage> {
                                     const SizedBox(height: 6),
                                     Text(
                                       item.error!,
-                                      style: const TextStyle(fontSize: 11, color: AppTheme.error),
+                                      style: const TextStyle(
+                                          fontSize: 11, color: AppTheme.error),
                                     ),
                                   ],
                                 ],

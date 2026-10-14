@@ -5,7 +5,6 @@ import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../files/pages/files_page.dart' show formatFileSize;
-import '../../transfers/widgets/transfer_center_dialog.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -44,7 +43,8 @@ class _DashboardPageState extends State<DashboardPage> {
       try {
         final devResp = await api.dio.get('/api/v1/devices');
         if (devResp.data is Map && devResp.data['devices'] is List) {
-          devicesList = List<Map<String, dynamic>>.from(devResp.data['devices']);
+          devicesList =
+              List<Map<String, dynamic>>.from(devResp.data['devices']);
         } else if (devResp.data is List) {
           devicesList = List<Map<String, dynamic>>.from(devResp.data);
         }
@@ -150,7 +150,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Add Computer or Server',
-                              style: Theme.of(context).textTheme.headlineMedium),
+                              style:
+                                  Theme.of(context).textTheme.headlineMedium),
                           const SizedBox(height: 2),
                           Text(
                             'Turn any PC, Mac, Linux server, or NAS into a storage node',
@@ -329,9 +330,10 @@ class _DashboardPageState extends State<DashboardPage> {
                   children: [
                     Text(
                       'Personal Cloud',
-                      style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.displayMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                     ),
                     const SizedBox(width: 10),
                     Container(
@@ -494,7 +496,8 @@ class _DashboardPageState extends State<DashboardPage> {
           : (_stats['formatted_size'] ??
               formatFileSize(_stats['total_size_bytes'] ?? 0));
 
-      final activeDevices = _devices.where((d) => d['is_online'] == true).length;
+      final activeDevices =
+          _devices.where((d) => d['is_online'] == true).length;
       final totalDevs = _devices.length;
 
       return GridView.count(
@@ -517,7 +520,9 @@ class _DashboardPageState extends State<DashboardPage> {
           _StatCard(
             icon: Icons.devices_rounded,
             label: 'Connected Computers',
-            value: totalDevs > 0 ? '$activeDevices / $totalDevs Online' : '0 Nodes',
+            value: totalDevs > 0
+                ? '$activeDevices / $totalDevs Online'
+                : '0 Nodes',
             subLabel: activeDevices > 0
                 ? 'Direct LAN & P2P active'
                 : 'Install agent to connect',
@@ -669,7 +674,6 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
         const SizedBox(height: 14),
-
         if (_devices.isEmpty)
           Container(
             width: double.infinity,
@@ -1085,7 +1089,8 @@ class _DeviceWithDisksCard extends StatelessWidget {
                         height: 6,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isOnline ? AppTheme.success : AppTheme.textMuted,
+                          color:
+                              isOnline ? AppTheme.success : AppTheme.textMuted,
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -1150,9 +1155,8 @@ class _DiskRowItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mount = disk['mount_point']?.toString() ??
-        disk['name']?.toString() ??
-        'Drive';
+    final mount =
+        disk['mount_point']?.toString() ?? disk['name']?.toString() ?? 'Drive';
     final total = (disk['total_capacity_bytes'] as num?)?.toInt() ?? 0;
     final avail = (disk['available_capacity_bytes'] as num?)?.toInt() ?? 0;
     final used = (total > avail) ? (total - avail) : 0;
@@ -1165,13 +1169,15 @@ class _DiskRowItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.surfaceLightColor(context),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.borderColor(context).withOpacity(0.5)),
+        border:
+            Border.all(color: AppTheme.borderColor(context).withOpacity(0.5)),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(Icons.album_rounded, size: 16, color: AppTheme.primary),
+              const Icon(Icons.album_rounded,
+                  size: 16, color: AppTheme.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -1206,9 +1212,8 @@ class _DiskRowItem extends StatelessWidget {
                       '/storage/browse?nodeId=$nodeId&name=$encName&path=$encPath&online=$isOnline');
                 },
                 borderRadius: BorderRadius.circular(6),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   child: Row(
                     children: [
                       Text('Browse',
@@ -1216,7 +1221,7 @@ class _DiskRowItem extends StatelessWidget {
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: AppTheme.primary)),
-                      const Icon(Icons.chevron_right_rounded,
+                      Icon(Icons.chevron_right_rounded,
                           size: 14, color: AppTheme.primary),
                     ],
                   ),
@@ -1350,8 +1355,7 @@ class _RecentFilesListState extends State<_RecentFilesList> {
                   subtitle: Text(
                     formatFileSize(f['size_bytes'] ?? 0),
                     style: TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.textMutedColor(context)),
+                        fontSize: 11, color: AppTheme.textMutedColor(context)),
                   ),
                   trailing: IconButton(
                     icon: const Icon(Icons.chevron_right_rounded, size: 18),

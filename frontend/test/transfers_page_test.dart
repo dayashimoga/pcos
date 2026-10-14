@@ -46,7 +46,9 @@ void main() {
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('renders responsively without overflow on 320px mobile viewport', (tester) async {
+    testWidgets(
+        'renders responsively without overflow on 320px mobile viewport',
+        (tester) async {
       tester.view.physicalSize = const Size(320, 640);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());

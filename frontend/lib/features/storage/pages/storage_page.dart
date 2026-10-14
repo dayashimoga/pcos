@@ -474,7 +474,8 @@ class _StoragePageState extends State<StoragePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update cluster mode: ${ApiClient.formatError(e)}'),
+            content: Text(
+                'Failed to update cluster mode: ${ApiClient.formatError(e)}'),
             backgroundColor: AppTheme.error,
           ),
         );
@@ -489,13 +490,15 @@ class _StoragePageState extends State<StoragePage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
           backgroundColor: AppTheme.surfaceColor(context),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
               const Icon(Icons.shield_rounded, color: AppTheme.primary),
               const SizedBox(width: 10),
               Text('Cluster Protection Mode',
-                  style: TextStyle(color: AppTheme.textPrimaryColor(context), fontSize: 18)),
+                  style: TextStyle(
+                      color: AppTheme.textPrimaryColor(context), fontSize: 18)),
             ],
           ),
           content: Column(
@@ -504,12 +507,14 @@ class _StoragePageState extends State<StoragePage> {
             children: [
               Text(
                 'Select cluster redundancy and failover topology:',
-                style: TextStyle(fontSize: 13, color: AppTheme.textMutedColor(context)),
+                style: TextStyle(
+                    fontSize: 13, color: AppTheme.textMutedColor(context)),
               ),
               const SizedBox(height: 16),
               RadioListTile<String>(
                 title: const Text('Single Device Protection'),
-                subtitle: const Text('Local storage pool without cross-device mirroring'),
+                subtitle: const Text(
+                    'Local storage pool without cross-device mirroring'),
                 value: 'single',
                 groupValue: selected,
                 activeColor: AppTheme.primary,
@@ -517,7 +522,8 @@ class _StoragePageState extends State<StoragePage> {
               ),
               RadioListTile<String>(
                 title: const Text('Two-Node Mirror (Active-Passive)'),
-                subtitle: const Text('Asynchronous replication with < 15s RPO across 2 machines'),
+                subtitle: const Text(
+                    'Asynchronous replication with < 15s RPO across 2 machines'),
                 value: 'two_node_mirror',
                 groupValue: selected,
                 activeColor: AppTheme.primary,
@@ -525,7 +531,8 @@ class _StoragePageState extends State<StoragePage> {
               ),
               RadioListTile<String>(
                 title: const Text('Always-On NAS Cluster (Quorum)'),
-                subtitle: const Text('Zero-downtime distributed storage with automatic failover'),
+                subtitle: const Text(
+                    'Zero-downtime distributed storage with automatic failover'),
                 value: 'nas_cluster',
                 groupValue: selected,
                 activeColor: AppTheme.primary,
@@ -561,7 +568,8 @@ class _StoragePageState extends State<StoragePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Cluster rebalance complete! $moved chunks migrated, $repl replicas synced.'),
+            content: Text(
+                'Cluster rebalance complete! $moved chunks migrated, $repl replicas synced.'),
             backgroundColor: AppTheme.success,
           ),
         );
@@ -592,13 +600,15 @@ class _StoragePageState extends State<StoragePage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
           backgroundColor: AppTheme.surfaceColor(context),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
               const Icon(Icons.alt_route_rounded, color: AppTheme.accent),
               const SizedBox(width: 10),
               Text('Add Storage Routing Rule',
-                  style: TextStyle(color: AppTheme.textPrimaryColor(context), fontSize: 18)),
+                  style: TextStyle(
+                      color: AppTheme.textPrimaryColor(context), fontSize: 18)),
             ],
           ),
           content: Column(
@@ -607,43 +617,70 @@ class _StoragePageState extends State<StoragePage> {
             children: [
               Text(
                 'Route incoming files to the most appropriate hardware volume based on MIME type or folder pattern.',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context)),
+                style: TextStyle(
+                    fontSize: 12, color: AppTheme.textMutedColor(context)),
               ),
               const SizedBox(height: 16),
               Text('Content Category',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimaryColor(context))),
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimaryColor(context))),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 value: contentType,
                 dropdownColor: AppTheme.surfaceColor(context),
                 items: const [
-                  DropdownMenuItem(value: 'image/* (Photos & Memories)', child: Text('image/* (Photos & Memories)')),
-                  DropdownMenuItem(value: 'video/* (Movies & 4K Video)', child: Text('video/* (Movies & 4K Video)')),
-                  DropdownMenuItem(value: 'audio/* (Music & Recordings)', child: Text('audio/* (Music & Recordings)')),
-                  DropdownMenuItem(value: 'application/* (Docs & Code)', child: Text('application/* (Docs & Code)')),
-                  DropdownMenuItem(value: 'backup/* (System Backups)', child: Text('backup/* (System Backups)')),
+                  DropdownMenuItem(
+                      value: 'image/* (Photos & Memories)',
+                      child: Text('image/* (Photos & Memories)')),
+                  DropdownMenuItem(
+                      value: 'video/* (Movies & 4K Video)',
+                      child: Text('video/* (Movies & 4K Video)')),
+                  DropdownMenuItem(
+                      value: 'audio/* (Music & Recordings)',
+                      child: Text('audio/* (Music & Recordings)')),
+                  DropdownMenuItem(
+                      value: 'application/* (Docs & Code)',
+                      child: Text('application/* (Docs & Code)')),
+                  DropdownMenuItem(
+                      value: 'backup/* (System Backups)',
+                      child: Text('backup/* (System Backups)')),
                 ],
                 onChanged: (val) => setDlgState(() => contentType = val!),
               ),
               const SizedBox(height: 16),
               Text('Target Storage Medium',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimaryColor(context))),
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimaryColor(context))),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 value: targetDrive,
                 dropdownColor: AppTheme.surfaceColor(context),
                 items: const [
-                  DropdownMenuItem(value: 'ssd', child: Text('Fast NVMe / Solid-State Drive (SSD)')),
-                  DropdownMenuItem(value: 'hdd', child: Text('High-Capacity Mechanical Disk (HDD)')),
-                  DropdownMenuItem(value: 'nas', child: Text('Network Attached Storage (NAS Pool)')),
-                  DropdownMenuItem(value: 'usb', child: Text('External Removable USB Drive')),
+                  DropdownMenuItem(
+                      value: 'ssd',
+                      child: Text('Fast NVMe / Solid-State Drive (SSD)')),
+                  DropdownMenuItem(
+                      value: 'hdd',
+                      child: Text('High-Capacity Mechanical Disk (HDD)')),
+                  DropdownMenuItem(
+                      value: 'nas',
+                      child: Text('Network Attached Storage (NAS Pool)')),
+                  DropdownMenuItem(
+                      value: 'usb',
+                      child: Text('External Removable USB Drive')),
                 ],
                 onChanged: (val) => setDlgState(() => targetDrive = val!),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -658,7 +695,8 @@ class _StoragePageState extends State<StoragePage> {
     );
   }
 
-  Future<void> _createStoragePolicy(String contentType, String targetDriveType) async {
+  Future<void> _createStoragePolicy(
+      String contentType, String targetDriveType) async {
     try {
       final api = getIt<ApiClient>();
       await api.dio.post('/api/v1/storage/policies', data: {
@@ -668,7 +706,8 @@ class _StoragePageState extends State<StoragePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Storage routing rule created: $contentType -> ${targetDriveType.toUpperCase()}'),
+            content: Text(
+                'Storage routing rule created: $contentType -> ${targetDriveType.toUpperCase()}'),
             backgroundColor: AppTheme.success,
           ),
         );
@@ -1143,8 +1182,11 @@ class _StoragePageState extends State<StoragePage> {
     final rpo = _clusterStatus?['rpo_seconds'] ?? 15;
     final rto = _clusterStatus?['rto_seconds'] ?? 5;
     final isHealthy = _clusterStatus?['cluster_healthy'] ?? true;
-    final int nodesOnline = (_clusterStatus?['nodes_online'] as num?)?.toInt() ??
-        (_devices.where((d) => d['is_online'] == 1 || d['is_online'] == true).length);
+    final int nodesOnline =
+        (_clusterStatus?['nodes_online'] as num?)?.toInt() ??
+            (_devices
+                .where((d) => d['is_online'] == 1 || d['is_online'] == true)
+                .length);
 
     String modeTitle;
     String modeSubtitle;
@@ -1154,20 +1196,23 @@ class _StoragePageState extends State<StoragePage> {
     switch (mode) {
       case 'nas_cluster':
         modeTitle = 'Always-On NAS Cluster';
-        modeSubtitle = 'Zero-downtime distributed HA with quorum failover and active replication';
+        modeSubtitle =
+            'Zero-downtime distributed HA with quorum failover and active replication';
         modeColor = AppTheme.success;
         modeIcon = Icons.cloud_sync_rounded;
         break;
       case 'two_node_mirror':
         modeTitle = 'Two-Node Protection';
-        modeSubtitle = 'Active mirroring across paired machines with automatic secondary sync';
+        modeSubtitle =
+            'Active mirroring across paired machines with automatic secondary sync';
         modeColor = AppTheme.primary;
         modeIcon = Icons.copy_all_rounded;
         break;
       case 'single':
       default:
         modeTitle = 'Single Device Protection';
-        modeSubtitle = 'Single active machine storage pool. Connect a second device to enable mirroring';
+        modeSubtitle =
+            'Single active machine storage pool. Connect a second device to enable mirroring';
         modeColor = nodesOnline > 1 ? AppTheme.accent : AppTheme.warning;
         modeIcon = Icons.computer_rounded;
         break;
@@ -1211,7 +1256,8 @@ class _StoragePageState extends State<StoragePage> {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: modeColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
@@ -1243,11 +1289,14 @@ class _StoragePageState extends State<StoragePage> {
                 children: [
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                     icon: const Icon(Icons.tune_rounded, size: 16),
-                    label: const Text('Change Mode', style: TextStyle(fontSize: 12)),
+                    label: const Text('Change Mode',
+                        style: TextStyle(fontSize: 12)),
                     onPressed: _showChangeClusterModeDialog,
                   ),
                   const SizedBox(width: 8),
@@ -1255,19 +1304,23 @@ class _StoragePageState extends State<StoragePage> {
                     style: FilledButton.styleFrom(
                       backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                     icon: _rebalancing
                         ? const SizedBox(
                             width: 14,
                             height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
                           )
                         : const Icon(Icons.balance_rounded, size: 16),
                     label: Text(
                       _rebalancing ? 'Rebalancing...' : 'Rebalance Nodes',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     onPressed: _rebalancing ? null : _triggerRebalance,
                   ),
@@ -1299,7 +1352,9 @@ class _StoragePageState extends State<StoragePage> {
                 label: 'Cluster Health',
                 value: isHealthy ? '100% In Sync' : 'Degraded',
                 sublabel: '$nodesOnline node(s) communicating',
-                icon: isHealthy ? Icons.check_circle_rounded : Icons.warning_rounded,
+                icon: isHealthy
+                    ? Icons.check_circle_rounded
+                    : Icons.warning_rounded,
                 color: isHealthy ? AppTheme.success : AppTheme.warning,
               ),
             ],
@@ -1331,7 +1386,8 @@ class _StoragePageState extends State<StoragePage> {
                       color: AppTheme.accent.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.alt_route_rounded, color: AppTheme.accent, size: 22),
+                    child: const Icon(Icons.alt_route_rounded,
+                        color: AppTheme.accent, size: 22),
                   ),
                   const SizedBox(width: 14),
                   Column(
@@ -1339,12 +1395,15 @@ class _StoragePageState extends State<StoragePage> {
                     children: [
                       const Text(
                         'Storage Routing Policy Engine',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         'Automatically routes media to the fastest drive and bulk data to high-capacity storage.',
-                        style: TextStyle(fontSize: 12, color: AppTheme.textMutedColor(context)),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textMutedColor(context)),
                       ),
                     ],
                   ),
@@ -1354,11 +1413,14 @@ class _StoragePageState extends State<StoragePage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
                 icon: const Icon(Icons.add_rounded, size: 16),
-                label: const Text('Add Routing Rule', style: TextStyle(fontSize: 12)),
+                label: const Text('Add Routing Rule',
+                    style: TextStyle(fontSize: 12)),
                 onPressed: _showAddPolicyDialog,
               ),
             ],
@@ -1404,8 +1466,11 @@ class _StoragePageState extends State<StoragePage> {
                     icon: Icons.rule_folder_rounded,
                     title: 'Custom: ${p['content_type'] ?? 'Custom'}',
                     matcher: p['content_type'] ?? '*',
-                    targetDrive: 'Target: ${(p['target_drive_type'] ?? 'SSD').toString().toUpperCase()}',
-                    targetType: (p['target_drive_type'] ?? 'SSD').toString().toUpperCase(),
+                    targetDrive:
+                        'Target: ${(p['target_drive_type'] ?? 'SSD').toString().toUpperCase()}',
+                    targetType: (p['target_drive_type'] ?? 'SSD')
+                        .toString()
+                        .toUpperCase(),
                     isDefault: false,
                     onDelete: () => _deleteStoragePolicy(p['id'].toString()),
                   )),
@@ -1525,16 +1590,22 @@ class _PolicyTile extends StatelessWidget {
               if (!isDefault && onDelete != null)
                 InkWell(
                   onTap: onDelete,
-                  child: const Icon(Icons.close_rounded, size: 14, color: AppTheme.error),
+                  child: const Icon(Icons.close_rounded,
+                      size: 14, color: AppTheme.error),
                 )
               else
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('AUTO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                  child: const Text('AUTO',
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primary)),
                 ),
             ],
           ),
@@ -1550,7 +1621,8 @@ class _PolicyTile extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.arrow_forward_rounded, size: 12, color: AppTheme.accent),
+              const Icon(Icons.arrow_forward_rounded,
+                  size: 12, color: AppTheme.accent),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(

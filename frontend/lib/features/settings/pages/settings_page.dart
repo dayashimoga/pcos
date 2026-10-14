@@ -622,13 +622,15 @@ class _SettingsPageState extends State<SettingsPage> {
           _SettingsTile(
             icon: Icons.vpn_key_rounded,
             title: 'Emergency Account Recovery',
-            subtitle: 'Generate & inspect your offline 12-word cryptographic recovery phrase',
+            subtitle:
+                'Generate & inspect your offline 12-word cryptographic recovery phrase',
             onTap: () => _showEmergencyRecoveryDialog(context),
           ),
           _SettingsTile(
             icon: Icons.family_restroom_rounded,
             title: 'Family Cloud Hub',
-            subtitle: 'Manage multi-user family spaces, member roles, and quota allocations',
+            subtitle:
+                'Manage multi-user family spaces, member roles, and quota allocations',
             onTap: () => _showFamilyCloudHubDialog(context),
           ),
         ]),
@@ -715,13 +717,15 @@ class _SettingsPageState extends State<SettingsPage> {
           _SettingsTile(
             icon: Icons.health_and_safety_rounded,
             title: 'Doctor Diagnostics',
-            subtitle: 'Inspect node health, disk stats, CGNAT and control plane connectivity',
+            subtitle:
+                'Inspect node health, disk stats, CGNAT and control plane connectivity',
             onTap: () => context.go('/doctor'),
           ),
           _SettingsTile(
             icon: Icons.api_rounded,
             title: 'API Explorer',
-            subtitle: 'Interactive live PCOS REST & WebSocket API testing workbench',
+            subtitle:
+                'Interactive live PCOS REST & WebSocket API testing workbench',
             onTap: () => context.go('/admin/api'),
           ),
           _SettingsTile(
@@ -1100,7 +1104,8 @@ class _EmergencyRecoveryDialogContentState
               ),
               itemCount: _words.length,
               itemBuilder: (ctx, i) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppTheme.surfaceLightColor(context),
                   borderRadius: BorderRadius.circular(8),
@@ -1261,8 +1266,12 @@ class _FamilyCloudHubDialogContentState
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Create')),
         ],
       ),
     );
@@ -1298,7 +1307,8 @@ class _FamilyCloudHubDialogContentState
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
           backgroundColor: AppTheme.surfaceColor(context),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Invite Family Member'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1315,9 +1325,13 @@ class _FamilyCloudHubDialogContentState
                 value: role,
                 decoration: const InputDecoration(labelText: 'Member Role'),
                 items: const [
-                  DropdownMenuItem(value: 'admin', child: Text('Admin (Full Control)')),
-                  DropdownMenuItem(value: 'member', child: Text('Member (Personal + Shared Vault)')),
-                  DropdownMenuItem(value: 'child', child: Text('Child (Supervised Vault)')),
+                  DropdownMenuItem(
+                      value: 'admin', child: Text('Admin (Full Control)')),
+                  DropdownMenuItem(
+                      value: 'member',
+                      child: Text('Member (Personal + Shared Vault)')),
+                  DropdownMenuItem(
+                      value: 'child', child: Text('Child (Supervised Vault)')),
                 ],
                 onChanged: (val) => setDlgState(() => role = val!),
               ),
@@ -1333,8 +1347,12 @@ class _FamilyCloudHubDialogContentState
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Send Invitation')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Send Invitation')),
           ],
         ),
       ),
@@ -1355,7 +1373,9 @@ class _FamilyCloudHubDialogContentState
       _loadFamilyData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invited ${emailCtrl.text.trim()} to Family Cloud!')),
+          SnackBar(
+              content:
+                  Text('Invited ${emailCtrl.text.trim()} to Family Cloud!')),
         );
       }
     } catch (e) {
@@ -1431,6 +1451,20 @@ class _FamilyCloudHubDialogContentState
                 child: CircularProgressIndicator(),
               ),
             )
+          else if (_error != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppTheme.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+              ),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: AppTheme.error, fontSize: 13),
+              ),
+            )
           else if (_clouds.isEmpty)
             Center(
               child: Padding(
@@ -1501,10 +1535,12 @@ class _FamilyCloudHubDialogContentState
                   ),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
                     ),
                     icon: const Icon(Icons.person_add_rounded, size: 16),
-                    label: const Text('Invite Member', style: TextStyle(fontSize: 12)),
+                    label: const Text('Invite Member',
+                        style: TextStyle(fontSize: 12)),
                     onPressed: _inviteMember,
                   ),
                 ],
@@ -1540,18 +1576,22 @@ class _FamilyCloudHubDialogContentState
                   separatorBuilder: (_, __) => const SizedBox(height: 6),
                   itemBuilder: (ctx, i) {
                     final m = _members[i];
-                    final role = (m['role'] ?? 'member').toString().toUpperCase();
-                    final quotaGb = ((m['quota_bytes'] as num?)?.toInt() ?? 0) ~/
-                        (1024 * 1024 * 1024);
+                    final role =
+                        (m['role'] ?? 'member').toString().toUpperCase();
+                    final quotaGb =
+                        ((m['quota_bytes'] as num?)?.toInt() ?? 0) ~/
+                            (1024 * 1024 * 1024);
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: AppTheme.surfaceLightColor(context),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.account_circle_rounded, size: 24, color: AppTheme.primary),
+                          const Icon(Icons.account_circle_rounded,
+                              size: 24, color: AppTheme.primary),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -1576,7 +1616,8 @@ class _FamilyCloudHubDialogContentState
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppTheme.primary.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(6),
