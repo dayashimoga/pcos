@@ -39,4 +39,8 @@ pub fn router() -> Router<AppState> {
             "/api/v1/media/history",
             get(handlers::list_continue_watching),
         )
+        .route(
+            "/api/v1/media/probe/:file_id",
+            post(handlers::probe).get(handlers::probe),
+        )
 }

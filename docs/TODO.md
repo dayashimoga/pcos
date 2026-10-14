@@ -265,5 +265,37 @@
     - Flutter Frontend Tests: **20/20 PASSED (100%)**
     - Live Deployed E2E Audit: **20/20 PASSED (100%)**
 
+---
+
+## Sprint: PCOS v1.8.0 Final Gap Remediation & Production Certification (2026-10-14)
+
+- [x] **P0 Security Remediations**:
+  - `SEC-01`: Password enforced on anonymous public share downloads in backend `sharing/handlers.rs` and Worker `index.ts`.
+  - `SEC-02`: Fail-closed JWT verification on `/ws/presence`; device ownership verification prior to WebSocket accept.
+  - `SEC-03`: MFA challenge token bypass eliminated; `mfa_pending` explicitly rejected in `extractAuthUser`; TOTP verified in backend `auth::login`.
+  - `SEC-04`: Filesystem path & symlink traversal rejected via `safe_resolve` canonicalization and confinement in backend `StorageEngine`.
+  - `SEC-05`: Stale token invalidation cascade on password change and recovery verification.
+  - `SEC-06`: BIP-39 256-word dictionary, PBKDF2 salting, and progressive rate-limiting lockout for recovery verification.
+  - `SEC-07`: Agent LAN HTTP server converted to fail-closed authentication (503 if unconfigured, 401 if invalid).
+  - `SYS-01`: Windows installer service stop before file copy, SHA-256 binary validation, and asynchronous GUI message-pumping loop with clean uninstall/repair.
+- [x] **Backend API Parity Wiring**:
+  - `IDN-01`: Family Clouds & Members CRUD in `backend/crates/user/src/family.rs`.
+  - `IDN-02`: Emergency Account Recovery in `backend/crates/auth/src/recovery.rs`.
+  - `STO-01`: Storage Routing Policy Engine in `backend/crates/file_metadata/src/policy.rs`.
+  - `STO-02`: Quota checking (`check_storage_quota`) before write operations in backend and edge.
+  - `HA-01`: Cluster status, mode, and rebalancing in `backend/crates/gateway/src/cluster.rs`.
+  - `HA-02`: Real cluster replica scheduling and reconciliation across online hardware nodes.
+  - `TRF-01`: Resumable Transfers Protocol (`init`, `chunk`, `status`, `finalize`) in `backend/crates/file_metadata/src/resumable.rs`.
+  - `MED-01`: Media probe and history route aliases in `backend/crates/streaming/src/lib.rs`.
+  - `ADM-01`: Zero-cost license audit and cloud data export in `backend/crates/gateway/src/cluster.rs`.
+- [x] **Final Test Verification (165/165 PASS)**:
+  - Rust Backend Workspace: **42 / 42 PASSED (100%)**
+  - Rust Agent Workspace: **25 / 25 PASSED (100%)**
+  - Cloudflare Vitest Suite: **64 / 64 PASSED (100%)**
+  - Flutter Frontend Tests: **20 / 20 PASSED (100%)**
+  - Live Deployed Control Plane Probes: **14 / 14 PASSED (100%)**
+  - Zero Unresolved Critical/High Defects
+
+
 
 

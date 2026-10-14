@@ -177,23 +177,76 @@ $btnInstall = New-Object System.Windows.Forms.Button
 $btnInstall.Text = "Install & Pair PCOS Node"
 $btnInstall.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 $btnInstall.Location = New-Object System.Drawing.Point(24, 480)
-$btnInstall.Size = New-Object System.Drawing.Size(360, 48)
+$btnInstall.Size = New-Object System.Drawing.Size(270, 48)
 $btnInstall.BackColor = [System.Drawing.Color]::FromArgb(99, 102, 241) # Indigo 500
 $btnInstall.ForeColor = [System.Drawing.Color]::White
 $btnInstall.FlatStyle = "Flat"
 $btnInstall.FlatAppearance.BorderSize = 0
 $btnInstall.Cursor = [System.Windows.Forms.Cursors]::Hand
 
+$btnUninstall = New-Object System.Windows.Forms.Button
+$btnUninstall.Text = "Uninstall"
+$btnUninstall.Font = New-Object System.Drawing.Font("Segoe UI", 9.5)
+$btnUninstall.Location = New-Object System.Drawing.Point(305, 480)
+$btnUninstall.Size = New-Object System.Drawing.Size(120, 48)
+$btnUninstall.BackColor = [System.Drawing.Color]::FromArgb(185, 28, 28) # Red 700
+$btnUninstall.ForeColor = [System.Drawing.Color]::White
+$btnUninstall.FlatStyle = "Flat"
+$btnUninstall.FlatAppearance.BorderSize = 0
+
 $btnCancel = New-Object System.Windows.Forms.Button
 $btnCancel.Text = "Close"
 $btnCancel.Font = New-Object System.Drawing.Font("Segoe UI", 10)
-$btnCancel.Location = New-Object System.Drawing.Point(400, 480)
-$btnCancel.Size = New-Object System.Drawing.Size(199, 48)
+$btnCancel.Location = New-Object System.Drawing.Point(435, 480)
+$btnCancel.Size = New-Object System.Drawing.Size(164, 48)
 $btnCancel.BackColor = [System.Drawing.Color]::FromArgb(51, 65, 85)
 $btnCancel.ForeColor = [System.Drawing.Color]::White
 $btnCancel.FlatStyle = "Flat"
 $btnCancel.FlatAppearance.BorderSize = 0
 $btnCancel.Add_Click({ $form.Close() })
+
+$btnUninstall.Add_Click({
+    $confirm = [System.Windows.Forms.MessageBox]::Show(
+        "Are you sure you want to stop and uninstall the PCOS Node Agent background service? (Your files will NOT be deleted).",
+        "Confirm Uninstallation",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Question
+    )
+    if ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+
+    $btnUninstall.Enabled = $false
+    $btnInstall.Enabled = $false
+    $progressBar.Visible = $true
+    $progressBar.Value = 30
+    $lblStatus.Text = "Stopping PCOS background service and removing task..."
+    $form.Update()
+
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $installScript = Join-Path $scriptDir "install-pcos-service.ps1"
+
+    $p = Start-Process powershell.exe -ArgumentList @(
+        "-ExecutionPolicy", "Bypass",
+        "-File", "`"$installScript`"",
+        "-Uninstall"
+    ) -PassThru -NoNewWindow
+
+    while (-not $p.HasExited) {
+        [System.Windows.Forms.Application]::DoEvents()
+        Start-Sleep -Milliseconds 100
+    }
+
+    $progressBar.Value = 100
+    $lblStatus.ForeColor = [System.Drawing.Color]::FromArgb(52, 211, 153)
+    $lblStatus.Text = "PCOS background service uninstalled successfully."
+    $btnInstall.Enabled = $true
+    $btnUninstall.Enabled = $true
+    [System.Windows.Forms.MessageBox]::Show(
+        "PCOS Node Agent service has been cleanly uninstalled.",
+        "Uninstallation Complete",
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+    )
+})
 
 $btnInstall.Add_Click({
     $code = $txtCode.Text.Trim()
@@ -208,6 +261,7 @@ $btnInstall.Add_Click({
     }
 
     $btnInstall.Enabled = $false
+    $btnUninstall.Enabled = $false
     $progressBar.Visible = $true
     $progressBar.Value = 20
     $lblStatus.Text = "Installing PCOS Agent binary and configuring background service..."
@@ -222,13 +276,22 @@ $btnInstall.Add_Click({
         $lblStatus.Text = "Connecting and enrolling with Cloudflare Edge Control Plane..."
         $form.Update()
 
+        # Run setup without freezing UI by pumping Windows messages
         $p = Start-Process powershell.exe -ArgumentList @(
             "-ExecutionPolicy", "Bypass",
             "-File", "`"$installScript`"",
             "-PairingCode", "`"$code`"",
             "-StoragePath", "`"$targetStorage`"",
             "-NonInteractive"
-        ) -PassThru -Wait -NoNewWindow
+        ) -PassThru -NoNewWindow
+
+        while (-not $p.HasExited) {
+            if ($progressBar.Value -lt 90) {
+                $progressBar.Value += 2
+            }
+            [System.Windows.Forms.Application]::DoEvents()
+            Start-Sleep -Milliseconds 100
+        }
 
         $progressBar.Value = 100
         if ($p.ExitCode -eq 0) {
@@ -245,15 +308,18 @@ $btnInstall.Add_Click({
             $lblStatus.ForeColor = [System.Drawing.Color]::FromArgb(248, 113, 113) # Red 400
             $lblStatus.Text = "Installation failed with exit code $($p.ExitCode). Check pairing code."
             $btnInstall.Enabled = $true
+            $btnUninstall.Enabled = $true
         }
     } catch {
         $lblStatus.ForeColor = [System.Drawing.Color]::FromArgb(248, 113, 113)
         $lblStatus.Text = "Error: $($_.Exception.Message)"
         $btnInstall.Enabled = $true
+        $btnUninstall.Enabled = $true
     }
 })
 
 $form.Controls.Add($btnInstall)
+$form.Controls.Add($btnUninstall)
 $form.Controls.Add($btnCancel)
 
 $form.ShowDialog() | Out-Null

@@ -107,7 +107,7 @@ fn current_time_step() -> u64 {
 }
 
 /// Verify TOTP code — checks current step ±1 for clock skew tolerance
-fn verify_totp(secret: &str, code: &str) -> bool {
+pub fn verify_totp(secret: &str, code: &str) -> bool {
     let step = current_time_step();
     for offset in [0i64, -1, 1] {
         let s = (step as i64 + offset) as u64;

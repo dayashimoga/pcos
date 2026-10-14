@@ -3,6 +3,7 @@ pub mod ldap;
 pub mod mfa;
 pub mod models;
 pub mod oidc;
+pub mod recovery;
 pub mod service;
 
 use axum::{
@@ -18,6 +19,15 @@ pub fn router() -> Router<AppState> {
         .route("/api/v1/auth/login", post(handlers::login))
         .route("/api/v1/auth/refresh", post(handlers::refresh_token))
         .route("/api/v1/auth/logout", post(handlers::logout))
+        // Emergency Account Recovery (BIP-39 break glass)
+        .route(
+            "/api/v1/auth/recovery/generate",
+            post(recovery::generate_recovery_phrase),
+        )
+        .route(
+            "/api/v1/auth/recovery/verify",
+            post(recovery::verify_recovery_phrase),
+        )
         // MFA/TOTP
         .route("/api/v1/auth/mfa/setup", post(mfa::setup_totp))
         .route("/api/v1/auth/mfa/verify", post(mfa::verify_totp_setup))

@@ -3,6 +3,7 @@
 pub mod handlers;
 pub mod models;
 pub mod policy;
+pub mod resumable;
 pub mod s3_compat;
 pub mod service;
 pub mod smb_bridge;
@@ -38,6 +39,23 @@ pub fn router() -> Router<AppState> {
             "/api/v1/files/upload/complete",
             post(handlers::complete_chunked_upload),
         )
+        // Resumable Transfers Protocol (Phase 3 parity)
+        .route(
+            "/api/v1/transfers/resumable/init",
+            post(resumable::init_transfer),
+        )
+        .route(
+            "/api/v1/transfers/resumable/:id/chunk",
+            post(resumable::write_chunk),
+        )
+        .route(
+            "/api/v1/transfers/resumable/:id/status",
+            get(resumable::get_status),
+        )
+        .route(
+            "/api/v1/transfers/resumable/:id/finalize",
+            post(resumable::finalize_transfer),
+        )
         .route(
             "/api/v1/files/:id",
             get(handlers::get_file_meta)
@@ -47,6 +65,16 @@ pub fn router() -> Router<AppState> {
         .route("/api/v1/files/:id/download", get(handlers::download_file))
         .route("/api/v1/files/:id/preview", get(handlers::preview_file))
         .route("/api/v1/files/:id/move", put(handlers::move_item))
+        // Storage policies & placement engine (Phase 2 parity)
+        .route(
+            "/api/v1/storage/policies",
+            get(policy::list_policies).post(policy::create_policy),
+        )
+        .route(
+            "/api/v1/storage/policies/:id",
+            delete(policy::delete_policy),
+        )
+        .route("/api/v1/storage/evaluate", post(policy::evaluate_storage))
         // Trash operations
         .route("/api/v1/trash", get(handlers::list_trash))
         .route(

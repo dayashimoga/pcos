@@ -132,6 +132,36 @@ pub async fn login(pool: &PgPool, state: &AppState, req: LoginRequest) -> AppRes
         ));
     }
 
+    // Enforce Two-Factor Authentication if enabled (SEC-03)
+    let mfa_row: Option<(bool, Option<String>)> = sqlx::query_as(
+        "SELECT totp_enabled, totp_secret FROM users WHERE id = $1",
+    )
+    .bind(user.id)
+    .fetch_optional(pool)
+    .await
+    .unwrap_or(None);
+
+    if let Some((true, Some(ref secret))) = mfa_row {
+        let code = req.mfa_code.as_deref().unwrap_or("").trim();
+        if code.is_empty() {
+            return Err(AppError::Unauthorized(
+                "Two-Factor Authentication code required".to_string(),
+            ));
+        }
+        if !crate::mfa::verify_totp(secret, code) {
+            log_audit(
+                pool,
+                user.id,
+                "auth.mfa_failed",
+                "Invalid 6-digit TOTP code during login",
+            )
+            .await;
+            return Err(AppError::Unauthorized(
+                "Invalid 6-digit MFA verification code".to_string(),
+            ));
+        }
+    }
+
     // Generate tokens
     let tokens = generate_token_pair(user.id, &user.email, &state.config.auth)?;
 

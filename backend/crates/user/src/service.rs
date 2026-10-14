@@ -80,6 +80,12 @@ pub async fn change_password(
         .execute(pool)
         .await?;
 
+    // Invalidate all active refresh tokens to prevent stale token reuse (SEC-05)
+    sqlx::query("UPDATE refresh_tokens SET revoked = true WHERE user_id = $1")
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+
     Ok(())
 }
 

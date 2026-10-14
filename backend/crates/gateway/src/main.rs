@@ -7,6 +7,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod cluster;
 mod doctor;
 
 #[derive(Serialize)]
@@ -104,6 +105,22 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/doctor/connectivity",
             get(doctor::get_connectivity_diagnostics),
         )
+        // Cluster & High Availability
+        .route("/api/v1/cluster/status", get(cluster::get_cluster_status))
+        .route(
+            "/api/v1/cluster/mode",
+            axum::routing::put(cluster::update_cluster_mode),
+        )
+        .route(
+            "/api/v1/cluster/rebalance",
+            axum::routing::post(cluster::rebalance_cluster),
+        )
+        // Admin Audit & Data Export
+        .route(
+            "/api/v1/admin/audit/licenses-quotas",
+            get(cluster::audit_licenses_quotas),
+        )
+        .route("/api/v1/admin/export", get(cluster::export_cloud_data))
         // Service routes
         .merge(pcos_auth::router())
         .merge(pcos_user::router())

@@ -49,6 +49,8 @@ pub struct LoginRequest {
 
     #[validate(length(min = 1, message = "Password is required"))]
     pub password: String,
+
+    pub mfa_code: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

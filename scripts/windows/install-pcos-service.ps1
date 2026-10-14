@@ -18,7 +18,9 @@ param(
     [string]$PairingCode = "",
     [string]$StoragePath = "",
     [switch]$NonInteractive,
-    [switch]$SkipEnrollment
+    [switch]$SkipEnrollment,
+    [switch]$Uninstall,
+    [switch]$Repair
 )
 
 $ErrorActionPreference = "Stop"
@@ -91,6 +93,34 @@ $binCandidates = @(
     "$repoRoot\target\debug\pcos_agent.exe"
 )
 
+$pcosAppData = "$env:LOCALAPPDATA\PCOS"
+$installedExe = "$pcosAppData\pcos-agent.exe"
+$taskName = "PCOSNodeAgent"
+
+# Handle Clean Uninstall if requested
+if ($Uninstall) {
+    Write-Host "Uninstalling PCOS Node Agent service..." -ForegroundColor Yellow
+    try {
+        Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+    } catch {}
+    Get-Process -Name "pcos-agent", "pcos_agent" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Write-Host "PCOS background task stopped and unregistered." -ForegroundColor Green
+    if (Test-Path $installedExe) {
+        Remove-Item $installedExe -Force -ErrorAction SilentlyContinue
+        Write-Host "Removed agent binary: $installedExe" -ForegroundColor Green
+    }
+    Write-Host "Uninstallation complete. Existing storage files remain untouched." -ForegroundColor Green
+    return
+}
+
+# Stop running tasks and processes before file copy to prevent file-locking errors (SYS-01)
+try {
+    Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+} catch {}
+Get-Process -Name "pcos-agent", "pcos_agent" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 300
+
 $agentExe = $binCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
 if (-not $agentExe) {
@@ -101,13 +131,21 @@ if (-not $agentExe) {
     $agentExe = "$repoRoot\target\release\pcos-agent.exe"
 }
 
-# Copy to PCOS application directory
-$pcosAppData = "$env:LOCALAPPDATA\PCOS"
 if (-not (Test-Path $pcosAppData)) {
     New-Item -ItemType Directory -Path $pcosAppData -Force | Out-Null
 }
-Copy-Item $agentExe "$pcosAppData\pcos-agent.exe" -Force
-$installedExe = "$pcosAppData\pcos-agent.exe"
+
+# Pre- and post-copy SHA-256 hash verification (SYS-01: zero binary corruption)
+if ((Test-Path $agentExe) -and (Resolve-Path $agentExe).Path -ne (Resolve-Path $installedExe -ErrorAction SilentlyContinue).Path) {
+    $srcHash = (Get-FileHash -Path $agentExe -Algorithm SHA256).Hash
+    Copy-Item $agentExe $installedExe -Force
+    $destHash = (Get-FileHash -Path $installedExe -Algorithm SHA256).Hash
+    if ($srcHash -ne $destHash) {
+        throw "Binary corruption detected during installation: source SHA-256 ($srcHash) does not match destination ($destHash)."
+    }
+    Write-Host "Binary verified: SHA-256 $destHash" -ForegroundColor Gray
+}
+
 Write-Host "Installed agent binary to: $installedExe" -ForegroundColor Green
 
 # 3. Pairing / Enrollment

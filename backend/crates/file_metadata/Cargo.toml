@@ -20,6 +20,7 @@ hex = "0.4"
 mime_guess = "2"
 tokio-util = { version = "0.7", features = ["io"] }
 futures = "0.3"
+base64.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

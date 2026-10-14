@@ -79,6 +79,33 @@ pub async fn list_folder(
     })
 }
 
+/// Check that incoming file bytes do not exceed user's storage quota limit.
+pub async fn check_storage_quota(pool: &PgPool, user_id: Uuid, incoming_bytes: i64) -> AppResult<()> {
+    let quota_limit: i64 = sqlx::query_scalar(
+        "SELECT storage_quota_bytes FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await?
+    .unwrap_or(10 * 1024 * 1024 * 1024); // 10 GB default
+
+    let used_bytes: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(SUM(size_bytes), 0)::BIGINT FROM file_entries WHERE user_id = $1 AND is_trashed = false",
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    if used_bytes + incoming_bytes > quota_limit {
+        return Err(AppError::Validation(format!(
+            "Storage quota exceeded: used {} bytes + incoming {} bytes exceeds quota of {} bytes",
+            used_bytes, incoming_bytes, quota_limit
+        )));
+    }
+    Ok(())
+}
+
 /// Upload a file (single request, not chunked).
 pub async fn upload_file(
     pool: &PgPool,
@@ -92,6 +119,9 @@ pub async fn upload_file(
     if let Some(pid) = parent_id {
         verify_ownership(pool, user_id, pid).await?;
     }
+
+    // Verify storage quota before writing bytes
+    check_storage_quota(pool, user_id, data.len() as i64).await?;
 
     let file_id = Uuid::new_v4();
     let (storage_path, hash) = storage
@@ -141,6 +171,9 @@ pub async fn complete_chunked_upload(
     if let Some(pid) = req.parent_id {
         verify_ownership(pool, user_id, pid).await?;
     }
+
+    // Verify storage quota
+    check_storage_quota(pool, user_id, req.total_size).await?;
 
     let file_id = Uuid::new_v4();
     let (storage_path, hash, actual_size) = storage

@@ -166,8 +166,23 @@ async fn handle_connection(
     };
     token = token.trim();
 
-    if !config.auth_token.is_empty() && (token.is_empty() || token != config.auth_token) {
-        let body = serde_json::json!({ "error": "Unauthorized direct LAN access" }).to_string();
+    // Fail-closed enforcement: if agent has no token configured or token is invalid, reject all protected endpoints (SEC-07)
+    if config.auth_token.is_empty() {
+        let body = serde_json::json!({
+            "error": "LAN server unconfigured: missing device authentication token",
+            "code": "DEVICE_TOKEN_REQUIRED"
+        })
+        .to_string();
+        send_json_response(&mut stream, 503, &body).await?;
+        return Ok(());
+    }
+
+    if token.is_empty() || token != config.auth_token {
+        let body = serde_json::json!({
+            "error": "Unauthorized direct LAN access",
+            "code": "UNAUTHORIZED"
+        })
+        .to_string();
         send_json_response(&mut stream, 401, &body).await?;
         return Ok(());
     }
@@ -531,6 +546,34 @@ mod tests {
         assert_eq!(&range_bytes[..], b"0123456789");
 
         // Clean up test directory
+        let _ = tokio::fs::remove_dir_all(&test_dir).await;
+    }
+
+    #[tokio::test]
+    async fn test_lan_server_fails_closed_without_token() {
+        let test_dir = std::env::temp_dir().join(format!("pcos_lan_failclosed_{}", uuid::Uuid::new_v4()));
+        tokio::fs::create_dir_all(&test_dir).await.unwrap();
+
+        // Server initialized with empty token (e.g. unconfigured node)
+        let server = LanServer::new("unpaired_dev".to_string(), "".to_string(), 18090);
+        let port = server.start().await.expect("Failed to start server");
+
+        let client = reqwest::Client::new();
+
+        // Ping still works for discovery
+        let ping_url = format!("http://127.0.0.1:{}/api/v1/lan/ping", port);
+        let resp = client.get(&ping_url).send().await.unwrap();
+        assert_eq!(resp.status(), 200);
+
+        // Protected endpoint must FAIL CLOSED with 503
+        let list_url = format!(
+            "http://127.0.0.1:{}/api/v1/lan/fs/list?storage_path={}",
+            port,
+            test_dir.display()
+        );
+        let unauth_resp = client.get(&list_url).send().await.unwrap();
+        assert_eq!(unauth_resp.status(), 503);
+
         let _ = tokio::fs::remove_dir_all(&test_dir).await;
     }
 }

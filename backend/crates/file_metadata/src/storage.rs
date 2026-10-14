@@ -131,26 +131,84 @@ impl StorageEngine {
         Ok((relative_path, hash, total_size))
     }
 
+    /// Safely resolve and confine a relative storage path inside `base_path`.
+    /// Rejects path traversal (`..`, drive prefixes, UNC paths) and symlink escapes (SEC-04).
+    pub fn safe_resolve(&self, rel_path: &str) -> Result<PathBuf, std::io::Error> {
+        let canonical_base = self
+            .base_path
+            .canonicalize()
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotFound, format!("Storage base path inaccessible: {e}")))?;
+
+        let normalized = rel_path.replace('\\', "/");
+        let cleaned = normalized.trim().trim_start_matches('/');
+
+        // Reject drive prefixes (e.g. C:, D:)
+        if cleaned.len() >= 2 && cleaned.as_bytes()[1] == b':' && cleaned.as_bytes()[0].is_ascii_alphabetic() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "Path traversal attempt: drive letter not permitted",
+            ));
+        }
+
+        let path = Path::new(&cleaned);
+        for comp in path.components() {
+            match comp {
+                std::path::Component::ParentDir | std::path::Component::RootDir | std::path::Component::Prefix(_) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::PermissionDenied,
+                        "Path traversal attempt: forbidden path component",
+                    ));
+                }
+                _ => {}
+            }
+        }
+
+        let target = canonical_base.join(path);
+        if target.exists() {
+            let canonical_target = target.canonicalize()?;
+            if !canonical_target.starts_with(&canonical_base) {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "Symlink escape violation: target outside storage root",
+                ));
+            }
+            Ok(canonical_target)
+        } else {
+            if let Some(parent) = target.parent() {
+                if parent.exists() {
+                    let canonical_parent = parent.canonicalize()?;
+                    if !canonical_parent.starts_with(&canonical_base) {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::PermissionDenied,
+                            "Parent directory escapes storage root",
+                        ));
+                    }
+                }
+            }
+            Ok(target)
+        }
+    }
+
     /// Read file data from storage.
     pub async fn read_file(&self, storage_path: &str) -> Result<Vec<u8>, std::io::Error> {
-        let full_path = self.base_path.join(storage_path);
+        let full_path = self.safe_resolve(storage_path)?;
         fs::read(&full_path).await
     }
 
     /// Open file handle for streaming reads (O(1) memory usage).
     pub async fn open_file(&self, storage_path: &str) -> Result<tokio::fs::File, std::io::Error> {
-        let full_path = self.base_path.join(storage_path);
+        let full_path = self.safe_resolve(storage_path)?;
         tokio::fs::File::open(&full_path).await
     }
 
     /// Get the absolute filesystem path for a stored file (for streaming).
-    pub fn absolute_path(&self, storage_path: &str) -> PathBuf {
-        self.base_path.join(storage_path)
+    pub fn absolute_path(&self, storage_path: &str) -> Result<PathBuf, std::io::Error> {
+        self.safe_resolve(storage_path)
     }
 
     /// Delete a file from storage.
     pub async fn delete_file(&self, storage_path: &str) -> Result<(), std::io::Error> {
-        let full_path = self.base_path.join(storage_path);
+        let full_path = self.safe_resolve(storage_path)?;
         if full_path.exists() {
             fs::remove_file(&full_path).await?;
             tracing::info!(path = %storage_path, "File deleted from storage");
@@ -253,5 +311,21 @@ mod tests {
         engine.delete_file(&path).await.unwrap();
 
         assert!(engine.read_file(&path).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_storage_engine_path_traversal_rejection() {
+        let (engine, _tmp) = test_engine();
+
+        // Reject parent directory escapes
+        assert!(engine.read_file("../../../etc/passwd").await.is_err());
+        assert!(engine.read_file("..\\..\\Windows\\System32\\cmd.exe").await.is_err());
+        assert!(engine.read_file("/etc/shadow").await.is_err());
+        assert!(engine.read_file("C:/Windows/win.ini").await.is_err());
+
+        // Verify safe_resolve specifically rejects traversal
+        assert!(engine.safe_resolve("../secret.txt").is_err());
+        assert!(engine.safe_resolve("foo/../../bar").is_err());
+        assert!(engine.safe_resolve("D:/data").is_err());
     }
 }

@@ -82,6 +82,8 @@ pub async fn access_shared(
 pub async fn download_shared(
     State(state): State<AppState>,
     Path(token): Path<String>,
+    Query(q): Query<SharedAccessQuery>,
+    headers: axum::http::HeaderMap,
 ) -> Result<impl IntoResponse, AppError> {
     let pool = state.db.pool();
 
@@ -101,6 +103,25 @@ pub async fn download_shared(
     if let Some(max) = share.max_downloads {
         if share.download_count >= max {
             return Err(AppError::Forbidden("Download limit reached".to_string()));
+        }
+    }
+
+    // Check password protection
+    if let Some(ref pwd_hash) = share.password_hash {
+        let provided_pass = q.password.as_deref().or_else(|| {
+            headers
+                .get("X-Share-Password")
+                .and_then(|h| h.to_str().ok())
+        });
+
+        let pass = provided_pass.ok_or_else(|| {
+            AppError::Unauthorized("Password required to download this shared file".to_string())
+        })?;
+
+        let valid = pcos_common::auth::password::verify_password(pass, pwd_hash)
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        if !valid {
+            return Err(AppError::Unauthorized("Invalid share password".to_string()));
         }
     }
 
@@ -139,14 +160,14 @@ pub async fn download_shared(
     let content_type = file
         .mime_type
         .unwrap_or_else(|| "application/octet-stream".to_string());
+    let disposition = format!("attachment; filename=\"{}\"", file.name);
 
     Ok((
+        StatusCode::OK,
         [
             (header::CONTENT_TYPE, content_type),
-            (
-                header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{}\"", file.name),
-            ),
+            (header::CONTENT_DISPOSITION, disposition),
+            (header::ACCEPT_RANGES, "bytes".to_string()),
             (header::CONTENT_LENGTH, data.len().to_string()),
         ],
         data,
