@@ -72,13 +72,12 @@ pub async fn get_cluster_status(
         .fetch_optional(state.db.pool())
         .await?;
 
-    let online_nodes: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM devices WHERE user_id = $1 AND is_online = true",
-    )
-    .bind(auth.claims.sub)
-    .fetch_one(state.db.pool())
-    .await
-    .unwrap_or(1);
+    let online_nodes: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE user_id = $1 AND is_online = true")
+            .bind(auth.claims.sub)
+            .fetch_one(state.db.pool())
+            .await
+            .unwrap_or(1);
 
     let total_replicas: i64 = sqlx::query_scalar(
         r#"SELECT COUNT(*) FROM file_replicas fr
@@ -313,12 +312,11 @@ pub async fn export_cloud_data(
     .fetch_all(state.db.pool())
     .await?;
 
-    let devices: Vec<(Uuid, String, String, bool)> = sqlx::query_as(
-        "SELECT id, name, device_type, is_online FROM devices WHERE user_id = $1",
-    )
-    .bind(auth.claims.sub)
-    .fetch_all(state.db.pool())
-    .await?;
+    let devices: Vec<(Uuid, String, String, bool)> =
+        sqlx::query_as("SELECT id, name, device_type, is_online FROM devices WHERE user_id = $1")
+            .bind(auth.claims.sub)
+            .fetch_all(state.db.pool())
+            .await?;
 
     Ok(Json(serde_json::json!({
         "cloud_export_version": "1.8.0",

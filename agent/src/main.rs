@@ -4,16 +4,16 @@ mod config;
 mod connection_manager;
 mod db;
 mod delta;
-mod disks;
 mod discovery;
+mod disks;
 mod doctor;
 mod enroll;
-mod identity;
 mod fs_handler;
+mod identity;
 mod lan_server;
+mod queue;
 mod sync;
 mod transcoder;
-mod queue;
 mod watcher;
 
 use clap::{Parser, Subcommand};
@@ -128,7 +128,9 @@ async fn main() -> anyhow::Result<()> {
                         println!("+------------------------------------------------------------+");
                         println!("|          PCOS Physical Node Onboarding                     |");
                         println!("+------------------------------------------------------------+");
-                        println!("Enter the 6-digit pairing code from your PCOS web or app screen:");
+                        println!(
+                            "Enter the 6-digit pairing code from your PCOS web or app screen:"
+                        );
                         print!("Pairing Code > ");
                         use std::io::{self, Write};
                         io::stdout().flush().ok();

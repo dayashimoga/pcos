@@ -35,9 +35,7 @@ impl LanServer {
 
     /// Start listening for direct LAN requests on an available port.
     /// Returns the actual port bound.
-    pub async fn start(
-        &self,
-    ) -> Result<u16, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn start(&self) -> Result<u16, Box<dyn std::error::Error + Send + Sync>> {
         let mut port = self.config.preferred_port;
         let mut listener: Option<TcpListener> = None;
 
@@ -158,7 +156,10 @@ async fn handle_connection(
     }
 
     // Authenticate token (Bearer header or query param)
-    let auth_header = headers.get("authorization").map(|s| s.as_str()).unwrap_or("");
+    let auth_header = headers
+        .get("authorization")
+        .map(|s| s.as_str())
+        .unwrap_or("");
     let mut token = if auth_header.starts_with("Bearer ") {
         &auth_header[7..]
     } else {
@@ -190,7 +191,10 @@ async fn handle_connection(
     // ─── Direct Filesystem Operations ───
 
     if path_only == "/api/v1/lan/fs/list" && method == "GET" {
-        let storage_path = query_params.get("storage_path").map(|s| s.as_str()).unwrap_or(".");
+        let storage_path = query_params
+            .get("storage_path")
+            .map(|s| s.as_str())
+            .unwrap_or(".");
         let rel_path = query_params.get("path").map(|s| s.as_str()).unwrap_or("");
         match FsHandler::list_dir(Path::new(storage_path), rel_path) {
             Ok(result) => {
@@ -206,7 +210,10 @@ async fn handle_connection(
     }
 
     if path_only == "/api/v1/lan/fs/stat" && method == "GET" {
-        let storage_path = query_params.get("storage_path").map(|s| s.as_str()).unwrap_or(".");
+        let storage_path = query_params
+            .get("storage_path")
+            .map(|s| s.as_str())
+            .unwrap_or(".");
         let rel_path = query_params.get("path").map(|s| s.as_str()).unwrap_or("");
         match FsHandler::stat(Path::new(storage_path), rel_path) {
             Ok(meta) => {
@@ -222,13 +229,17 @@ async fn handle_connection(
     }
 
     if path_only == "/api/v1/lan/fs/read" && method == "GET" {
-        let storage_path = query_params.get("storage_path").map(|s| s.as_str()).unwrap_or(".");
+        let storage_path = query_params
+            .get("storage_path")
+            .map(|s| s.as_str())
+            .unwrap_or(".");
         let rel_path = query_params.get("path").map(|s| s.as_str()).unwrap_or("");
 
         let canonical_root = match Path::new(storage_path).canonicalize() {
             Ok(p) => p,
             Err(_) => {
-                send_json_response(&mut stream, 404, r#"{"error":"Storage root not found"}"#).await?;
+                send_json_response(&mut stream, 404, r#"{"error":"Storage root not found"}"#)
+                    .await?;
                 return Ok(());
             }
         };
@@ -305,12 +316,16 @@ async fn handle_connection(
     }
 
     if path_only == "/api/v1/lan/fs/checksum" && method == "GET" {
-        let storage_path = query_params.get("storage_path").map(|s| s.as_str()).unwrap_or(".");
+        let storage_path = query_params
+            .get("storage_path")
+            .map(|s| s.as_str())
+            .unwrap_or(".");
         let rel_path = query_params.get("path").map(|s| s.as_str()).unwrap_or("");
         let canonical_root = match Path::new(storage_path).canonicalize() {
             Ok(p) => p,
             Err(_) => {
-                send_json_response(&mut stream, 404, r#"{"error":"Storage root not found"}"#).await?;
+                send_json_response(&mut stream, 404, r#"{"error":"Storage root not found"}"#)
+                    .await?;
                 return Ok(());
             }
         };
@@ -361,10 +376,9 @@ fn percent_decode(s: &str) -> String {
     while let Some(b) = chars.next() {
         if b == b'%' {
             if let (Some(h1), Some(h2)) = (chars.next(), chars.next()) {
-                if let Ok(hex_byte) = u8::from_str_radix(
-                    &format!("{}{}", h1 as char, h2 as char),
-                    16,
-                ) {
+                if let Ok(hex_byte) =
+                    u8::from_str_radix(&format!("{}{}", h1 as char, h2 as char), 16)
+                {
                     bytes.push(hex_byte);
                     continue;
                 }
@@ -389,7 +403,10 @@ fn parse_range(range_header: &str, total_size: u64) -> Option<(u64, u64)> {
 
     let start = parts[0].parse::<u64>().ok()?;
     let end = if parts.len() > 1 && !parts[1].is_empty() {
-        parts[1].parse::<u64>().ok()?.min(total_size.saturating_sub(1))
+        parts[1]
+            .parse::<u64>()
+            .ok()?
+            .min(total_size.saturating_sub(1))
     } else {
         total_size.saturating_sub(1)
     };
@@ -500,7 +517,8 @@ mod tests {
 
     #[test]
     fn test_query_parsing() {
-        let (path, map) = parse_query("/api/v1/lan/fs/read?storage_path=C%3A%5CUsers&path=file.txt");
+        let (path, map) =
+            parse_query("/api/v1/lan/fs/read?storage_path=C%3A%5CUsers&path=file.txt");
         assert_eq!(path, "/api/v1/lan/fs/read");
         assert_eq!(map.get("storage_path"), Some(&"C:\\Users".to_string()));
         assert_eq!(map.get("path"), Some(&"file.txt".to_string()));
@@ -512,7 +530,9 @@ mod tests {
         tokio::fs::create_dir_all(&test_dir).await.unwrap();
 
         let test_file = test_dir.join("stream_test.txt");
-        tokio::fs::write(&test_file, b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ").await.unwrap();
+        tokio::fs::write(&test_file, b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            .await
+            .unwrap();
 
         let token = "test_lan_token_secret_12345".to_string();
         let server = LanServer::new("test_dev_01".to_string(), token.clone(), 18080);
@@ -534,7 +554,11 @@ mod tests {
             port,
             test_dir.display()
         );
-        let unauth_resp = client.get(&list_url).send().await.expect("Unauth req failed");
+        let unauth_resp = client
+            .get(&list_url)
+            .send()
+            .await
+            .expect("Unauth req failed");
         assert_eq!(unauth_resp.status(), 401);
 
         // 3. Test directory listing with Bearer token
@@ -574,7 +598,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_lan_server_fails_closed_without_token() {
-        let test_dir = std::env::temp_dir().join(format!("pcos_lan_failclosed_{}", uuid::Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("pcos_lan_failclosed_{}", uuid::Uuid::new_v4()));
         tokio::fs::create_dir_all(&test_dir).await.unwrap();
 
         // Server initialized with empty token (e.g. unconfigured node)
@@ -600,4 +625,3 @@ mod tests {
         let _ = tokio::fs::remove_dir_all(&test_dir).await;
     }
 }
-

@@ -107,7 +107,13 @@ pub async fn create_cloud(
     .execute(state.db.pool())
     .await?;
 
-    Ok((StatusCode::CREATED, Json(CreateCloudResponse { success: true, cloud })))
+    Ok((
+        StatusCode::CREATED,
+        Json(CreateCloudResponse {
+            success: true,
+            cloud,
+        }),
+    ))
 }
 
 /// GET /api/v1/family/clouds — List clouds owned by the user.
@@ -133,13 +139,12 @@ pub async fn list_members(
 ) -> AppResult<impl IntoResponse> {
     let members = if let Some(cloud_id) = query.cloud_id {
         // Enforce tenant isolation: caller must be an active member of this cloud
-        let is_member: Option<(String,)> = sqlx::query_as(
-            "SELECT id FROM family_members WHERE cloud_id = $1 AND user_id = $2",
-        )
-        .bind(&cloud_id)
-        .bind(auth.claims.sub)
-        .fetch_optional(state.db.pool())
-        .await?;
+        let is_member: Option<(String,)> =
+            sqlx::query_as("SELECT id FROM family_members WHERE cloud_id = $1 AND user_id = $2")
+                .bind(&cloud_id)
+                .bind(auth.claims.sub)
+                .fetch_optional(state.db.pool())
+                .await?;
 
         if is_member.is_none() {
             return Err(AppError::Forbidden(
@@ -172,13 +177,12 @@ pub async fn invite_member(
     Json(req): Json<InviteMemberRequest>,
 ) -> AppResult<impl IntoResponse> {
     // RBAC: Verify caller is owner or admin of the targeted family cloud
-    let caller_member: Option<(String,)> = sqlx::query_as(
-        "SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2",
-    )
-    .bind(&req.cloud_id)
-    .bind(auth.claims.sub)
-    .fetch_optional(state.db.pool())
-    .await?;
+    let caller_member: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2")
+            .bind(&req.cloud_id)
+            .bind(auth.claims.sub)
+            .fetch_optional(state.db.pool())
+            .await?;
 
     match caller_member {
         Some((ref role,)) if role == "owner" || role == "admin" => {}
@@ -190,7 +194,10 @@ pub async fn invite_member(
     }
 
     let member_id = format!("fmem_{}", Uuid::new_v4());
-    let invite_code = format!("fam_inv_{}", Uuid::new_v4().simple().to_string()[..12].to_string());
+    let invite_code = format!(
+        "fam_inv_{}",
+        Uuid::new_v4().simple().to_string()[..12].to_string()
+    );
     let target_user_id = req.user_id.unwrap_or_else(Uuid::new_v4);
     let role = req.role.unwrap_or_else(|| "member".into());
     let quota = req.storage_quota_bytes.unwrap_or(21474836480); // 20 GB default
@@ -231,13 +238,12 @@ pub async fn update_member_role(
     .ok_or_else(|| AppError::NotFound("Family member not found".into()))?;
 
     // RBAC: Caller must be owner of the cloud
-    let caller_role: Option<(String,)> = sqlx::query_as(
-        "SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2",
-    )
-    .bind(&target.0)
-    .bind(auth.claims.sub)
-    .fetch_optional(state.db.pool())
-    .await?;
+    let caller_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2")
+            .bind(&target.0)
+            .bind(auth.claims.sub)
+            .fetch_optional(state.db.pool())
+            .await?;
 
     if !matches!(caller_role, Some((ref r,)) if r == "owner") {
         return Err(AppError::Forbidden(
@@ -251,7 +257,9 @@ pub async fn update_member_role(
         .execute(state.db.pool())
         .await?;
 
-    Ok(Json(serde_json::json!({ "success": true, "role": req.role })))
+    Ok(Json(
+        serde_json::json!({ "success": true, "role": req.role }),
+    ))
 }
 
 /// PUT /api/v1/family/members/:id/quota — Update member quota.
@@ -270,13 +278,12 @@ pub async fn update_member_quota(
     .ok_or_else(|| AppError::NotFound("Family member not found".into()))?;
 
     // RBAC: Caller must be owner or admin
-    let caller_role: Option<(String,)> = sqlx::query_as(
-        "SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2",
-    )
-    .bind(&target.0)
-    .bind(auth.claims.sub)
-    .fetch_optional(state.db.pool())
-    .await?;
+    let caller_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2")
+            .bind(&target.0)
+            .bind(auth.claims.sub)
+            .fetch_optional(state.db.pool())
+            .await?;
 
     match caller_role {
         Some((ref r,)) if r == "owner" || r == "admin" => {}
@@ -317,13 +324,12 @@ pub async fn delete_member(
 
     if !is_self {
         // RBAC: Caller must be owner or admin
-        let caller_role: Option<(String,)> = sqlx::query_as(
-            "SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2",
-        )
-        .bind(&target.0)
-        .bind(auth.claims.sub)
-        .fetch_optional(state.db.pool())
-        .await?;
+        let caller_role: Option<(String,)> =
+            sqlx::query_as("SELECT role FROM family_members WHERE cloud_id = $1 AND user_id = $2")
+                .bind(&target.0)
+                .bind(auth.claims.sub)
+                .fetch_optional(state.db.pool())
+                .await?;
 
         match caller_role {
             Some((ref r,)) if r == "owner" || (r == "admin" && target.2 != "owner") => {}
@@ -340,5 +346,7 @@ pub async fn delete_member(
         .execute(state.db.pool())
         .await?;
 
-    Ok(Json(serde_json::json!({ "success": true, "message": "Member removed" })))
+    Ok(Json(
+        serde_json::json!({ "success": true, "message": "Member removed" }),
+    ))
 }

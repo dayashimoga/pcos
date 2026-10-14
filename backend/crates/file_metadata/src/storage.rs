@@ -148,16 +148,21 @@ impl StorageEngine {
     /// Safely resolve and confine a relative storage path inside `base_path`.
     /// Rejects path traversal (`..`, drive prefixes, UNC paths) and symlink escapes (SEC-04).
     pub fn safe_resolve(&self, rel_path: &str) -> Result<PathBuf, std::io::Error> {
-        let canonical_base = self
-            .base_path
-            .canonicalize()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotFound, format!("Storage base path inaccessible: {e}")))?;
+        let canonical_base = self.base_path.canonicalize().map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Storage base path inaccessible: {e}"),
+            )
+        })?;
 
         let normalized = rel_path.replace('\\', "/");
         let cleaned = normalized.trim().trim_start_matches('/');
 
         // Reject drive prefixes (e.g. C:, D:)
-        if cleaned.len() >= 2 && cleaned.as_bytes()[1] == b':' && cleaned.as_bytes()[0].is_ascii_alphabetic() {
+        if cleaned.len() >= 2
+            && cleaned.as_bytes()[1] == b':'
+            && cleaned.as_bytes()[0].is_ascii_alphabetic()
+        {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,
                 "Path traversal attempt: drive letter not permitted",
@@ -167,7 +172,9 @@ impl StorageEngine {
         let path = Path::new(&cleaned);
         for comp in path.components() {
             match comp {
-                std::path::Component::ParentDir | std::path::Component::RootDir | std::path::Component::Prefix(_) => {
+                std::path::Component::ParentDir
+                | std::path::Component::RootDir
+                | std::path::Component::Prefix(_) => {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::PermissionDenied,
                         "Path traversal attempt: forbidden path component",
@@ -333,7 +340,10 @@ mod tests {
 
         // Reject parent directory escapes
         assert!(engine.read_file("../../../etc/passwd").await.is_err());
-        assert!(engine.read_file("..\\..\\Windows\\System32\\cmd.exe").await.is_err());
+        assert!(engine
+            .read_file("..\\..\\Windows\\System32\\cmd.exe")
+            .await
+            .is_err());
         assert!(engine.read_file("/etc/shadow").await.is_err());
         assert!(engine.read_file("C:/Windows/win.ini").await.is_err());
 

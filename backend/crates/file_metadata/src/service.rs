@@ -80,14 +80,17 @@ pub async fn list_folder(
 }
 
 /// Check that incoming file bytes do not exceed user's storage quota limit.
-pub async fn check_storage_quota(pool: &PgPool, user_id: Uuid, incoming_bytes: i64) -> AppResult<()> {
-    let quota_limit: i64 = sqlx::query_scalar(
-        "SELECT storage_quota_bytes FROM users WHERE id = $1",
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?
-    .unwrap_or(10 * 1024 * 1024 * 1024); // 10 GB default
+pub async fn check_storage_quota(
+    pool: &PgPool,
+    user_id: Uuid,
+    incoming_bytes: i64,
+) -> AppResult<()> {
+    let quota_limit: i64 =
+        sqlx::query_scalar("SELECT storage_quota_bytes FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await?
+            .unwrap_or(10 * 1024 * 1024 * 1024); // 10 GB default
 
     let used_bytes: i64 = sqlx::query_scalar(
         "SELECT COALESCE(SUM(size_bytes), 0)::BIGINT FROM file_entries WHERE user_id = $1 AND is_trashed = false",

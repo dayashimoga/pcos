@@ -127,7 +127,10 @@ impl ConnectionManager {
             };
 
             let connect_endpoint = if !self.auth_token.is_empty() {
-                format!("{}/ws/presence?deviceId={}&token={}", ws_url, self.device_id, self.auth_token)
+                format!(
+                    "{}/ws/presence?deviceId={}&token={}",
+                    ws_url, self.device_id, self.auth_token
+                )
             } else {
                 format!("{}/ws/presence?deviceId={}", ws_url, self.device_id)
             };
@@ -206,7 +209,8 @@ impl ConnectionManager {
                         match msg_result {
                             Ok(Message::Text(text)) => {
                                 info!(msg = %text, "Received control plane command");
-                                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
+                                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text)
+                                {
                                     // 1. Filesystem Data Plane Operations
                                     if parsed.get("op").is_some() {
                                         let resp = handle_fs_command(
@@ -214,7 +218,8 @@ impl ConnectionManager {
                                             &parsed,
                                             &allowed_policy,
                                             &excluded_policy,
-                                        ).await;
+                                        )
+                                        .await;
                                         let resp_json = resp.to_string();
                                         if let Err(e) = write.send(Message::Text(resp_json)).await {
                                             error!(error = %e, "Failed to send filesystem response over WSS tunnel");
@@ -290,7 +295,9 @@ async fn handle_fs_command(
     let is_forbidden = if !allowed.is_empty() {
         !allowed.iter().any(|al| {
             let clean_al = al.trim().trim_end_matches(['\\', '/']).to_lowercase();
-            clean_root == clean_al || clean_root.starts_with(&clean_al) || clean_al.starts_with(&clean_root)
+            clean_root == clean_al
+                || clean_root.starts_with(&clean_al)
+                || clean_al.starts_with(&clean_root)
         })
     } else {
         excluded.iter().any(|ex| {
@@ -309,38 +316,34 @@ async fn handle_fs_command(
     }
 
     match op {
-        "fs_list_dir" => {
-            match crate::fs_handler::FsHandler::list_dir(root, rel_path) {
-                Ok(result) => serde_json::json!({
-                    "type": "fs_response",
-                    "request_id": request_id,
-                    "success": true,
-                    "result": result
-                }),
-                Err(e) => serde_json::json!({
-                    "type": "fs_response",
-                    "request_id": request_id,
-                    "success": false,
-                    "error": e.to_string()
-                }),
-            }
-        }
-        "fs_stat" => {
-            match crate::fs_handler::FsHandler::stat(root, rel_path) {
-                Ok(result) => serde_json::json!({
-                    "type": "fs_response",
-                    "request_id": request_id,
-                    "success": true,
-                    "result": result
-                }),
-                Err(e) => serde_json::json!({
-                    "type": "fs_response",
-                    "request_id": request_id,
-                    "success": false,
-                    "error": e.to_string()
-                }),
-            }
-        }
+        "fs_list_dir" => match crate::fs_handler::FsHandler::list_dir(root, rel_path) {
+            Ok(result) => serde_json::json!({
+                "type": "fs_response",
+                "request_id": request_id,
+                "success": true,
+                "result": result
+            }),
+            Err(e) => serde_json::json!({
+                "type": "fs_response",
+                "request_id": request_id,
+                "success": false,
+                "error": e.to_string()
+            }),
+        },
+        "fs_stat" => match crate::fs_handler::FsHandler::stat(root, rel_path) {
+            Ok(result) => serde_json::json!({
+                "type": "fs_response",
+                "request_id": request_id,
+                "success": true,
+                "result": result
+            }),
+            Err(e) => serde_json::json!({
+                "type": "fs_response",
+                "request_id": request_id,
+                "success": false,
+                "error": e.to_string()
+            }),
+        },
         "fs_read_chunk" => {
             let offset = req["offset"].as_u64().unwrap_or(0);
             let length = req["length"].as_u64().unwrap_or(256 * 1024) as usize;
@@ -364,7 +367,8 @@ async fn handle_fs_command(
             let b64 = req["data_base64"].as_str().unwrap_or("");
             match crate::fs_handler::base64_decode(b64) {
                 Ok(bytes) => {
-                    match crate::fs_handler::FsHandler::write_chunk(root, rel_path, offset, &bytes) {
+                    match crate::fs_handler::FsHandler::write_chunk(root, rel_path, offset, &bytes)
+                    {
                         Ok(result) => serde_json::json!({
                             "type": "fs_response",
                             "request_id": request_id,
@@ -404,41 +408,44 @@ async fn handle_fs_command(
                 }),
             }
         }
-        "fs_mkdir" => {
-            match crate::fs_handler::FsHandler::mkdir(root, rel_path) {
-                Ok(created) => serde_json::json!({
-                    "type": "fs_response",
-                    "request_id": request_id,
-                    "success": true,
-                    "result": { "created": created }
-                }),
-                Err(e) => serde_json::json!({
-                    "type": "fs_response",
-                    "request_id": request_id,
-                    "success": false,
-                    "error": e.to_string()
-                }),
-            }
-        }
+        "fs_mkdir" => match crate::fs_handler::FsHandler::mkdir(root, rel_path) {
+            Ok(created) => serde_json::json!({
+                "type": "fs_response",
+                "request_id": request_id,
+                "success": true,
+                "result": { "created": created }
+            }),
+            Err(e) => serde_json::json!({
+                "type": "fs_response",
+                "request_id": request_id,
+                "success": false,
+                "error": e.to_string()
+            }),
+        },
         "media_probe" => {
             let canonical_root = match root.canonicalize() {
                 Ok(p) => p,
-                Err(e) => return serde_json::json!({
-                    "type": "fs_response",
-                    "request_id": request_id,
-                    "success": false,
-                    "error": format!("Invalid root: {}", e)
-                }),
+                Err(e) => {
+                    return serde_json::json!({
+                        "type": "fs_response",
+                        "request_id": request_id,
+                        "success": false,
+                        "error": format!("Invalid root: {}", e)
+                    })
+                }
             };
-            let target_path = match crate::fs_handler::FsHandler::safe_resolve(&canonical_root, rel_path) {
-                Ok(p) => p,
-                Err(e) => return serde_json::json!({
-                    "type": "fs_response",
-                    "request_id": request_id,
-                    "success": false,
-                    "error": e.to_string()
-                }),
-            };
+            let target_path =
+                match crate::fs_handler::FsHandler::safe_resolve(&canonical_root, rel_path) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        return serde_json::json!({
+                            "type": "fs_response",
+                            "request_id": request_id,
+                            "success": false,
+                            "error": e.to_string()
+                        })
+                    }
+                };
             match crate::transcoder::Transcoder::probe(&target_path).await {
                 Ok(probe_result) => serde_json::json!({
                     "type": "fs_response",
@@ -457,22 +464,27 @@ async fn handle_fs_command(
         "fs_checksum" => {
             let canonical_root = match root.canonicalize() {
                 Ok(p) => p,
-                Err(e) => return serde_json::json!({
-                    "type": "fs_response",
-                    "request_id": request_id,
-                    "success": false,
-                    "error": format!("Invalid root: {}", e)
-                }),
+                Err(e) => {
+                    return serde_json::json!({
+                        "type": "fs_response",
+                        "request_id": request_id,
+                        "success": false,
+                        "error": format!("Invalid root: {}", e)
+                    })
+                }
             };
-            let target_path = match crate::fs_handler::FsHandler::safe_resolve(&canonical_root, rel_path) {
-                Ok(p) => p,
-                Err(e) => return serde_json::json!({
-                    "type": "fs_response",
-                    "request_id": request_id,
-                    "success": false,
-                    "error": e.to_string()
-                }),
-            };
+            let target_path =
+                match crate::fs_handler::FsHandler::safe_resolve(&canonical_root, rel_path) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        return serde_json::json!({
+                            "type": "fs_response",
+                            "request_id": request_id,
+                            "success": false,
+                            "error": e.to_string()
+                        })
+                    }
+                };
             match crate::delta::file_hash(&target_path).await {
                 Ok(hash) => serde_json::json!({
                     "type": "fs_response",

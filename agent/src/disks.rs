@@ -53,7 +53,10 @@ pub fn discover_physical_disks(
             continue;
         }
 
-        let clean_mount = mount_point.trim().trim_end_matches(['\\', '/']).to_lowercase();
+        let clean_mount = mount_point
+            .trim()
+            .trim_end_matches(['\\', '/'])
+            .to_lowercase();
 
         // Check exclusions (e.g. "C:\\" or "C:" or "C")
         let is_excluded = excluded.iter().any(|ex| {
@@ -94,16 +97,30 @@ pub fn discover_physical_disks(
         let (disk_type, suggested_categories) = if is_removable {
             ("usb".to_string(), vec!["backups".to_string()])
         } else if total >= 2_000_000_000_000 || display_name.to_lowercase().contains("hdd") {
-            ("hdd".to_string(), vec!["videos".to_string(), "backups".to_string()])
+            (
+                "hdd".to_string(),
+                vec!["videos".to_string(), "backups".to_string()],
+            )
         } else {
-            ("ssd".to_string(), vec!["photos".to_string(), "documents".to_string(), "audio".to_string()])
+            (
+                "ssd".to_string(),
+                vec![
+                    "photos".to_string(),
+                    "documents".to_string(),
+                    "audio".to_string(),
+                ],
+            )
         };
 
         discovered.push(DiscoveredDisk {
             volume_uuid: Some(uuid[..16].to_string()),
             mount_point,
             name: display_name,
-            fs_type: if fs_type.is_empty() { "unknown".into() } else { fs_type },
+            fs_type: if fs_type.is_empty() {
+                "unknown".into()
+            } else {
+                fs_type
+            },
             total_capacity_bytes: total,
             available_capacity_bytes: available,
             disk_type,
@@ -124,7 +141,10 @@ pub fn discover_physical_disks(
             let custom_str = custom.trim().to_string();
             let clean_custom = custom_str.trim_end_matches(['\\', '/']).to_lowercase();
             // If not already covered by a root mount point
-            if !discovered.iter().any(|d| d.mount_point.trim_end_matches(['\\', '/']).to_lowercase() == clean_custom) {
+            if !discovered
+                .iter()
+                .any(|d| d.mount_point.trim_end_matches(['\\', '/']).to_lowercase() == clean_custom)
+            {
                 let free_gb = get_disk_free_gb(&custom_str);
                 let available_bytes = (free_gb * 1024.0 * 1024.0 * 1024.0) as u64;
                 let uuid = format!(
@@ -204,7 +224,10 @@ pub async fn advertise_storage_nodes(
         disks: disks.clone(),
     };
 
-    let url = format!("{}/api/v1/agent/storage/advertise", server_url.trim_end_matches('/'));
+    let url = format!(
+        "{}/api/v1/agent/storage/advertise",
+        server_url.trim_end_matches('/')
+    );
     let resp = client
         .post(&url)
         .bearer_auth(auth_token)
@@ -215,7 +238,11 @@ pub async fn advertise_storage_nodes(
     if !resp.status().is_success() {
         let status = resp.status();
         let err_text = resp.text().await.unwrap_or_default();
-        anyhow::bail!("Storage advertisement failed (status {}): {}", status, err_text);
+        anyhow::bail!(
+            "Storage advertisement failed (status {}): {}",
+            status,
+            err_text
+        );
     }
 
     info!(
@@ -236,7 +263,10 @@ mod tests {
     fn test_discover_physical_disks_finds_host_drives() {
         let disks = discover_physical_disks(false, &[], &[]);
         // On any host running tests, there is at least one mounted volume
-        assert!(!disks.is_empty(), "Expected to discover at least one physical disk");
+        assert!(
+            !disks.is_empty(),
+            "Expected to discover at least one physical disk"
+        );
         for d in &disks {
             assert!(d.total_capacity_bytes > 0);
             assert!(!d.mount_point.is_empty());

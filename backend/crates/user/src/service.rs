@@ -69,7 +69,9 @@ pub async fn change_password(
     let is_valid = pcos_common::auth::password::verify_password(&current_pass, &row.0)
         .map_err(|e| AppError::Internal(format!("Password verification failed: {e}")))?;
     if !is_valid {
-        return Err(AppError::Unauthorized("Invalid current password".to_string()));
+        return Err(AppError::Unauthorized(
+            "Invalid current password".to_string(),
+        ));
     }
 
     let new_hash = pcos_common::auth::password::hash_password(&req.new_password)
@@ -88,4 +90,3 @@ pub async fn change_password(
 
     Ok(())
 }
-

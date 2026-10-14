@@ -240,7 +240,9 @@ pub async fn create_policy(
     Json(req): Json<CreatePolicyRequest>,
 ) -> AppResult<impl IntoResponse> {
     if req.category.trim().is_empty() || req.mime_patterns.trim().is_empty() {
-        return Err(AppError::Validation("category and mime_patterns required".into()));
+        return Err(AppError::Validation(
+            "category and mime_patterns required".into(),
+        ));
     }
 
     let policy_id = format!("pol_{}", Uuid::new_v4());
@@ -296,7 +298,9 @@ pub async fn delete_policy(
         .execute(state.db.pool())
         .await?;
 
-    Ok(Json(serde_json::json!({ "success": true, "message": "Policy deleted" })))
+    Ok(Json(
+        serde_json::json!({ "success": true, "message": "Policy deleted" }),
+    ))
 }
 
 /// POST /api/v1/storage/evaluate — Evaluate placement for incoming file.

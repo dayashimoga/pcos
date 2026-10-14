@@ -97,7 +97,10 @@ impl Transcoder {
         time_offset_secs: f64,
     ) -> Result<PathBuf, String> {
         if !input_file.exists() {
-            return Err(format!("Input file does not exist: {}", input_file.display()));
+            return Err(format!(
+                "Input file does not exist: {}",
+                input_file.display()
+            ));
         }
 
         if let Some(parent) = output_image.parent() {
@@ -140,7 +143,10 @@ impl Transcoder {
         max_height: Option<u32>,
     ) -> Result<PathBuf, String> {
         if !input_file.exists() {
-            return Err(format!("Input file does not exist: {}", input_file.display()));
+            return Err(format!(
+                "Input file does not exist: {}",
+                input_file.display()
+            ));
         }
 
         if let Some(parent) = output_file.parent() {
@@ -194,7 +200,10 @@ impl Transcoder {
         segment_duration_secs: u32,
     ) -> Result<PathBuf, String> {
         if !input_file.exists() {
-            return Err(format!("Input file does not exist: {}", input_file.display()));
+            return Err(format!(
+                "Input file does not exist: {}",
+                input_file.display()
+            ));
         }
 
         tokio::fs::create_dir_all(output_dir)

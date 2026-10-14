@@ -113,7 +113,8 @@ mod tests {
     #[test]
     fn test_partial_json_deserialization() {
         let json_data = r#"{"server_url": "https://custom.pcos.io", "sync_folders": ["/data"]}"#;
-        let config: AgentConfig = serde_json::from_str(json_data).expect("Should deserialize partial JSON");
+        let config: AgentConfig =
+            serde_json::from_str(json_data).expect("Should deserialize partial JSON");
         assert_eq!(config.server_url, "https://custom.pcos.io");
         assert_eq!(config.sync_folders, vec!["/data"]);
         assert_eq!(config.sync_interval_secs, 30);
@@ -125,7 +126,8 @@ mod tests {
             server_url = "https://custom.pcos.io"
             sync_folders = ["D:\\PCOS"]
         "#;
-        let config: AgentConfig = toml::from_str(toml_data).expect("Should deserialize partial TOML");
+        let config: AgentConfig =
+            toml::from_str(toml_data).expect("Should deserialize partial TOML");
         assert_eq!(config.server_url, "https://custom.pcos.io");
         assert_eq!(config.sync_folders, vec!["D:\\PCOS"]);
         assert_eq!(config.sync_interval_secs, 30);

@@ -26,7 +26,9 @@ impl From<std::io::Error> for FsError {
 impl std::fmt::Display for FsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            FsError::PathTraversal(p) => write!(f, "Path traversal violation: '{}' escapes root", p),
+            FsError::PathTraversal(p) => {
+                write!(f, "Path traversal violation: '{}' escapes root", p)
+            }
             FsError::InvalidRoot(p) => write!(f, "Storage root inaccessible: '{}'", p),
             FsError::NotFound(p) => write!(f, "File/directory not found: '{}'", p),
             FsError::PermissionDenied(p) => write!(f, "Access denied: '{}'", p),
@@ -92,12 +94,13 @@ impl FsHandler {
 
         // Sanitize rel_path: normalize separators and strip leading slashes
         let normalized = rel_path.replace('\\', "/");
-        let cleaned = normalized
-            .trim()
-            .trim_start_matches('/');
+        let cleaned = normalized.trim().trim_start_matches('/');
 
         // Reject drive prefixes on any OS (e.g. C:, D:)
-        if cleaned.len() >= 2 && cleaned.as_bytes()[1] == b':' && cleaned.as_bytes()[0].is_ascii_alphabetic() {
+        if cleaned.len() >= 2
+            && cleaned.as_bytes()[1] == b':'
+            && cleaned.as_bytes()[0].is_ascii_alphabetic()
+        {
             return Err(FsError::PathTraversal(rel_path.to_string()));
         }
 
@@ -119,9 +122,7 @@ impl FsHandler {
 
         // If target exists, canonicalize to verify symlink does not escape root
         if candidate.exists() {
-            let canonical_candidate = candidate
-                .canonicalize()
-                .map_err(|e| FsError::Io(e))?;
+            let canonical_candidate = candidate.canonicalize().map_err(|e| FsError::Io(e))?;
 
             if !canonical_candidate.starts_with(&canonical_root) {
                 return Err(FsError::PathTraversal(rel_path.to_string()));
@@ -131,9 +132,7 @@ impl FsHandler {
             // If candidate does not exist yet (e.g. for write/mkdir), ensure its parent is within root
             if let Some(parent) = candidate.parent() {
                 if parent.exists() {
-                    let canonical_parent = parent
-                        .canonicalize()
-                        .map_err(|e| FsError::Io(e))?;
+                    let canonical_parent = parent.canonicalize().map_err(|e| FsError::Io(e))?;
                     if !canonical_parent.starts_with(&canonical_root) {
                         return Err(FsError::PathTraversal(rel_path.to_string()));
                     }
@@ -152,13 +151,20 @@ impl FsHandler {
         }
 
         if !full_path.is_dir() {
-            return Err(FsError::InvalidRoot(format!("'{}' is not a directory", rel_path)));
+            return Err(FsError::InvalidRoot(format!(
+                "'{}' is not a directory",
+                rel_path
+            )));
         }
 
         let read_dir = fs::read_dir(&full_path).map_err(FsError::Io)?;
         let mut entries = Vec::new();
 
-        let clean_rel = rel_path.replace('\\', "/").trim().trim_start_matches('/').to_string();
+        let clean_rel = rel_path
+            .replace('\\', "/")
+            .trim()
+            .trim_start_matches('/')
+            .to_string();
 
         for entry_res in read_dir {
             let entry = match entry_res {
@@ -193,7 +199,11 @@ impl FsHandler {
             entries.push(FsEntry {
                 name: file_name,
                 relative_path: entry_rel,
-                entry_type: if is_dir { "folder".into() } else { "file".into() },
+                entry_type: if is_dir {
+                    "folder".into()
+                } else {
+                    "file".into()
+                },
                 size_bytes: size,
                 modified_at: modified,
                 mime_type: mime,
@@ -202,13 +212,13 @@ impl FsHandler {
         }
 
         // Sort folders first, then files alphabetically
-        entries.sort_by(|a, b| {
-            match (a.entry_type == "folder", b.entry_type == "folder") {
+        entries.sort_by(
+            |a, b| match (a.entry_type == "folder", b.entry_type == "folder") {
                 (true, false) => std::cmp::Ordering::Less,
                 (false, true) => std::cmp::Ordering::Greater,
                 _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            }
-        });
+            },
+        );
 
         let total = entries.len();
         Ok(ListDirResult {
@@ -222,12 +232,20 @@ impl FsHandler {
     pub fn stat(root: &Path, rel_path: &str) -> Result<StatResult, FsError> {
         let full_path = match Self::safe_resolve(root, rel_path) {
             Ok(p) => p,
-            Err(FsError::NotFound(_)) => return Ok(StatResult { exists: false, entry: None }),
+            Err(FsError::NotFound(_)) => {
+                return Ok(StatResult {
+                    exists: false,
+                    entry: None,
+                })
+            }
             Err(e) => return Err(e),
         };
 
         if !full_path.exists() {
-            return Ok(StatResult { exists: false, entry: None });
+            return Ok(StatResult {
+                exists: false,
+                entry: None,
+            });
         }
 
         let meta = fs::metadata(&full_path).map_err(FsError::Io)?;
@@ -237,15 +255,27 @@ impl FsHandler {
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "root".into());
 
-        let clean_rel = rel_path.replace('\\', "/").trim().trim_start_matches('/').to_string();
+        let clean_rel = rel_path
+            .replace('\\', "/")
+            .trim()
+            .trim_start_matches('/')
+            .to_string();
 
         let entry = FsEntry {
             name: name.clone(),
             relative_path: clean_rel.to_string(),
-            entry_type: if is_dir { "folder".into() } else { "file".into() },
+            entry_type: if is_dir {
+                "folder".into()
+            } else {
+                "file".into()
+            },
             size_bytes: if is_dir { 0 } else { meta.len() },
             modified_at: meta.modified().ok().and_then(format_system_time),
-            mime_type: if is_dir { None } else { Some(guess_mime_type(&name)) },
+            mime_type: if is_dir {
+                None
+            } else {
+                Some(guess_mime_type(&name))
+            },
             is_readonly: meta.permissions().readonly(),
         };
 
@@ -285,7 +315,9 @@ impl FsHandler {
         file.seek(SeekFrom::Start(offset)).map_err(FsError::Io)?;
 
         // Cap buffer to max 2MB per chunk for safety and memory stability
-        let read_len = max_length.min(2 * 1024 * 1024).min((total_size - offset) as usize);
+        let read_len = max_length
+            .min(2 * 1024 * 1024)
+            .min((total_size - offset) as usize);
         let mut buffer = vec![0u8; read_len];
         let bytes_read = file.read(&mut buffer).map_err(FsError::Io)?;
         buffer.truncate(bytes_read);
@@ -346,7 +378,9 @@ impl FsHandler {
         // Never allow deleting the root directory itself
         let canonical_root = root.canonicalize().map_err(|e| FsError::Io(e))?;
         if full_path == canonical_root {
-            return Err(FsError::PermissionDenied("Cannot delete storage root directory".into()));
+            return Err(FsError::PermissionDenied(
+                "Cannot delete storage root directory".into(),
+            ));
         }
 
         if !full_path.exists() {
@@ -448,8 +482,7 @@ pub fn base64_decode(encoded: &str) -> Result<Vec<u8>, String> {
 fn format_system_time(time: SystemTime) -> Option<String> {
     let duration = time.duration_since(SystemTime::UNIX_EPOCH).ok()?;
     let secs = duration.as_secs();
-    Some(chrono::DateTime::from_timestamp(secs as i64, 0)?
-        .to_rfc3339())
+    Some(chrono::DateTime::from_timestamp(secs as i64, 0)?.to_rfc3339())
 }
 
 fn guess_mime_type(filename: &str) -> String {
@@ -537,7 +570,10 @@ mod tests {
         // Stat
         let stat_res = FsHandler::stat(&temp_dir, rel_path).unwrap();
         assert!(stat_res.exists);
-        assert_eq!(stat_res.entry.unwrap().size_bytes, test_content.len() as u64);
+        assert_eq!(
+            stat_res.entry.unwrap().size_bytes,
+            test_content.len() as u64
+        );
 
         // List dir
         let list_res = FsHandler::list_dir(&temp_dir, "nested").unwrap();

@@ -85,7 +85,9 @@ pub async fn init_transfer(
         return Err(AppError::Validation("name is required".into()));
     }
     if req.size_bytes < 0 {
-        return Err(AppError::Validation("size_bytes must be non-negative".into()));
+        return Err(AppError::Validation(
+            "size_bytes must be non-negative".into(),
+        ));
     }
 
     // Verify storage quota before creating transfer session
@@ -228,8 +230,14 @@ pub async fn finalize_transfer(
     let (final_storage_path, computed_hash, real_size) = if chunk_dir.exists() {
         // Count chunks in directory
         let mut count = 0;
-        let mut entries = tokio::fs::read_dir(&chunk_dir).await.map_err(|e| AppError::Internal(e.to_string()))?;
-        while let Some(entry) = entries.next_entry().await.map_err(|e| AppError::Internal(e.to_string()))? {
+        let mut entries = tokio::fs::read_dir(&chunk_dir)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+        {
             if entry.file_name().to_string_lossy().starts_with("chunk_") {
                 count += 1;
             }
@@ -241,7 +249,11 @@ pub async fn finalize_transfer(
                 .map_err(|e| AppError::Internal(format!("Failed to assemble chunks: {e}")))?;
             (rel_path, hash, size)
         } else {
-            (format!("{}/{}", auth.claims.sub, file_uuid), "empty".to_string(), 0)
+            (
+                format!("{}/{}", auth.claims.sub, file_uuid),
+                "empty".to_string(),
+                0,
+            )
         }
     } else {
         (

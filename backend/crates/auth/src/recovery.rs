@@ -23,7 +23,11 @@ static BIP39_RAW: &str = include_str!("bip39_english.txt");
 fn get_word_list() -> &'static [&'static str] {
     static WORD_LIST: OnceLock<Vec<&'static str>> = OnceLock::new();
     WORD_LIST.get_or_init(|| {
-        BIP39_RAW.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect()
+        BIP39_RAW
+            .lines()
+            .map(|l| l.trim())
+            .filter(|l| !l.is_empty())
+            .collect()
     })
 }
 
@@ -72,7 +76,11 @@ pub fn generate_bip39_phrase() -> String {
     let idx = (bit_buffer & 0x7FF) as usize;
     indices.push(idx);
 
-    indices.iter().map(|&i| words[i]).collect::<Vec<_>>().join(" ")
+    indices
+        .iter()
+        .map(|&i| words[i])
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Validate that a 12-word mnemonic phrase conforms to BIP-39 standards,
@@ -279,11 +287,18 @@ mod tests {
         let phrase = generate_bip39_phrase();
         let mut words: Vec<&str> = phrase.split_whitespace().collect();
         // Tamper with the last word
-        words[11] = if words[11] == "abandon" { "zoo" } else { "abandon" };
+        words[11] = if words[11] == "abandon" {
+            "zoo"
+        } else {
+            "abandon"
+        };
         let tampered = words.join(" ");
         let result = validate_bip39_phrase(&tampered);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "BIP-39 checksum verification failed: invalid or mistyped recovery phrase");
+        assert_eq!(
+            result.unwrap_err(),
+            "BIP-39 checksum verification failed: invalid or mistyped recovery phrase"
+        );
     }
 
     #[test]
@@ -291,12 +306,16 @@ mod tests {
         let invalid = "notabipword ability able about above absent absorb abstract absurd abuse access accident";
         let result = validate_bip39_phrase(invalid);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Unknown word in BIP-39 mnemonic phrase");
+        assert_eq!(
+            result.unwrap_err(),
+            "Unknown word in BIP-39 mnemonic phrase"
+        );
     }
 
     #[test]
     fn test_hash_phrase_deterministic() {
-        let phrase = "abandon ability able about above absent absorb abstract absurd abuse access accident";
+        let phrase =
+            "abandon ability able about above absent absorb abstract absurd abuse access accident";
         let h1 = hash_phrase(phrase);
         let h2 = hash_phrase(&phrase.to_uppercase());
         assert_eq!(h1, h2);

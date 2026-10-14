@@ -17,8 +17,8 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool, anyhow::Error
     if hash.starts_with("pbkdf2$") {
         Ok(verify_pbkdf2(password, hash))
     } else {
-        let parsed_hash = PasswordHash::new(hash)
-            .map_err(|e| anyhow::anyhow!("Invalid password hash: {e}"))?;
+        let parsed_hash =
+            PasswordHash::new(hash).map_err(|e| anyhow::anyhow!("Invalid password hash: {e}"))?;
         Ok(Argon2::default()
             .verify_password(password.as_bytes(), &parsed_hash)
             .is_ok())
