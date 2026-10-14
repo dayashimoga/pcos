@@ -178,3 +178,85 @@ CREATE TABLE IF NOT EXISTS playback_progress (
 
 CREATE INDEX IF NOT EXISTS idx_playback_user ON playback_progress(user_id, updated_at);
 
+-- ─── Multi-Tenant Family Clouds & Emergency Recovery (Phase 1) ───
+CREATE TABLE IF NOT EXISTS family_clouds (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    cloud_type TEXT NOT NULL DEFAULT 'family', -- 'personal', 'family', 'self_hosted'
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_family_owner ON family_clouds(owner_id);
+
+CREATE TABLE IF NOT EXISTS family_members (
+    id TEXT PRIMARY KEY,
+    cloud_id TEXT NOT NULL REFERENCES family_clouds(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'member', -- 'owner', 'admin', 'member', 'child'
+    storage_quota_bytes INTEGER NOT NULL DEFAULT 21474836480, -- 20GB default
+    used_bytes INTEGER NOT NULL DEFAULT 0,
+    invite_code TEXT,
+    joined_at TEXT NOT NULL,
+    UNIQUE(cloud_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_family_members_cloud ON family_members(cloud_id);
+CREATE INDEX IF NOT EXISTS idx_family_members_user ON family_members(user_id);
+
+CREATE TABLE IF NOT EXISTS recovery_keys (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recovery_hash TEXT NOT NULL,
+    hint TEXT,
+    is_used INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_recovery_user ON recovery_keys(user_id);
+
+-- ─── Unified Storage Policy Engine & Routing (Phase 2) ───
+CREATE TABLE IF NOT EXISTS storage_policies (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL, -- 'photos', 'videos', 'audio', 'documents', 'backups', 'important', 'custom'
+    mime_patterns TEXT NOT NULL,
+    target_storage_type TEXT NOT NULL DEFAULT 'any', -- 'ssd', 'hdd', 'usb', 'nas', 'any'
+    target_node_id TEXT,
+    replica_count INTEGER NOT NULL DEFAULT 1,
+    availability_tier TEXT NOT NULL DEFAULT 'local_only', -- 'local_only', 'any_device', 'always_available', 'redundant'
+    priority INTEGER NOT NULL DEFAULT 10,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_storage_policies_user ON storage_policies(user_id);
+
+-- ─── High Availability, Cluster Protection & Replicas (Phase 4) ───
+CREATE TABLE IF NOT EXISTS file_replicas (
+    id TEXT PRIMARY KEY,
+    file_id TEXT NOT NULL REFERENCES file_entries(id) ON DELETE CASCADE,
+    storage_node_id TEXT NOT NULL REFERENCES storage_nodes(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL REFERENCES device_identities(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'synced', -- 'pending_sync', 'synced', 'stale', 'failed'
+    checksum TEXT NOT NULL,
+    verified_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(file_id, storage_node_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_file_replicas_file ON file_replicas(file_id);
+CREATE INDEX IF NOT EXISTS idx_file_replicas_node ON file_replicas(storage_node_id);
+
+CREATE TABLE IF NOT EXISTS cluster_protection (
+    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    protection_mode TEXT NOT NULL DEFAULT 'single_device', -- 'single_device', 'two_node_protection', 'always_on_nas', 'multi_node_mesh'
+    rpo_target_minutes INTEGER NOT NULL DEFAULT 60,
+    rto_target_minutes INTEGER NOT NULL DEFAULT 15,
+    auto_rebalance INTEGER NOT NULL DEFAULT 1,
+    last_health_check TEXT,
+    health_status TEXT NOT NULL DEFAULT 'healthy', -- 'healthy', 'degraded', 'at_risk'
+    updated_at TEXT NOT NULL
+);
+
+

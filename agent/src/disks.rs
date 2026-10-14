@@ -21,6 +21,10 @@ pub struct DiscoveredDisk {
     pub fs_type: String,
     pub total_capacity_bytes: u64,
     pub available_capacity_bytes: u64,
+    #[serde(default)]
+    pub disk_type: String,
+    #[serde(default)]
+    pub suggested_categories: Vec<String>,
     pub capabilities: DiskCapabilities,
 }
 
@@ -86,6 +90,15 @@ pub fn discover_physical_disks(
             sha2::Sha256::digest(format!("{}:{}", display_name, mount_point).as_bytes())
         );
 
+        let is_removable = disk.is_removable();
+        let (disk_type, suggested_categories) = if is_removable {
+            ("usb".to_string(), vec!["backups".to_string()])
+        } else if total >= 2_000_000_000_000 || display_name.to_lowercase().contains("hdd") {
+            ("hdd".to_string(), vec!["videos".to_string(), "backups".to_string()])
+        } else {
+            ("ssd".to_string(), vec!["photos".to_string(), "documents".to_string(), "audio".to_string()])
+        };
+
         discovered.push(DiscoveredDisk {
             volume_uuid: Some(uuid[..16].to_string()),
             mount_point,
@@ -93,6 +106,8 @@ pub fn discover_physical_disks(
             fs_type: if fs_type.is_empty() { "unknown".into() } else { fs_type },
             total_capacity_bytes: total,
             available_capacity_bytes: available,
+            disk_type,
+            suggested_categories,
             capabilities: DiskCapabilities {
                 ffmpeg: ffmpeg_available,
                 ocr: false,
@@ -123,6 +138,8 @@ pub fn discover_physical_disks(
                     fs_type: "directory".into(),
                     total_capacity_bytes: available_bytes,
                     available_capacity_bytes: available_bytes,
+                    disk_type: "ssd".into(),
+                    suggested_categories: vec!["photos".into(), "documents".into()],
                     capabilities: DiskCapabilities {
                         ffmpeg: ffmpeg_available,
                         ocr: false,

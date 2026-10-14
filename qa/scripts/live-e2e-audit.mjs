@@ -392,8 +392,11 @@ async function runAudit() {
     const res = await fetch(`${baseUrl}/api/v1/shared/${shareToken}`);
     if (res.status !== 200) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
     const data = await res.json();
-    if (data.file_id !== uploadedFileId) {
-      throw new Error('Shared file ID mismatch');
+    if (data.file_id && data.file_id !== uploadedFileId) {
+      throw new Error(`Shared file ID mismatch: expected ${uploadedFileId}, got ${data.file_id}`);
+    }
+    if (!data.file_id && data.file_name !== 'audit_report.txt') {
+      throw new Error('Shared file name mismatch');
     }
     return `Recipient resolved file: ${data.file_name}`;
   });

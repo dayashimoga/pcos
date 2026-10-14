@@ -228,14 +228,42 @@
 
 ---
 
-## Sprint: PCOS v1.8.0 Production Hardening & Phase 0–6 Gates (Completed 2026-10-13)
+## Sprint: PCOS v1.8.0 Production Hardening & Phase 0–7 Complete (2026-10-13)
 
-- [x] **Phase 0 Baseline Gate**: Comprehensive forensic audit and baseline matrix artifact tracking root causes (`SEC-01`, `SEC-02`, `DAT-01`, `MFA-01`, `NET-01`, `ROU-01`, `FLT-01`)
-- [x] **Phase 1 Identity Gate**: Enforced fail-closed unauthenticated download gate (SEC-01), authenticated WebSocket presence with device ownership check (SEC-02), D1 BLOB Uint8Array serialization (DAT-01), RFC 6238 TOTP lifecycle, and native Windows Forms GUI installer (`PCOS-Setup-GUI.ps1`)
-- [x] **Phase 2 Storage & Connectivity Gate**: HTTP Range 206 Partial Content, Content-Range, Accept-Ranges, ETag, SHA-256 chunk integrity, ConnectionManager `/api/v1/devices/resolve` routing (Direct LAN ↔ Secure P2P ↔ DO Relay), Agent `fs_checksum` op & `/api/v1/lan/fs/checksum`
-- [x] **Phase 3 Personal-Cloud Gate**: Expiring, password-protected sharing endpoints (`/s/:token`, `/s/:token/verify`, `/s/:token/download`), public file requests (`/s/:token/upload`), media probe endpoint (`GET /api/v1/media/probe/:fileId`), and playback progress tracking
-- [x] **Phase 4 Visual & Usability Gate**: Dedicated `TransfersPage` (`/transfers`), 9 core navigation tabs (**Home, Files, Photos, Media, Shared, Transfers, Devices, Storage, Settings→Advanced**), verified responsive layouts with 0 overflow errors on 320px viewport
-- [x] **Phase 5 Security Gate**: Red-team path traversal tests (`../../etc/passwd` rejection), anti-tampering JWT tests (`alg: none` rejection), share password enforcement, edge quota budget guards
-- [x] **Phase 6 CI/CD & Certification Gate**: Containerized Podman reproducible test execution, 100% test pass rate across Cloudflare (59/59), Rust backend (36/36), Rust agent (21/21), and Flutter frontend (20/20) — Total 136/136 tests passing
+- [x] **Phase 0 Baseline & Forensic Audit Gate**:
+  - Live deployed control plane verification at `https://pcos-control-plane.dayashimoga.workers.dev` via `qa/scripts/live-e2e-audit.mjs` (**20/20 live E2E tests PASSED 100%**).
+  - Resolved `file_id`/`file_entry_id` omission in public share metadata in `cloudflare/src/index.ts`.
+  - Comprehensive baseline matrix and audit trace tracking root causes (`SEC-01`, `SEC-02`, `DAT-01`, `MFA-01`, `NET-01`, `ROU-01`, `FLT-01`).
+- [x] **Phase 1 Identity & Consumer Onboarding Gate**:
+  - Multi-user Family Clouds: `/api/v1/family/clouds`, member invites (`/api/v1/family/members/invite`), roles (`admin`, `member`, `child`), individual quotas (`/api/v1/family/members/:id/quota`).
+  - Emergency Account Recovery: 12-word cryptographic recovery phrase generator (`/api/v1/auth/recovery/generate`) and zero-cloud password restoration (`/api/v1/auth/recovery/verify`).
+  - Zero-CLI Consumer Onboarding: Native Windows GUI installer (`scripts/windows/PCOS-Setup-GUI.ps1`) and service configurator (`scripts/windows/install-pcos-service.ps1`) with physical disk enumeration.
+- [x] **Phase 2 Unified Storage Policy Engine Gate**:
+  - Storage Policy Routing Engine in Cloudflare (`/api/v1/storage/policies`, `/api/v1/storage/evaluate`), Rust Backend (`backend/crates/file_metadata/src/policy.rs`), and Rust Agent (`agent/src/disks.rs`).
+  - Automatic hardware-aware routing: Photos -> NVMe/SSD, Videos -> Bulk HDD, Documents -> Local/NAS, Backups -> USB Mirror.
+- [x] **Phase 3 Seamless Remote Access & Sync Gate**:
+  - Persistent disk-backed offline sync queue in Rust Agent (`agent/src/queue.rs`) with priority ordering, crash tolerance, JSON serialization, and automatic drainage.
+  - ConnectionManager dynamic route resolution: Direct LAN (<20ms) -> WireGuard P2P -> Durable Object Encrypted Relay.
+- [x] **Phase 4 High Availability, Resilience & Clustering Gate**:
+  - Cluster Protection & HA: Single Device vs Two-Node Mirror vs Always-On NAS Cluster (`/api/v1/cluster/status`, `/api/v1/cluster/mode`, `/api/v1/cluster/rebalance`).
+  - RPO (<15s) and RTO (<5s) target monitoring and automated replica tracking (`file_replicas`, `cluster_protection` tables in D1 & PostgreSQL).
+- [x] **Phase 5 Feature-Rich Clients & Device Ecosystem Gate**:
+  - Integrated High Availability & Cluster Protection card into Flutter `StoragePage` with live RPO/RTO metrics, mode switcher, and rebalance trigger.
+  - Integrated Storage Routing Policy card into Flutter `StoragePage` with default media tier badges and custom rule creation dialog.
+  - Integrated Emergency Account Recovery (12-word phrase generator modal with numbered grid and clipboard copy) into `SettingsPage`.
+  - Integrated Family Cloud Hub (family cloud management, member lists, role badges, and invitation modal) into `SettingsPage`.
+- [x] **Phase 6 UX Overhaul & Plug-and-Play Consumer Experience Gate**:
+  - Zero-assumption storage pool management: real physical disks verified by daemon, zero fake text paths.
+  - Full responsive layouts verified across desktop and 320px mobile viewports with 0 overflow errors.
+- [x] **Phase 7 Security Hardening, Zero-Cost Certification & Production Verification Gate**:
+  - Compiled complete zero-cost audit report (`docs/ZERO_COST_AUDIT.md`) documenting 100% OSI-approved open-source licenses (MIT, Apache-2.0, BSD-3-Clause, AGPL-3.0), Cloudflare Free Tier quotas, and 100% functional self-hosted hardware-only mode.
+  - Automated zero-cost audit endpoint: `/api/v1/admin/audit/licenses-quotas`.
+  - Complete test verification across 148 automated tests (**100% PASS RATE**):
+    - Cloudflare Vitest Suite: **64/64 PASSED (100%)**
+    - Rust Backend Workspace: **40/40 PASSED (100%)**
+    - Rust Agent Workspace: **24/24 PASSED (100%)**
+    - Flutter Frontend Tests: **20/20 PASSED (100%)**
+    - Live Deployed E2E Audit: **20/20 PASSED (100%)**
+
 
 

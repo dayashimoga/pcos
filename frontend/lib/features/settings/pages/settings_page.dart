@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
@@ -551,6 +552,32 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  void _showEmergencyRecoveryDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => const Dialog(
+        backgroundColor: Colors.transparent,
+        child: SizedBox(
+          width: 520,
+          child: _EmergencyRecoveryDialogContent(),
+        ),
+      ),
+    );
+  }
+
+  void _showFamilyCloudHubDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => const Dialog(
+        backgroundColor: Colors.transparent,
+        child: SizedBox(
+          width: 560,
+          child: _FamilyCloudHubDialogContent(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -591,6 +618,18 @@ class _SettingsPageState extends State<SettingsPage> {
                     width: 500, height: 500, child: _MfaDialogContent()),
               ),
             ),
+          ),
+          _SettingsTile(
+            icon: Icons.vpn_key_rounded,
+            title: 'Emergency Account Recovery',
+            subtitle: 'Generate & inspect your offline 12-word cryptographic recovery phrase',
+            onTap: () => _showEmergencyRecoveryDialog(context),
+          ),
+          _SettingsTile(
+            icon: Icons.family_restroom_rounded,
+            title: 'Family Cloud Hub',
+            subtitle: 'Manage multi-user family spaces, member roles, and quota allocations',
+            onTap: () => _showFamilyCloudHubDialog(context),
           ),
         ]),
         const SizedBox(height: 24),
@@ -875,5 +914,691 @@ class _InlineMfaContentState extends State<_InlineMfaContent> {
         style: const TextStyle(color: AppTheme.textMuted),
       ),
     ]);
+  }
+}
+
+class _EmergencyRecoveryDialogContent extends StatefulWidget {
+  const _EmergencyRecoveryDialogContent();
+
+  @override
+  State<_EmergencyRecoveryDialogContent> createState() =>
+      _EmergencyRecoveryDialogContentState();
+}
+
+class _EmergencyRecoveryDialogContentState
+    extends State<_EmergencyRecoveryDialogContent> {
+  bool _loading = false;
+  String? _error;
+  List<String> _words = [];
+  String _phrase = '';
+
+  Future<void> _generatePhrase() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final api = getIt<ApiClient>();
+      final resp = await api.dio.post('/api/v1/auth/recovery/generate');
+      if (resp.data is Map && resp.data['success'] == true) {
+        final phraseStr = resp.data['phrase']?.toString() ?? '';
+        final wordsList = (resp.data['words'] is List)
+            ? (resp.data['words'] as List).map((w) => w.toString()).toList()
+            : phraseStr.split(' ').where((w) => w.isNotEmpty).toList();
+        setState(() {
+          _phrase = phraseStr;
+          _words = wordsList;
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _error = 'Failed to generate recovery phrase';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = ApiClient.formatError(e);
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderColor(context)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.warning.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.vpn_key_rounded,
+                    color: AppTheme.warning, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Emergency Account Recovery',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimaryColor(context),
+                      ),
+                    ),
+                    Text(
+                      'Cryptographic zero-cloud recovery phrase',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textMutedColor(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.warning.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.warning.withOpacity(0.25)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.security_rounded,
+                    color: AppTheme.warning, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Write down these 12 words in order and store them in an offline, physically secure place. Anyone with this phrase can restore access to your account if your password is lost.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: AppTheme.textPrimaryColor(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          if (_error != null) ...[
+            Text(_error!,
+                style: const TextStyle(color: AppTheme.error, fontSize: 13)),
+            const SizedBox(height: 12),
+          ],
+          if (_words.isEmpty && !_loading) ...[
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
+                  children: [
+                    const Icon(Icons.lock_reset_rounded,
+                        size: 40, color: AppTheme.primary),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Generate your unique 12-word recovery mnemonic',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textMutedColor(context),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                      ),
+                      icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                      label: const Text('Generate Recovery Phrase'),
+                      onPressed: _generatePhrase,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ] else if (_loading) ...[
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 36),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ] else ...[
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 2.8,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: _words.length,
+              itemBuilder: (ctx, i) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceLightColor(context),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.borderColor(context)),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      '${i + 1}.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textMutedColor(context),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _words[i],
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimaryColor(context),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: const Text('Copy Words'),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: _phrase));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Recovery phrase copied to clipboard'),
+                        backgroundColor: AppTheme.success,
+                      ),
+                    );
+                  },
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('I Have Saved My Phrase'),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FamilyCloudHubDialogContent extends StatefulWidget {
+  const _FamilyCloudHubDialogContent();
+
+  @override
+  State<_FamilyCloudHubDialogContent> createState() =>
+      _FamilyCloudHubDialogContentState();
+}
+
+class _FamilyCloudHubDialogContentState
+    extends State<_FamilyCloudHubDialogContent> {
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _clouds = [];
+  Map<String, dynamic>? _selectedCloud;
+  List<Map<String, dynamic>> _members = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFamilyData();
+  }
+
+  Future<void> _loadFamilyData() async {
+    setState(() => _loading = true);
+    try {
+      final api = getIt<ApiClient>();
+      final cloudsResp = await api.dio.get('/api/v1/family/clouds');
+      List<Map<String, dynamic>> loadedClouds = [];
+      if (cloudsResp.data is Map && cloudsResp.data['family_clouds'] is List) {
+        loadedClouds = (cloudsResp.data['family_clouds'] as List)
+            .map((c) => Map<String, dynamic>.from(c as Map))
+            .toList();
+      }
+
+      Map<String, dynamic>? activeCloud;
+      List<Map<String, dynamic>> members = [];
+
+      if (loadedClouds.isNotEmpty) {
+        activeCloud = loadedClouds.first;
+        final membersResp = await api.dio.get(
+          '/api/v1/family/members',
+          queryParameters: {'family_id': activeCloud['id']},
+        );
+        if (membersResp.data is Map && membersResp.data['members'] is List) {
+          members = (membersResp.data['members'] as List)
+              .map((m) => Map<String, dynamic>.from(m as Map))
+              .toList();
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _clouds = loadedClouds;
+          _selectedCloud = activeCloud;
+          _members = members;
+          _loading = false;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = ApiClient.formatError(e);
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _createFamilyCloud() async {
+    final nameCtrl = TextEditingController(text: 'Family Vault');
+    final quotaCtrl = TextEditingController(text: '200');
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Create New Family Cloud'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: 'Family Cloud Name'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: quotaCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Total Storage Quota (GB)',
+                hintText: '200',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
+        ],
+      ),
+    );
+
+    if (result != true) return;
+
+    try {
+      final quotaGb = int.tryParse(quotaCtrl.text.trim()) ?? 200;
+      final quotaBytes = quotaGb * 1024 * 1024 * 1024;
+      final api = getIt<ApiClient>();
+      await api.dio.post('/api/v1/family/clouds', data: {
+        'name': nameCtrl.text.trim(),
+        'quota_bytes': quotaBytes,
+      });
+      _loadFamilyData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: ${ApiClient.formatError(e)}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _inviteMember() async {
+    if (_selectedCloud == null) return;
+    final emailCtrl = TextEditingController();
+    final quotaCtrl = TextEditingController(text: '50');
+    String role = 'member';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          backgroundColor: AppTheme.surfaceColor(context),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Invite Family Member'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: emailCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Family Member Email',
+                  hintText: 'family@example.com',
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: role,
+                decoration: const InputDecoration(labelText: 'Member Role'),
+                items: const [
+                  DropdownMenuItem(value: 'admin', child: Text('Admin (Full Control)')),
+                  DropdownMenuItem(value: 'member', child: Text('Member (Personal + Shared Vault)')),
+                  DropdownMenuItem(value: 'child', child: Text('Child (Supervised Vault)')),
+                ],
+                onChanged: (val) => setDlgState(() => role = val!),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: quotaCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Individual Quota (GB)',
+                  hintText: '50',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Send Invitation')),
+          ],
+        ),
+      ),
+    );
+
+    if (result != true || emailCtrl.text.trim().isEmpty) return;
+
+    try {
+      final quotaGb = int.tryParse(quotaCtrl.text.trim()) ?? 50;
+      final quotaBytes = quotaGb * 1024 * 1024 * 1024;
+      final api = getIt<ApiClient>();
+      await api.dio.post('/api/v1/family/members/invite', data: {
+        'family_id': _selectedCloud!['id'],
+        'email': emailCtrl.text.trim(),
+        'role': role,
+        'quota_bytes': quotaBytes,
+      });
+      _loadFamilyData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invited ${emailCtrl.text.trim()} to Family Cloud!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invite failed: ${ApiClient.formatError(e)}')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderColor(context)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accent.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.family_restroom_rounded,
+                        color: AppTheme.accent, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Family Cloud Hub',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimaryColor(context),
+                        ),
+                      ),
+                      Text(
+                        'Zero-cost shared vaults & individual storage quotas',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textMutedColor(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (_loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 36),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_clouds.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
+                  children: [
+                    const Icon(Icons.cloud_queue_rounded,
+                        size: 40, color: AppTheme.accent),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No Family Cloud configured yet',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryColor(context),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Pool storage across household members with private folders & shared spaces.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textMutedColor(context),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    FilledButton.icon(
+                      onPressed: _createFamilyCloud,
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Create Family Cloud'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceLightColor(context),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.borderColor(context)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _selectedCloud!['name'] ?? 'Family Vault',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimaryColor(context),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Storage Quota: ${((_selectedCloud!['quota_bytes'] as num?)?.toInt() ?? 0) ~/ (1024 * 1024 * 1024)} GB Total Pool',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textMutedColor(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ),
+                    icon: const Icon(Icons.person_add_rounded, size: 16),
+                    label: const Text('Invite Member', style: TextStyle(fontSize: 12)),
+                    onPressed: _inviteMember,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Members (${_members.length}):',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimaryColor(context),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_members.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'No additional family members yet. Tap "Invite Member" above.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textMutedColor(context),
+                  ),
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _members.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 6),
+                  itemBuilder: (ctx, i) {
+                    final m = _members[i];
+                    final role = (m['role'] ?? 'member').toString().toUpperCase();
+                    final quotaGb = ((m['quota_bytes'] as num?)?.toInt() ?? 0) ~/
+                        (1024 * 1024 * 1024);
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceLightColor(context),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.account_circle_rounded, size: 24, color: AppTheme.primary),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  m['email'] ?? m['user_id'] ?? 'Member',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textPrimaryColor(context),
+                                  ),
+                                ),
+                                Text(
+                                  'Quota: $quotaGb GB',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.textMutedColor(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              role,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
   }
 }

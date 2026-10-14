@@ -13,6 +13,7 @@ mod fs_handler;
 mod lan_server;
 mod sync;
 mod transcoder;
+mod queue;
 mod watcher;
 
 use clap::{Parser, Subcommand};
