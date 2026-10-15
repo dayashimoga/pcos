@@ -6,6 +6,8 @@ import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../files/pages/files_page.dart' show formatFileSize;
 import 'physical_storage_browser_page.dart';
+import '../widgets/storage_onboarding_wizard.dart';
+import '../widgets/drive_grant_management_sheet.dart';
 
 /// Comprehensive Plug-and-Play Storage Nodes and Drive Pool Management Page.
 class StoragePage extends StatefulWidget {
@@ -395,6 +397,20 @@ class _StoragePageState extends State<StoragePage> {
               icon: const Icon(Icons.qr_code_rounded, size: 16),
               label: const Text('Pair Device Now'),
             ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              StorageOnboardingWizard.show(context);
+            },
+            icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+            label: const Text('Guided Storage Wizard'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
@@ -592,7 +608,8 @@ class _StoragePageState extends State<StoragePage> {
   }
 
   void _showAddPolicyDialog() {
-    String contentType = 'image/* (Photos & Memories)';
+    String selectedCategory = 'photos';
+    String selectedMime = 'image/*';
     String targetDrive = 'ssd';
 
     showDialog(
@@ -628,26 +645,46 @@ class _StoragePageState extends State<StoragePage> {
                       color: AppTheme.textPrimaryColor(context))),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: contentType,
+                value: selectedCategory,
                 dropdownColor: AppTheme.surfaceColor(context),
                 items: const [
                   DropdownMenuItem(
-                      value: 'image/* (Photos & Memories)',
-                      child: Text('image/* (Photos & Memories)')),
+                      value: 'photos',
+                      child: Text('Photos & Memories (image/*)')),
                   DropdownMenuItem(
-                      value: 'video/* (Movies & 4K Video)',
-                      child: Text('video/* (Movies & 4K Video)')),
+                      value: 'videos',
+                      child: Text('Movies & 4K Video (video/*)')),
                   DropdownMenuItem(
-                      value: 'audio/* (Music & Recordings)',
-                      child: Text('audio/* (Music & Recordings)')),
+                      value: 'audio', child: Text('Music & Audio (audio/*)')),
                   DropdownMenuItem(
-                      value: 'application/* (Docs & Code)',
-                      child: Text('application/* (Docs & Code)')),
+                      value: 'documents',
+                      child: Text('Documents & Work (application/*)')),
                   DropdownMenuItem(
-                      value: 'backup/* (System Backups)',
-                      child: Text('backup/* (System Backups)')),
+                      value: 'backups',
+                      child: Text('System Backups (backup/*)')),
                 ],
-                onChanged: (val) => setDlgState(() => contentType = val!),
+                onChanged: (val) {
+                  if (val == null) return;
+                  setDlgState(() {
+                    selectedCategory = val;
+                    if (val == 'photos') {
+                      selectedMime = 'image/*';
+                      targetDrive = 'ssd';
+                    } else if (val == 'videos') {
+                      selectedMime = 'video/*';
+                      targetDrive = 'hdd';
+                    } else if (val == 'audio') {
+                      selectedMime = 'audio/*';
+                      targetDrive = 'ssd';
+                    } else if (val == 'documents') {
+                      selectedMime = 'application/*';
+                      targetDrive = 'nas';
+                    } else if (val == 'backups') {
+                      selectedMime = 'backup/*';
+                      targetDrive = 'usb';
+                    }
+                  });
+                },
               ),
               const SizedBox(height: 16),
               Text('Target Storage Medium',
@@ -684,8 +721,8 @@ class _StoragePageState extends State<StoragePage> {
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                final cleanType = contentType.split(' ').first;
-                await _createStoragePolicy(cleanType, targetDrive);
+                await _createStoragePolicy(
+                    selectedCategory, selectedMime, targetDrive);
               },
               child: const Text('Create Rule'),
             ),
@@ -696,18 +733,21 @@ class _StoragePageState extends State<StoragePage> {
   }
 
   Future<void> _createStoragePolicy(
-      String contentType, String targetDriveType) async {
+      String category, String mimePatterns, String targetDriveType) async {
     try {
       final api = getIt<ApiClient>();
       await api.dio.post('/api/v1/storage/policies', data: {
-        'content_type': contentType,
-        'target_drive_type': targetDriveType,
+        'category': category,
+        'mime_patterns': mimePatterns,
+        'target_storage_type': targetDriveType,
+        'availability_tier': 'local_only',
+        'replica_count': 1,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'Storage routing rule created: $contentType -> ${targetDriveType.toUpperCase()}'),
+                'Storage routing rule created: $category ($mimePatterns) -> ${targetDriveType.toUpperCase()}'),
             backgroundColor: AppTheme.success,
           ),
         );
@@ -1154,6 +1194,51 @@ class _StoragePageState extends State<StoragePage> {
                               ),
                             ),
                             const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                              ),
+                              onPressed: () {
+                                final totalB =
+                                    (node['total_capacity_bytes'] as num?)
+                                            ?.toInt() ??
+                                        0;
+                                final availB =
+                                    (node['available_capacity_bytes'] as num?)
+                                            ?.toInt() ??
+                                        0;
+                                final usedB =
+                                    totalB > availB ? totalB - availB : 0;
+                                final id = node['id']?.toString() ?? '';
+                                final name =
+                                    node['name']?.toString() ?? 'Storage Drive';
+                                final path = node['storage_path']?.toString() ??
+                                    node['mount_point']?.toString() ??
+                                    'D:\\';
+                                final uuid = node['volume_uuid']?.toString() ??
+                                    (id.length >= 8
+                                        ? 'VOL-${id.substring(0, 8)}'
+                                        : 'VOL-UNKNOWN');
+
+                                DriveGrantManagementSheet.show(
+                                  context,
+                                  disk: node,
+                                  deviceName:
+                                      node['parent_device_name']?.toString() ??
+                                          'This Device',
+                                  onUpdated: _loadStorageData,
+                                );
+                              },
+                              icon:
+                                  const Icon(Icons.security_rounded, size: 16),
+                              label: const Text(
+                                'Manage Grant',
+                                style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             if (!isOnline)
                               Text(
                                 'Agent offline: start pcos-agent to connect',
@@ -1429,52 +1514,95 @@ class _StoragePageState extends State<StoragePage> {
           Wrap(
             spacing: 12,
             runSpacing: 12,
-            children: [
-              const _PolicyTile(
-                icon: Icons.photo_library_rounded,
-                title: 'Photos & Live Moments',
-                matcher: 'image/*',
-                targetDrive: 'Ultra-Fast NVMe / SSD',
-                targetType: 'SSD',
-                isDefault: true,
-              ),
-              const _PolicyTile(
-                icon: Icons.movie_rounded,
-                title: 'Videos & 4K Cinema',
-                matcher: 'video/*',
-                targetDrive: 'High-Capacity HDD Pool',
-                targetType: 'HDD',
-                isDefault: true,
-              ),
-              const _PolicyTile(
-                icon: Icons.description_rounded,
-                title: 'Documents & Work',
-                matcher: 'application/*',
-                targetDrive: 'Redundant NAS / SSD',
-                targetType: 'NAS',
-                isDefault: true,
-              ),
-              const _PolicyTile(
-                icon: Icons.backup_table_rounded,
-                title: 'Backups & Archives',
-                matcher: 'backup/*',
-                targetDrive: 'External USB Replicas',
-                targetType: 'USB',
-                isDefault: true,
-              ),
-              ..._storagePolicies.map((p) => _PolicyTile(
-                    icon: Icons.rule_folder_rounded,
-                    title: 'Custom: ${p['content_type'] ?? 'Custom'}',
-                    matcher: p['content_type'] ?? '*',
-                    targetDrive:
-                        'Target: ${(p['target_drive_type'] ?? 'SSD').toString().toUpperCase()}',
-                    targetType: (p['target_drive_type'] ?? 'SSD')
+            children: _storagePolicies.isNotEmpty
+                ? _storagePolicies.map((p) {
+                    final isDefault = p['is_default'] == true;
+                    final category =
+                        (p['category'] ?? p['content_type'] ?? 'storage')
+                            .toString()
+                            .toLowerCase();
+                    final mime =
+                        (p['mime_patterns'] ?? p['content_type'] ?? '*')
+                            .toString();
+                    final targetType = (p['target_storage_type'] ??
+                            p['target_drive_type'] ??
+                            'SSD')
                         .toString()
-                        .toUpperCase(),
-                    isDefault: false,
-                    onDelete: () => _deleteStoragePolicy(p['id'].toString()),
-                  )),
-            ],
+                        .toUpperCase();
+                    final id = p['id']?.toString() ?? '';
+
+                    IconData icon;
+                    String title;
+                    if (category.contains('photo') || mime.contains('image')) {
+                      icon = Icons.photo_library_rounded;
+                      title = 'Photos & Memories';
+                    } else if (category.contains('video') ||
+                        mime.contains('video')) {
+                      icon = Icons.movie_rounded;
+                      title = 'Videos & Cinema';
+                    } else if (category.contains('audio') ||
+                        mime.contains('audio')) {
+                      icon = Icons.music_note_rounded;
+                      title = 'Music & Audio';
+                    } else if (category.contains('document') ||
+                        mime.contains('application') ||
+                        mime.contains('pdf')) {
+                      icon = Icons.description_rounded;
+                      title = 'Documents & Code';
+                    } else if (category.contains('backup')) {
+                      icon = Icons.backup_table_rounded;
+                      title = 'System Backups';
+                    } else {
+                      icon = Icons.rule_folder_rounded;
+                      title = 'Rule: ${category.toUpperCase()}';
+                    }
+
+                    return _PolicyTile(
+                      icon: icon,
+                      title: isDefault ? title : 'Custom: $title',
+                      matcher: mime,
+                      targetDrive: '$targetType Pool',
+                      targetType: targetType,
+                      isDefault: isDefault,
+                      onDelete: (!isDefault && id.isNotEmpty)
+                          ? () => _deleteStoragePolicy(id)
+                          : null,
+                    );
+                  }).toList()
+                : const [
+                    _PolicyTile(
+                      icon: Icons.photo_library_rounded,
+                      title: 'Photos & Live Moments',
+                      matcher: 'image/*',
+                      targetDrive: 'Ultra-Fast NVMe / SSD',
+                      targetType: 'SSD',
+                      isDefault: true,
+                    ),
+                    _PolicyTile(
+                      icon: Icons.movie_rounded,
+                      title: 'Videos & 4K Cinema',
+                      matcher: 'video/*',
+                      targetDrive: 'High-Capacity HDD Pool',
+                      targetType: 'HDD',
+                      isDefault: true,
+                    ),
+                    _PolicyTile(
+                      icon: Icons.description_rounded,
+                      title: 'Documents & Work',
+                      matcher: 'application/*',
+                      targetDrive: 'Redundant NAS / SSD',
+                      targetType: 'NAS',
+                      isDefault: true,
+                    ),
+                    _PolicyTile(
+                      icon: Icons.backup_table_rounded,
+                      title: 'Backups & Archives',
+                      matcher: 'backup/*',
+                      targetDrive: 'External USB Replicas',
+                      targetType: 'USB',
+                      isDefault: true,
+                    ),
+                  ],
           ),
         ],
       ),

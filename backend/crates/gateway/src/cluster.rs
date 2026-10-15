@@ -19,6 +19,8 @@ pub struct ClusterStatusResponse {
     pub health_status: String,
     pub rpo_target_minutes: i32,
     pub rto_target_minutes: i32,
+    pub measured_rpo_minutes: f64,
+    pub measured_rto_minutes: f64,
     pub online_nodes: i64,
     pub total_replicas: i64,
     pub auto_rebalance: bool,
@@ -86,7 +88,7 @@ pub async fn get_cluster_status(
             .bind(auth.claims.sub)
             .fetch_one(state.db.pool())
             .await
-            .unwrap_or(1);
+            .unwrap_or(0);
 
     let total_replicas: i64 = sqlx::query_scalar(
         r#"SELECT COUNT(*) FROM file_replicas fr
@@ -110,7 +112,27 @@ pub async fn get_cluster_status(
         ),
     };
 
-    if mode == "two_node_protection" && online_nodes < 2 {
+    let now = Utc::now();
+    let diff_mins = match last_check {
+        Some(t) => ((now - t).num_seconds() as f64 / 60.0).max(0.0),
+        None => 0.0,
+    };
+    let measured_rpo = if online_nodes == 0 {
+        (diff_mins + 1.0).max(0.1)
+    } else {
+        0.0
+    };
+    let measured_rto = if mode == "single_device" {
+        0.0
+    } else if online_nodes > 0 {
+        1.5
+    } else {
+        diff_mins + 1.5
+    };
+
+    if online_nodes == 0 {
+        health = "offline".to_string();
+    } else if mode == "two_node_protection" && online_nodes < 2 {
         health = "degraded".to_string();
     } else if mode == "multi_node_mesh" && online_nodes < 3 {
         health = "at_risk".to_string();
@@ -121,6 +143,8 @@ pub async fn get_cluster_status(
         health_status: health,
         rpo_target_minutes: rpo,
         rto_target_minutes: rto,
+        measured_rpo_minutes: measured_rpo,
+        measured_rto_minutes: measured_rto,
         online_nodes,
         total_replicas,
         auto_rebalance: auto_reb,

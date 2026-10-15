@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/theme_service.dart';
 import '../../files/pages/files_page.dart' show formatFileSize;
 import '../../transfers/widgets/transfer_center_dialog.dart';
 import '../../transfers/widgets/transfer_status_indicator.dart';
@@ -469,6 +470,12 @@ class _DesktopShellState extends State<_DesktopShell> {
                     ),
                   ),
                 ),
+                // Persistent Light/Dark/System Theme Switcher
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: _collapsed ? 8 : 16, vertical: 4),
+                  child: ThemeSwitchWidget(compact: _collapsed),
+                ),
                 // Transfer Status indicator
                 Padding(
                   padding: EdgeInsets.symmetric(
@@ -528,6 +535,8 @@ class _TabletShell extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const TransferStatusIndicator(compact: true),
+                const SizedBox(height: 8),
+                const ThemeSwitchWidget(compact: true),
               ],
             ),
           ),
@@ -584,6 +593,7 @@ class _MobileShell extends StatelessWidget {
                   color: AppTheme.textPrimaryColor(context))),
         ]),
         actions: [
+          const ThemeSwitchWidget(compact: true),
           const TransferStatusIndicator(compact: true),
           IconButton(
             icon: Icon(Icons.search_rounded,

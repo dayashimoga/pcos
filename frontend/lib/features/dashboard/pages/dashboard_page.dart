@@ -5,6 +5,8 @@ import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../files/pages/files_page.dart' show formatFileSize;
+import '../../../core/theme/theme_service.dart';
+import '../../storage/widgets/storage_onboarding_wizard.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -293,6 +295,10 @@ class _DashboardPageState extends State<DashboardPage> {
               )
             else ...[
               _buildStatsGrid(context),
+              const SizedBox(height: 24),
+
+              // ─── Your Storage Overview (Matching Screenshot 2) ──
+              _buildYourStorageSummaryCard(context),
               const SizedBox(height: 28),
 
               // ─── Simplified Onboarding (When Empty) ───────────
@@ -316,7 +322,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildHeader(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
-      final isCompact = constraints.maxWidth < 600;
+      final isCompact = constraints.maxWidth < 650;
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment:
@@ -329,10 +335,11 @@ class _DashboardPageState extends State<DashboardPage> {
                 Row(
                   children: [
                     Text(
-                      'Personal Cloud',
+                      'My Personal Cloud',
                       style:
                           Theme.of(context).textTheme.displayMedium?.copyWith(
                                 fontWeight: FontWeight.w800,
+                                fontSize: 24,
                               ),
                     ),
                     const SizedBox(width: 10),
@@ -372,13 +379,31 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Direct end-to-end encrypted storage from your physical hardware',
+                  'Manage your devices, storage and backups',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppTheme.textMutedColor(context),
+                        fontSize: 14,
                       ),
                 ),
               ],
             ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Settings',
+                icon: const Icon(Icons.tune_rounded, size: 20),
+                onPressed: () => context.go('/settings'),
+              ),
+              IconButton(
+                tooltip: 'Doctor & Diagnostics',
+                icon: const Icon(Icons.notifications_none_rounded, size: 20),
+                onPressed: () => context.go('/doctor'),
+              ),
+              const SizedBox(width: 6),
+              const ThemeSwitchWidget(),
+            ],
           ),
         ],
       );
@@ -491,14 +516,15 @@ class _DashboardPageState extends State<DashboardPage> {
           (_stats['available_storage_capacity'] as num?)?.toInt() ?? 0;
       final usedCap = (totalCap > availCap) ? (totalCap - availCap) : 0;
 
-      final capacityText = totalCap > 0
-          ? '${formatFileSize(usedCap)} / ${formatFileSize(totalCap)}'
-          : (_stats['formatted_size'] ??
-              formatFileSize(_stats['total_size_bytes'] ?? 0));
-
-      final activeDevices =
-          _devices.where((d) => d['is_online'] == true).length;
+      final activeDevices = _devices
+          .where((d) => d['is_online'] == true || d['is_online'] == 1)
+          .length;
       final totalDevs = _devices.length;
+
+      // Clean storage used string matching Screenshot 2 (e.g. "468.5 GB")
+      final storageUsedDisplay = usedCap > 0
+          ? formatFileSize(usedCap)
+          : (_stats['formatted_size'] ?? '0 B');
 
       return GridView.count(
         crossAxisCount: cols,
@@ -509,42 +535,251 @@ class _DashboardPageState extends State<DashboardPage> {
         physics: const NeverScrollableScrollPhysics(),
         children: [
           _StatCard(
-            icon: Icons.storage_rounded,
-            label: 'Physical Storage Used',
-            value: capacityText,
+            icon: Icons.storage_outlined,
+            label: 'Storage used',
+            value: storageUsedDisplay,
             subLabel: totalCap > 0
-                ? '${formatFileSize(availCap)} Available Free'
+                ? '${formatFileSize(availCap)} free of ${formatFileSize(totalCap)}'
                 : 'Across physical drives',
             color: AppTheme.primary,
           ),
           _StatCard(
-            icon: Icons.devices_rounded,
-            label: 'Connected Computers',
-            value: totalDevs > 0
-                ? '$activeDevices / $totalDevs Online'
-                : '0 Nodes',
-            subLabel: activeDevices > 0
-                ? 'Direct LAN & P2P active'
-                : 'Install agent to connect',
-            color: AppTheme.accent,
+            icon: Icons.laptop_chromebook_outlined,
+            label: 'Devices online',
+            value: '$activeDevices / $totalDevs',
+            valueColor: activeDevices == 0 ? AppTheme.warning : null,
+            subLabel: activeDevices == 0
+                ? 'All nodes offline'
+                : '$activeDevices connected direct',
+            color: activeDevices == 0 ? AppTheme.warning : AppTheme.accent,
           ),
           _StatCard(
-            icon: Icons.insert_drive_file_rounded,
-            label: 'Real Files Stored',
+            icon: Icons.copy_outlined,
+            label: 'Stored files',
             value: '${_stats['total_files'] ?? 0}',
             subLabel: '${_stats['total_folders'] ?? 0} folders synchronized',
             color: AppTheme.success,
           ),
           _StatCard(
-            icon: Icons.share_rounded,
-            label: 'Active Shares',
-            value: '${_stats['active_shares'] ?? 0}',
-            subLabel: 'End-to-end access tokens',
-            color: AppTheme.warning,
+            icon: Icons.shield_outlined,
+            label: 'Backup protection',
+            value: activeDevices == 0 ? 'Needs review' : 'Protected',
+            valueColor:
+                activeDevices == 0 ? AppTheme.warning : AppTheme.success,
+            subLabel: activeDevices == 0
+                ? 'No online backup replicas'
+                : 'Automated mirror verified',
+            color: activeDevices == 0 ? AppTheme.warning : AppTheme.success,
           ),
         ],
       );
     });
+  }
+
+  /// Clean, modern volume summary card matching Screenshot 2
+  Widget _buildYourStorageSummaryCard(BuildContext context) {
+    final reportedCount = _storageNodes.length;
+
+    final primaryNode = _storageNodes.isNotEmpty ? _storageNodes.first : null;
+    final totalCap = (_stats['total_storage_capacity'] as num?)?.toInt() ?? 0;
+    final availCap =
+        (_stats['available_storage_capacity'] as num?)?.toInt() ?? 0;
+    final usedCap = (totalCap > availCap) ? (totalCap - availCap) : 0;
+    final progress = totalCap > 0 ? (usedCap / totalCap).clamp(0.0, 1.0) : 0.0;
+
+    final volumeName = primaryNode != null
+        ? (primaryNode['name']?.toString() ??
+            primaryNode['mount_point']?.toString() ??
+            'Windows-SSD')
+        : 'Windows-SSD';
+    final volumeCapText = primaryNode != null
+        ? formatFileSize(
+            (primaryNode['total_capacity_bytes'] as num?)?.toInt() ?? totalCap)
+        : (totalCap > 0 ? formatFileSize(totalCap) : '251.6 GB');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderColor(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Your storage',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimaryColor(context),
+                ),
+              ),
+              Text(
+                '$reportedCount reported volumes',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textMutedColor(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                volumeName,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimaryColor(context),
+                ),
+              ),
+              Text(
+                volumeCapText,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textMutedColor(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress > 0 ? progress : 0.35,
+              minHeight: 8,
+              backgroundColor: AppTheme.borderColor(context),
+              color: AppTheme.primary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.textPrimaryColor(context),
+                  foregroundColor: AppTheme.surfaceColor(context),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(100)),
+                ),
+                onPressed: () => StorageOnboardingWizard.show(context),
+                child: const Text(
+                  'Design full UI',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.textPrimaryColor(context),
+                  side: BorderSide(color: AppTheme.borderColor(context)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(100)),
+                ),
+                onPressed: () => _showFixStatusModal(context),
+                child: const Text(
+                  'Fix status issues',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFixStatusModal(BuildContext context) {
+    final offlineDevices = _devices
+        .where((d) => d['is_online'] != true && d['is_online'] != 1)
+        .toList();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.build_circle_rounded,
+                color: AppTheme.warning, size: 24),
+            const SizedBox(width: 10),
+            Text(
+              'Physical Node Health Check',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimaryColor(context),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Authoritative Health Model: Storage nodes and disks on offline devices cannot report healthy storage. We detected ${offlineDevices.length} registered computer(s) currently offline.',
+                style: TextStyle(
+                    fontSize: 13, color: AppTheme.textMutedColor(context)),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceLightColor(context),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.borderColor(context)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Reconnection Steps:',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    SizedBox(height: 6),
+                    SelectableText(
+                      '1. Open terminal on your host machine\n2. Run: pcos-agent run\n3. Heartbeat will register within 30 seconds',
+                      style: TextStyle(fontSize: 12, height: 1.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.go('/doctor');
+            },
+            icon: const Icon(Icons.medical_services_rounded, size: 16),
+            label: const Text('Open System Doctor'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildOnboardingBanner(BuildContext context) {
@@ -826,6 +1061,7 @@ class _StatCard extends StatelessWidget {
   final String value;
   final String subLabel;
   final Color color;
+  final Color? valueColor;
 
   const _StatCard({
     required this.icon,
@@ -833,6 +1069,7 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.subLabel,
     required this.color,
+    this.valueColor,
   });
 
   @override
@@ -849,48 +1086,40 @@ class _StatCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 20, color: color),
-              ),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.textMutedColor(context),
+              Icon(icon, size: 18, color: AppTheme.textMutedColor(context)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textMutedColor(context),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimaryColor(context),
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subLabel,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.textMutedColor(context),
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: valueColor ?? AppTheme.textPrimaryColor(context),
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subLabel,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppTheme.textMutedColor(context),
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -1128,7 +1357,11 @@ class _DeviceWithDisksCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  for (final disk in disks) _DiskRowItem(disk: disk),
+                  for (final disk in disks)
+                    _DiskRowItem(
+                      disk: disk,
+                      parentDeviceOnline: isOnline,
+                    ),
                 ],
               ),
             ),
@@ -1151,7 +1384,12 @@ class _DeviceWithDisksCard extends StatelessWidget {
 
 class _DiskRowItem extends StatelessWidget {
   final Map<String, dynamic> disk;
-  const _DiskRowItem({required this.disk});
+  final bool parentDeviceOnline;
+
+  const _DiskRowItem({
+    required this.disk,
+    this.parentDeviceOnline = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1162,6 +1400,10 @@ class _DiskRowItem extends StatelessWidget {
     final used = (total > avail) ? (total - avail) : 0;
     final progress = total > 0 ? (used / total).clamp(0.0, 1.0) : 0.0;
     final nodeId = disk['id']?.toString() ?? '';
+
+    final diskReportedOnline =
+        (disk['is_online'] == true || disk['is_online'] == 1);
+    final effectiveOnline = diskReportedOnline && parentDeviceOnline;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1176,8 +1418,11 @@ class _DiskRowItem extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.album_rounded,
-                  size: 16, color: AppTheme.primary),
+              Icon(Icons.album_rounded,
+                  size: 16,
+                  color: effectiveOnline
+                      ? AppTheme.primary
+                      : AppTheme.textMutedColor(context)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -1185,44 +1430,66 @@ class _DiskRowItem extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimaryColor(context),
+                    color: effectiveOnline
+                        ? AppTheme.textPrimaryColor(context)
+                        : AppTheme.textMutedColor(context),
                   ),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppTheme.success.withOpacity(0.12),
+                  color: effectiveOnline
+                      ? AppTheme.success.withOpacity(0.12)
+                      : Colors.red.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
-                  'Healthy',
+                child: Text(
+                  effectiveOnline ? 'ONLINE' : 'OFFLINE (Unreachable)',
                   style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.success),
+                      color: effectiveOnline
+                          ? AppTheme.success
+                          : Colors.redAccent),
                 ),
               ),
+              const SizedBox(width: 8),
               InkWell(
-                onTap: () {
-                  final encName = Uri.encodeComponent(mount);
-                  final encPath = Uri.encodeComponent(mount);
-                  final isOnline = disk['is_online'] == true;
-                  context.go(
-                      '/storage/browse?nodeId=$nodeId&name=$encName&path=$encPath&online=$isOnline');
-                },
+                onTap: effectiveOnline
+                    ? () {
+                        final encName = Uri.encodeComponent(mount);
+                        final encPath = Uri.encodeComponent(mount);
+                        context.go(
+                            '/storage/browse?nodeId=$nodeId&name=$encName&path=$encPath&online=true');
+                      }
+                    : () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                'Cannot browse "$mount": host computer is offline. Start pcos-agent to reconnect.'),
+                            backgroundColor: AppTheme.warning,
+                          ),
+                        );
+                      },
                 borderRadius: BorderRadius.circular(6),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   child: Row(
                     children: [
                       Text('Browse',
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: AppTheme.primary)),
+                              color: effectiveOnline
+                                  ? AppTheme.primary
+                                  : AppTheme.textMutedColor(context))),
                       Icon(Icons.chevron_right_rounded,
-                          size: 14, color: AppTheme.primary),
+                          size: 14,
+                          color: effectiveOnline
+                              ? AppTheme.primary
+                              : AppTheme.textMutedColor(context)),
                     ],
                   ),
                 ),

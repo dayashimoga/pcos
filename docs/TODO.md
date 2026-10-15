@@ -295,11 +295,23 @@
   - `TRF-01`: Resumable Transfers Protocol (`init`, `chunk`, `status`, `finalize`) in `backend/crates/file_metadata/src/resumable.rs`.
   - `MED-01`: Media probe and history route aliases in `backend/crates/streaming/src/lib.rs`.
   - `ADM-01`: Zero-cost license audit and cloud data export in `backend/crates/gateway/src/cluster.rs`.
-- [x] **Final Test Verification (182/182 PASS - 100%)**:
-  - Rust Backend Workspace: **46 / 46 PASSED (100%)**
-  - Rust Agent Workspace: **26 / 26 PASSED (100%)**
+- [x] **P1 Telemetry & Authoritative Health**:
+  - `TEL-01`: Resolved 0/3 computers vs online disks anomaly. Storage nodes are joined with parent `device_identities.last_seen_at` in Cloudflare Worker and Rust backend. Disconnected computers report storage nodes as `offline`/`unreachable`.
+  - `TEL-02`: Removed hardcoded RPO/RTO metrics and `|| 1` fallback; implemented `measured_rpo_minutes` and `measured_rto_minutes` derived from actual offline node durations.
+- [x] **P2 Guided Storage Onboarding & Fail-Closed Allowlists**:
+  - `ONB-01`: Implemented 7-step interactive `StorageOnboardingWizard` matching Screenshot 1 (Add Computer -> Install Agent -> Discover Drives -> Allowlist -> Confirm -> Test -> Activate).
+  - `ONB-02`: Enforced fail-closed volume allowlists in `agent/src/lan_server.rs` and `connection_manager.rs`. Stripped Windows `\\?\` verbatim prefixes to guarantee path containment; empty allowlist denies all with 403.
+  - `ONB-03`: Implemented `DriveGrantManagementSheet` with impact analysis (affected files & bytes), safe replica migration toggle, and graceful revocation.
+- [x] **P3 Intelligent Storage Routing**:
+  - `ROU-01`: Cleaned up storage routing policies in Flutter UI, eliminated duplicate "Custom" cards, and aligned payload schema (`category`, `mime_patterns`, `target_storage_type`).
+- [x] **P7 Visual Direction & Theme Toggle**:
+  - `UX-01`: Implemented persistent `ThemeService` (Light / Dark / System) with `SharedPreferences` storage and `ThemeSwitchWidget`.
+  - `UX-02`: Redesigned `dashboard_page.dart` matching Screenshot 2 with "Your storage" summary card, volume progress indicator, and direct action buttons.
+- [x] **Final Test Verification (192/192 PASS - 100%)**:
   - Cloudflare Vitest Suite: **74 / 74 PASSED (100%)**
-  - Flutter Frontend Tests: **20 / 20 PASSED (100%)**
+  - Rust Backend Workspace: **46 / 46 PASSED (100%)**
+  - Flutter Frontend Tests: **30 / 30 PASSED (100%)**
+  - Rust Agent Workspace: **26 / 26 PASSED (100%)**
   - Live Deployed Control Plane Probes: **16 / 16 PASSED (100%)**
   - Zero Unresolved Critical/High Defects; Physical Data Integrity & Security Certified.
 

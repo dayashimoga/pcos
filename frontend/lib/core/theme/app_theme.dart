@@ -22,10 +22,13 @@ class AppTheme {
   static const Color surfaceLighter = Color(0xFF475569); // Slate-600
   static const Color border = Color(0xFF334155); // Slate-700
 
-  // ─── Text Colors ──────────────────────────────────────
-  static const Color textPrimary = Color(0xFFF1F5F9); // Slate-100
-  static const Color textSecondary = Color(0xFF94A3B8); // Slate-400
-  static const Color textMuted = Color(0xFF64748B); // Slate-500
+  // ─── Text Colors (WCAG 2.2 AA Compliant) ───────────────
+  static const Color textPrimary =
+      Color(0xFFF8FAFC); // Slate-50 (contrast > 12:1)
+  static const Color textSecondary =
+      Color(0xFFCBD5E1); // Slate-300 (contrast > 7:1)
+  static const Color textMuted =
+      Color(0xFF94A3B8); // Slate-400 (contrast > 4.5:1)
 
   // ─── Gradients ────────────────────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
@@ -79,8 +82,8 @@ class AppTheme {
 
   static Color textMutedColor(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark
-        ? textMuted
-        : const Color(0xFF64748B);
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF475569);
   }
 
   static Color borderColor(BuildContext context) {

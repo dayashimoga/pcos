@@ -16,6 +16,7 @@ pub struct LanServerConfig {
     pub device_id: String,
     pub auth_token: String,
     pub preferred_port: u16,
+    pub allowed_disks: Vec<String>,
 }
 
 pub struct LanServer {
@@ -23,12 +24,18 @@ pub struct LanServer {
 }
 
 impl LanServer {
-    pub fn new(device_id: String, auth_token: String, preferred_port: u16) -> Self {
+    pub fn new(
+        device_id: String,
+        auth_token: String,
+        preferred_port: u16,
+        allowed_disks: Vec<String>,
+    ) -> Self {
         Self {
             config: Arc::new(LanServerConfig {
                 device_id,
                 auth_token,
                 preferred_port,
+                allowed_disks,
             }),
         }
     }
@@ -86,6 +93,36 @@ impl LanServer {
         });
 
         Ok(port)
+    }
+}
+
+fn is_path_permitted(target: &Path, allowed_disks: &[String]) -> bool {
+    let target_str = target.to_string_lossy().to_lowercase();
+    let clean_target = target_str
+        .trim_start_matches(r"\\?\")
+        .trim_end_matches(['\\', '/']);
+
+    if !allowed_disks.is_empty() {
+        allowed_disks.iter().any(|al| {
+            let clean_al_str = al.trim().to_lowercase();
+            let clean_al = clean_al_str
+                .trim_start_matches(r"\\?\")
+                .trim_end_matches(['\\', '/']);
+            clean_target == clean_al
+                || clean_target.starts_with(clean_al)
+                || clean_al.starts_with(clean_target)
+        })
+    } else {
+        // Safe fallback: allow current working directory (e.g. tests or agent data dir)
+        if let Ok(cwd) = std::env::current_dir().and_then(|c| c.canonicalize()) {
+            let cwd_str = cwd.to_string_lossy().to_lowercase();
+            let clean_cwd = cwd_str
+                .trim_start_matches(r"\\?\")
+                .trim_end_matches(['\\', '/']);
+            clean_target == clean_cwd || clean_target.starts_with(clean_cwd)
+        } else {
+            false
+        }
     }
 }
 
@@ -196,7 +233,26 @@ async fn handle_connection(
             .map(|s| s.as_str())
             .unwrap_or(".");
         let rel_path = query_params.get("path").map(|s| s.as_str()).unwrap_or("");
-        match FsHandler::list_dir(Path::new(storage_path), rel_path) {
+        let canonical_root = match Path::new(storage_path).canonicalize() {
+            Ok(p) => p,
+            Err(_) => {
+                send_json_response(&mut stream, 404, r#"{"error":"Storage root not found"}"#)
+                    .await?;
+                return Ok(());
+            }
+        };
+
+        if !is_path_permitted(&canonical_root, &config.allowed_disks) {
+            send_json_response(
+                &mut stream,
+                403,
+                r#"{"error":"Access to storage path is restricted by node allowlist policy","code":"PATH_NOT_ALLOWED"}"#,
+            )
+            .await?;
+            return Ok(());
+        }
+
+        match FsHandler::list_dir(&canonical_root, rel_path) {
             Ok(result) => {
                 let body = serde_json::to_string(&result).unwrap_or_default();
                 send_json_response(&mut stream, 200, &body).await?;
@@ -215,7 +271,26 @@ async fn handle_connection(
             .map(|s| s.as_str())
             .unwrap_or(".");
         let rel_path = query_params.get("path").map(|s| s.as_str()).unwrap_or("");
-        match FsHandler::stat(Path::new(storage_path), rel_path) {
+        let canonical_root = match Path::new(storage_path).canonicalize() {
+            Ok(p) => p,
+            Err(_) => {
+                send_json_response(&mut stream, 404, r#"{"error":"Storage root not found"}"#)
+                    .await?;
+                return Ok(());
+            }
+        };
+
+        if !is_path_permitted(&canonical_root, &config.allowed_disks) {
+            send_json_response(
+                &mut stream,
+                403,
+                r#"{"error":"Access to storage path is restricted by node allowlist policy","code":"PATH_NOT_ALLOWED"}"#,
+            )
+            .await?;
+            return Ok(());
+        }
+
+        match FsHandler::stat(&canonical_root, rel_path) {
             Ok(meta) => {
                 let body = serde_json::json!(meta).to_string();
                 send_json_response(&mut stream, 200, &body).await?;
@@ -243,6 +318,16 @@ async fn handle_connection(
                 return Ok(());
             }
         };
+
+        if !is_path_permitted(&canonical_root, &config.allowed_disks) {
+            send_json_response(
+                &mut stream,
+                403,
+                r#"{"error":"Access to storage path is restricted by node allowlist policy","code":"PATH_NOT_ALLOWED"}"#,
+            )
+            .await?;
+            return Ok(());
+        }
 
         let target_path = match FsHandler::safe_resolve(&canonical_root, rel_path) {
             Ok(p) => p,
@@ -535,7 +620,12 @@ mod tests {
             .unwrap();
 
         let token = "test_lan_token_secret_12345".to_string();
-        let server = LanServer::new("test_dev_01".to_string(), token.clone(), 18080);
+        let server = LanServer::new(
+            "test_dev_01".to_string(),
+            token.clone(),
+            18080,
+            vec![test_dir.to_string_lossy().to_string()],
+        );
         let port = server.start().await.expect("Failed to start LAN server");
 
         let client = reqwest::Client::new();
@@ -603,7 +693,12 @@ mod tests {
         tokio::fs::create_dir_all(&test_dir).await.unwrap();
 
         // Server initialized with empty token (e.g. unconfigured node)
-        let server = LanServer::new("unpaired_dev".to_string(), "".to_string(), 18090);
+        let server = LanServer::new(
+            "unpaired_dev".to_string(),
+            "".to_string(),
+            18090,
+            vec![test_dir.to_string_lossy().to_string()],
+        );
         let port = server.start().await.expect("Failed to start server");
 
         let client = reqwest::Client::new();

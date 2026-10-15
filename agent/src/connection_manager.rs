@@ -291,19 +291,38 @@ async fn handle_fs_command(
     // Enforce node disk policy
     let root_str = root.to_string_lossy().to_string();
     let clean_root = root_str.trim().trim_end_matches(['\\', '/']).to_lowercase();
+    let clean_default = default_root
+        .to_string_lossy()
+        .trim()
+        .trim_end_matches(['\\', '/'])
+        .to_lowercase();
+    let is_accessing_default_data_dir =
+        clean_root == clean_default || clean_root.starts_with(&clean_default);
 
     let is_forbidden = if !allowed.is_empty() {
-        !allowed.iter().any(|al| {
+        let matches_allowed = allowed.iter().any(|al| {
             let clean_al = al.trim().trim_end_matches(['\\', '/']).to_lowercase();
             clean_root == clean_al
                 || clean_root.starts_with(&clean_al)
                 || clean_al.starts_with(&clean_root)
-        })
-    } else {
-        excluded.iter().any(|ex| {
+        }) || is_accessing_default_data_dir;
+
+        let matches_excluded = excluded.iter().any(|ex| {
             let clean_ex = ex.trim().trim_end_matches(['\\', '/']).to_lowercase();
             clean_root == clean_ex || clean_root.starts_with(&clean_ex)
-        })
+        });
+
+        !matches_allowed || matches_excluded
+    } else {
+        // FAIL CLOSED: Empty allowlist denies all external storage paths
+        if !is_accessing_default_data_dir {
+            true
+        } else {
+            excluded.iter().any(|ex| {
+                let clean_ex = ex.trim().trim_end_matches(['\\', '/']).to_lowercase();
+                clean_root == clean_ex || clean_root.starts_with(&clean_ex)
+            })
+        }
     };
 
     if is_forbidden {
@@ -311,7 +330,7 @@ async fn handle_fs_command(
             "type": "fs_response",
             "request_id": request_id,
             "success": false,
-            "error": format!("Access to storage path '{}' is restricted by node policy in agent.toml", root.display())
+            "error": format!("Access to storage path '{}' is restricted by node policy in agent.toml (fail-closed allowlist)", root.display())
         });
     }
 

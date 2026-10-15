@@ -277,6 +277,7 @@ async fn main() -> anyhow::Result<()> {
         agent_config.device_id.clone(),
         agent_config.auth_token.clone(),
         8080,
+        agent_config.allowed_disks.clone(),
     );
     let bound_lan_port = match lan_srv.start().await {
         Ok(port) => port,

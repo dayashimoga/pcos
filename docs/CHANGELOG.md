@@ -34,13 +34,29 @@ All notable changes to this project will be documented in this file.
 - **MED-01**: Wired `/api/v1/media/history` and `/api/v1/media/probe/:file_id` route aliases in `pcos_streaming`.
 - **ADM-01**: Implemented Zero-Cost License Audit and Cloud Data Export in `backend/crates/gateway/src/cluster.rs`.
 
+#### P1 Telemetry & Authoritative Health
+- **TEL-01 (Authoritative Health & 0/3 Computers Anomaly Fix)**: Resolved anomaly where dashboard showed `0/3 computers online while six disks appear ONLINE/100% synced` and `'Healthy'`. In Cloudflare Worker `GET /api/v1/storage/nodes` and Rust backend gateway, storage nodes are joined with parent `device_identities.last_seen_at` (effective online if heartbeat within 90s). Storage nodes of offline computers report status `'offline'` and health `'unreachable'`, eliminating fabricated healthy states.
+- **TEL-02 (Measured RPO/RTO Discarding Hardcoded Target Metrics)**: Removed static `0s` RPO and `5s` RTO targets and eliminated fallback `|| 1` for online nodes. Added `measured_rpo_minutes` and `measured_rto_minutes` derived from actual offline node durations; reports cluster status as `offline` when 0 nodes online.
+
+#### P2 Web-Based Storage Onboarding & Fail-Closed Allowlists
+- **ONB-01 (7-Step Interactive Storage Onboarding Wizard)**: Implemented `StorageOnboardingWizard` matching Screenshot 1 (Add Computer -> Install/Pair Agent -> Discover Drives -> Select Allowed Drives/Folders -> Confirm -> Test -> Activate). Provides OS installer chips, pairing code generation, hardware drive discovery, and non-destructive read/write verification.
+- **ONB-02 (Strict Fail-Closed Volume Allowlists)**: Agent `lan_server.rs` and `connection_manager.rs` enforce explicit volume allowlists. Stripped Windows verbatim `\\?\` canonical path prefixes to guarantee accurate path comparisons. System partitions and unselected volumes denied by default; empty allowlist denies all with 403 `PATH_NOT_ALLOWED`.
+- **ONB-03 (Safe Drive Grant Management Sheet)**: Implemented `DriveGrantManagementSheet` allowing users to view, edit, and revoke storage drive grants. Features live impact analysis (affected files count & bytes), safe replica migration toggle, and graceful revocation.
+
+#### P3 Intelligent Storage Routing Policy
+- **ROU-01 (Dynamic Storage Policies & Schema Alignment)**: Eliminated duplicate "Custom" rules in Flutter storage page. Aligned request payload keys (`category`, `mime_patterns`, `target_storage_type`) with backend and edge routing schemas.
+
+#### P7 Visual Direction Overhaul & Theme Switching
+- **UX-01 (Persistent Light / Dark / System Theme Toggle)**: Implemented `ThemeService` and `ThemeSwitchWidget` persisted in `SharedPreferences`, with contrast compliance (WCAG 2.2 AA) and primary text sizing >=14px.
+- **UX-02 (Dashboard Redesign Matching Screenshot 2)**: Overhauled `dashboard_page.dart` with "My Personal Cloud" header, quick action icons, and `_buildYourStorageSummaryCard` matching Screenshot 2 (displaying reported volumes, primary volume usage, "Design full UI" and "Fix status issues").
+
 #### Quality & Test Certification
-- **182 / 182 Automated Tests Passing (100%)**:
-  - Rust Backend: **46 / 46 passed** (including BIP-39 bounds, tamper detection, and checksum verification)
-  - Rust Agent: **26 / 26 passed** (including constant-time equality and fail-closed auth)
-  - Cloudflare Worker: **74 / 74 passed** (including Phase P0 security audit suite)
-  - Flutter Frontend: **20 / 20 passed** (BLoCs and responsive widgets)
-  - Live Edge Control Plane Probes: **16 / 16 passed** (including URL query token leakage and BIP-39 rejection)
+- **192 / 192 Automated Tests Passing (100% Pass Rate)**:
+  - Cloudflare Worker: **74 / 74 passed** (including Phase P0 security audit suite and authoritative health query joins)
+  - Rust Backend Workspace: **46 / 46 passed** (including BIP-39 bounds, cluster health calculation, and chunk assembly)
+  - Flutter Frontend: **30 / 30 passed** (including new onboarding wizard, theme switch, and authoritative health tests)
+  - Rust Agent Workspace: **26 / 26 passed** (including constant-time equality, fail-closed auth, and volume allowlist enforcement)
+  - Live Edge Control Plane Probes: **16 / 16 passed** (live edge health, CORS, query token rejection, BIP-39 checksum verification)
 - Zero Critical or High unresolved defects; fail-closed security and physical data integrity certified.
 
 ## [1.8.0-prod] - 2026-10-13

@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../main.dart' show themeNotifier;
+import '../../../core/theme/theme_service.dart';
 import '../widgets/free_tier_budget_card.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -692,20 +692,35 @@ class _SettingsPageState extends State<SettingsPage> {
         ]),
         const SizedBox(height: 24),
         _SettingsSection(title: 'Appearance', children: [
-          _SettingsTile(
-            icon: Icons.dark_mode_rounded,
-            title: 'Dark Mode',
-            subtitle: themeNotifier.value == ThemeMode.dark ? 'On' : 'Off',
-            trailing: Switch(
-              value: themeNotifier.value == ThemeMode.dark,
-              onChanged: (v) {
-                setState(() {
-                  themeNotifier.value = v ? ThemeMode.dark : ThemeMode.light;
-                });
-              },
-              activeColor: AppTheme.primary,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(children: [
+                  Icon(Icons.palette_outlined,
+                      size: 20, color: AppTheme.textMutedColor(context)),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Theme Mode',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimaryColor(context))),
+                      Text('Persistent Light, Dark, or System preference',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textMutedColor(context))),
+                    ],
+                  ),
+                ]),
+                const ThemeSwitchWidget(),
+              ],
             ),
           ),
+          Divider(color: AppTheme.borderColor(context), height: 1),
           _SettingsTile(
               icon: Icons.view_module_rounded,
               title: 'Default View',

@@ -5,8 +5,10 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 
-/// Global theme mode notifier — accessible from Settings to toggle light/dark.
-final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
+import 'core/theme/theme_service.dart';
+
+/// Global theme mode notifier — aliases to persistent ThemeService for backward compatibility.
+final ValueNotifier<ThemeMode> themeNotifier = ThemeService.themeNotifier;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +19,11 @@ void main() async {
     await setupServiceLocator();
   } catch (e, stack) {
     debugPrint('Service locator error during startup: $e\n$stack');
+  }
+  try {
+    await ThemeService.initialize();
+  } catch (e) {
+    debugPrint('Theme service initialization error: $e');
   }
   runApp(const PCOSApp());
 }
