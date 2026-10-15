@@ -265,12 +265,14 @@ pub async fn finalize_transfer(
 
     // If client provided a sha256_hash, verify integrity!
     if let Some(ref client_hash) = req.sha256_hash {
-        if !computed_hash.is_empty() && computed_hash != "empty" && computed_hash != "verified" {
-            if !client_hash.eq_ignore_ascii_case(&computed_hash) {
-                return Err(AppError::Validation(format!(
-                    "SHA-256 integrity check failed: expected {client_hash}, computed {computed_hash}"
-                )));
-            }
+        if !computed_hash.is_empty()
+            && computed_hash != "empty"
+            && computed_hash != "verified"
+            && !client_hash.eq_ignore_ascii_case(&computed_hash)
+        {
+            return Err(AppError::Validation(format!(
+                "SHA-256 integrity check failed: expected {client_hash}, computed {computed_hash}"
+            )));
         }
     }
 

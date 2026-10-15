@@ -58,12 +58,21 @@ pub struct LicenseAuditResponse {
     pub migration_guarantee: String,
 }
 
+type ClusterProtectionRecord = (
+    String,
+    i32,
+    i32,
+    bool,
+    Option<chrono::DateTime<Utc>>,
+    String,
+);
+
 /// GET /api/v1/cluster/status
 pub async fn get_cluster_status(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> AppResult<impl IntoResponse> {
-    let cluster_row: Option<(String, i32, i32, bool, Option<chrono::DateTime<Utc>>, String)> =
+    let cluster_row: Option<ClusterProtectionRecord> =
         sqlx::query_as(
             r#"SELECT protection_mode, rpo_target_minutes, rto_target_minutes, auto_rebalance, last_health_check, health_status
                FROM cluster_protection WHERE user_id = $1"#,

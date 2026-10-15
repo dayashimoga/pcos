@@ -50,7 +50,7 @@ pub fn generate_bip39_phrase() -> String {
 
     // Compute checksum: SHA256 of 128-bit entropy; first 4 bits is checksum
     let mut hasher = Sha256::new();
-    hasher.update(&entropy);
+    hasher.update(entropy);
     let hash = hasher.finalize();
     let checksum = (hash[0] >> 4) & 0x0F;
 
@@ -86,7 +86,7 @@ pub fn generate_bip39_phrase() -> String {
 /// Validate that a 12-word mnemonic phrase conforms to BIP-39 standards,
 /// including dictionary validation and 4-bit checksum verification.
 pub fn validate_bip39_phrase(phrase: &str) -> Result<(), &'static str> {
-    let raw_words: Vec<&str> = phrase.trim().split_whitespace().collect();
+    let raw_words: Vec<&str> = phrase.split_whitespace().collect();
     if raw_words.len() != 12 {
         return Err("Mnemonic phrase must consist of exactly 12 words");
     }
@@ -124,7 +124,7 @@ pub fn validate_bip39_phrase(phrase: &str) -> Result<(), &'static str> {
     let provided_checksum = (bit_buffer & 0x0F) as u8;
 
     let mut hasher = Sha256::new();
-    hasher.update(&entropy);
+    hasher.update(entropy);
     let hash = hasher.finalize();
     let expected_checksum = (hash[0] >> 4) & 0x0F;
 

@@ -194,10 +194,7 @@ pub async fn invite_member(
     }
 
     let member_id = format!("fmem_{}", Uuid::new_v4());
-    let invite_code = format!(
-        "fam_inv_{}",
-        Uuid::new_v4().simple().to_string()[..12].to_string()
-    );
+    let invite_code = format!("fam_inv_{}", &Uuid::new_v4().simple().to_string()[..12]);
     let target_user_id = req.user_id.unwrap_or_else(Uuid::new_v4);
     let role = req.role.unwrap_or_else(|| "member".into());
     let quota = req.storage_quota_bytes.unwrap_or(21474836480); // 20 GB default
